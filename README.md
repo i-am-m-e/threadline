@@ -32,6 +32,7 @@ Only `src/model.js` changes. Keep the same shape:
 
 - **In:** a list like `[{ role: "user", content: "..." }, { role: "assistant", content: "..." }]`
 - **Out:** the reply as a string (or throw an `Error` with a readable message)
+- **Optional:** call `onProgress(textSoFar)` as the reply streams in; `app.js` shows it sentence by sentence
 
 ## Where your data lives
 
@@ -46,4 +47,3 @@ Delete that folder to start fresh.
 
 - Documents longer than 30,000 characters are cut off (set in `MAX_DOCUMENT_CHARS` in `app.js`).
 - Scanned PDFs are images, so there's no text to extract.
-- Replies appear all at once (no word-by-word streaming yet).
