@@ -84,10 +84,10 @@ button, textarea { font: inherit; color: inherit; }
   text-overflow: ellipsis;
 }
 
-.delete-chat {
+/* The ✎ (rename) and × (delete) buttons on each row */
+.row-action {
   flex-shrink: 0;
-  padding: 2px 8px;
-  margin-right: 4px;
+  padding: 2px 6px;
   border: none;
   border-radius: 4px;
   background: none;
@@ -96,8 +96,23 @@ button, textarea { font: inherit; color: inherit; }
   cursor: pointer;
   visibility: hidden; /* only shown when hovering the row */
 }
-.conversation-row:hover .delete-chat { visibility: visible; }
+.row-action:last-child { margin-right: 4px; }
+.conversation-row:hover .row-action { visibility: visible; }
+.row-action:hover { color: var(--text); }
 .delete-chat:hover { color: var(--error-text); }
+
+.rename-box {
+  flex: 1;
+  min-width: 0;
+  margin: 2px;
+  padding: 4px 8px;
+  border: 1px solid var(--user-bubble);
+  border-radius: 5px;
+  background: var(--bg);
+  color: var(--text);
+  font: inherit;
+  font-weight: normal;
+}
 
 /* ---------- Chat area ---------- */
 .chat {
@@ -105,6 +120,94 @@ button, textarea { font: inherit; color: inherit; }
   display: flex;
   flex-direction: column;
   min-width: 0;
+}
+
+/* ---------- Chat header + files list ---------- */
+.chat-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 24px;
+  border-bottom: 1px solid var(--border);
+  min-height: 49px;
+}
+.chat-header h1 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.files-button {
+  flex-shrink: 0;
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: none;
+  font-size: 13px;
+  cursor: pointer;
+}
+.files-button:hover { background: var(--ai-bubble); }
+
+.files-panel {
+  display: flex;
+  flex-direction: column;
+  padding: 6px 16px;
+  border-bottom: 1px solid var(--border);
+  background: var(--sidebar-bg);
+  max-height: 30vh;
+  overflow-y: auto;
+}
+.files-panel[hidden] { display: none; }
+.file-item {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 6px 8px;
+  border: none;
+  border-radius: 6px;
+  background: none;
+  text-align: left;
+  cursor: pointer;
+}
+.file-item:hover { background: var(--border); }
+.file-date { color: var(--muted); font-size: 13px; white-space: nowrap; }
+
+/* Pop-up showing a file's extracted text */
+.file-viewer {
+  width: min(720px, 90vw);
+  max-height: 80vh;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--bg);
+  color: var(--text);
+}
+.file-viewer::backdrop { background: rgb(0 0 0 / 0.4); }
+.file-viewer header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px 0;
+}
+.file-viewer h2 { margin: 0; font-size: 15px; }
+.file-viewer header button {
+  border: none;
+  background: none;
+  font-size: 20px;
+  cursor: pointer;
+}
+.file-viewer-note { margin: 4px 16px 8px; color: var(--muted); font-size: 13px; }
+.file-viewer pre {
+  margin: 0;
+  padding: 12px 16px 16px;
+  max-height: 60vh;
+  overflow: auto;
+  border-top: 1px solid var(--border);
+  white-space: pre-wrap;
+  font: 13px/1.5 ui-monospace, Menlo, monospace;
 }
 
 .messages {
@@ -129,7 +232,42 @@ button, textarea { font: inherit; color: inherit; }
 .bubble.error     { align-self: center; background: var(--error-bg); color: var(--error-text); }
 .bubble.empty     { align-self: center; color: var(--muted); margin-top: 30vh; }
 
-.attachment-tag { font-size: 13px; opacity: 0.85; margin-bottom: 4px; }
+.attachment-tag {
+  display: block;
+  margin-bottom: 4px;
+  padding: 0;
+  border: none;
+  background: none;
+  font-size: 13px;
+  opacity: 0.85;
+  cursor: pointer;
+}
+.attachment-tag:hover { text-decoration: underline; }
+
+/* ---------- Formatted AI replies (Markdown turned into HTML) ---------- */
+.bubble .formatted { white-space: normal; }
+.formatted > :first-child { margin-top: 0; }
+.formatted > :last-child { margin-bottom: 0; }
+.formatted p, .formatted ul, .formatted ol, .formatted pre, .formatted blockquote, .formatted table { margin: 0.5em 0; }
+.formatted ul, .formatted ol { padding-left: 1.4em; }
+.formatted h1, .formatted h2, .formatted h3, .formatted h4 { margin: 0.8em 0 0.3em; font-size: 1.05em; }
+.formatted code {
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: var(--bg);
+  font: 0.9em ui-monospace, Menlo, monospace;
+}
+.formatted pre {
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: var(--bg);
+  overflow-x: auto;
+}
+.formatted pre code { padding: 0; background: none; }
+.formatted a { color: var(--user-bubble); }
+.formatted blockquote { padding-left: 10px; border-left: 3px solid var(--border); color: var(--muted); }
+.formatted table { border-collapse: collapse; }
+.formatted th, .formatted td { padding: 4px 8px; border: 1px solid var(--border); }
 
 /* ---------- Composer (the input area) ---------- */
 .composer {

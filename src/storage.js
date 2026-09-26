@@ -29,11 +29,13 @@ export async function initStorage() {
 // A conversation looks like:
 // {
 //   id, title, createdAt, updatedAt,
-//   messages: [ { role: "user" | "assistant", text, attachment?: { id, name } } ]
+//   messages: [ { role: "user" | "assistant", text, attachment?: { id, name, addedAt } } ]
 // }
 
-export async function saveConversation(conversation) {
-  conversation.updatedAt = new Date().toISOString();
+// Pass { keepTimestamp: true } for small edits like renaming, so the chat
+// doesn't jump to the top of the list as if it had new messages.
+export async function saveConversation(conversation, { keepTimestamp = false } = {}) {
+  if (!keepTimestamp) conversation.updatedAt = new Date().toISOString();
   const json = JSON.stringify(conversation, null, 2); // indented so it's readable
   await fs.writeTextFile(`conversations/${conversation.id}.json`, json, inAppData);
 }
@@ -71,7 +73,7 @@ export async function listConversations() {
  * Save an attached file and its extracted text.
  * @param {File} file
  * @param {string} text  The text extractText() pulled out of it.
- * @returns {Promise<{id: string, name: string}>}  A small reference to store in a message.
+ * @returns {Promise<{id: string, name: string, addedAt: string}>}  A small reference to store in a message.
  */
 export async function saveDocument(file, text) {
   const id = newId();
@@ -82,7 +84,7 @@ export async function saveDocument(file, text) {
   await fs.writeFile(`${folder}/${safeName}`, new Uint8Array(await file.arrayBuffer()), inAppData);
   await fs.writeTextFile(`${folder}/text.txt`, text, inAppData);
 
-  return { id, name: file.name };
+  return { id, name: file.name, addedAt: new Date().toISOString() };
 }
 
 export async function loadDocumentText(id) {

@@ -6,6 +6,8 @@
 import { getModelResponse } from "./model.js";
 import { extractText } from "./extract.js";
 import * as storage from "./storage.js";
+import { marked } from "./vendor/marked.esm.js";
+import DOMPurify from "./vendor/purify.es.mjs";
 
 // Small models can only read so much at once, so long documents get cut off here.
 const MAX_DOCUMENT_CHARS = 30000;
@@ -13,18 +15,24 @@ const MAX_DOCUMENT_CHARS = 30000;
 // ---------- Grab the page elements we'll work with ----------
 const conversationList = document.getElementById("conversation-list");
 const newChatButton = document.getElementById("new-chat");
+const chatTitle = document.getElementById("chat-title");
+const filesButton = document.getElementById("files-button");
+const filesPanel = document.getElementById("files-panel");
 const messagesEl = document.getElementById("messages");
 const form = document.getElementById("composer");
 const input = document.getElementById("message-input");
 const sendButton = document.getElementById("send");
 const fileInput = document.getElementById("file-input");
 const attachmentChip = document.getElementById("attachment-chip");
+const fileViewer = document.getElementById("file-viewer");
 
 // ---------- App state (what's going on right now) ----------
 let conversation = null;       // the chat currently on screen
 let pendingAttachment = null;  // { file, text } picked but not sent yet
 let isWaiting = false;         // true while the AI is thinking
 let streamingBubble = null;    // the bubble the AI's reply is being written into
+let filesPanelOpen = false;    // is the "Files" list showing?
+let renamingId = null;         // id of the chat whose title is being edited, if any
 const documentTextCache = {};  // document id -> extracted text, so we don't re-read files
 
 // ---------- Starting up ----------
@@ -42,6 +50,13 @@ async function start() {
 function makeNewConversation() {
   const now = new Date().toISOString();
   return { id: storage.newId(), title: "New chat", createdAt: now, updatedAt: now, messages: [] };
+}
+
+function showConversation(conv) {
+  conversation = conv;
+  filesPanelOpen = false;
+  clearAttachment();
+  render();
 }
 
 // ---------- Sending a message ----------
@@ -87,7 +102,7 @@ function showReplySoFar(textSoFar) {
   const finished = upToLastCompletePiece(textSoFar);
   if (!finished || !streamingBubble) return;
   streamingBubble.classList.remove("thinking");
-  streamingBubble.textContent = finished;
+  showFormatted(streamingBubble, finished);
   messagesEl.scrollTop = messagesEl.scrollHeight;
 }
 
@@ -125,7 +140,50 @@ async function getDocumentText(id) {
   return documentTextCache[id];
 }
 
-// ---------- Attachments ----------
+// ---------- Formatted replies ----------
+// The AI writes Markdown (**bold**, lists, `code`...). marked turns that into HTML,
+// then DOMPurify removes anything unsafe (scripts, etc.) before it goes on screen.
+// Images are blocked too: a document could trick the AI into writing an image link
+// that quietly sends your text to some website when the image loads.
+marked.setOptions({ breaks: true }); // a single line break in the reply stays a line break
+
+function showFormatted(element, markdownText) {
+  const html = marked.parse(tidyCodeFences(markdownText));
+  element.innerHTML = DOMPurify.sanitize(html, { FORBID_TAGS: ["img", "style", "form", "input"] });
+}
+
+// Small models often indent a code block's ``` line (to put it under a bullet)
+// but not the code itself, which breaks the block. So we move every ``` line to
+// the left edge, and un-indent the code inside by the same amount when it has it.
+function tidyCodeFences(text) {
+  let inCode = false;
+  let indent = "";
+  return text
+    .split("\n")
+    .map((line) => {
+      const fence = line.match(/^(\s*)```/);
+      if (fence) {
+        if (!inCode) indent = fence[1];
+        inCode = !inCode;
+        return line.trimStart();
+      }
+      if (inCode && indent && line.startsWith(indent)) return line.slice(indent.length);
+      return line;
+    })
+    .join("\n");
+}
+
+// Links in replies open in your normal browser instead of inside this window.
+messagesEl.addEventListener("click", (event) => {
+  const link = event.target.closest("a");
+  if (!link) return;
+  event.preventDefault();
+  if (/^(https?|mailto):/i.test(link.href)) {
+    window.__TAURI__.opener.openUrl(link.href);
+  }
+});
+
+// ---------- Attachments (adding one) ----------
 async function onFilePicked() {
   const file = fileInput.files[0];
   fileInput.value = ""; // lets you pick the same file again later
@@ -167,8 +225,65 @@ function clearAttachment() {
   attachmentChip.innerHTML = "";
 }
 
+// ---------- Attachments (the "Files" list for this chat) ----------
+function filesInConversation() {
+  return conversation.messages.filter((msg) => msg.attachment).map((msg) => msg.attachment);
+}
+
+// When was a file added? Newer files store it; older ones only have it inside
+// their id (e.g. "2026-09-26T01-39-17-s0us"), so we read it from there.
+function dateAdded(attachment) {
+  const iso = attachment.addedAt ??
+    `${attachment.id.slice(0, 10)}T${attachment.id.slice(11, 19).replaceAll("-", ":")}Z`;
+  const date = new Date(iso);
+  return isNaN(date) ? "" : date.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
+}
+
+function renderHeader() {
+  chatTitle.textContent = conversation.title;
+  const files = filesInConversation();
+  filesButton.hidden = files.length === 0;
+  filesButton.textContent = `📎 Files (${files.length}) ${filesPanelOpen ? "▴" : "▾"}`;
+
+  filesPanel.hidden = !filesPanelOpen || files.length === 0;
+  filesPanel.innerHTML = "";
+  for (const attachment of files) {
+    const item = document.createElement("button");
+    item.className = "file-item";
+    const name = document.createElement("span");
+    name.textContent = attachment.name;
+    const date = document.createElement("span");
+    date.className = "file-date";
+    date.textContent = dateAdded(attachment);
+    item.append(name, date);
+    item.title = "Show the text the AI was given";
+    item.onclick = () => openFileViewer(attachment);
+    filesPanel.append(item);
+  }
+}
+
+// Shows exactly what text was pulled out of a file (and so what the AI saw).
+async function openFileViewer(attachment) {
+  let text;
+  try {
+    text = await getDocumentText(attachment.id);
+  } catch (err) {
+    addBubble("error", `Couldn't open "${attachment.name}": ${err.message}`);
+    return;
+  }
+  document.getElementById("file-viewer-title").textContent = attachment.name;
+  let note = `Added ${dateAdded(attachment)} · ${text.length.toLocaleString()} characters of text`;
+  if (text.length > MAX_DOCUMENT_CHARS) {
+    note += ` · the AI only sees the first ${MAX_DOCUMENT_CHARS.toLocaleString()}`;
+  }
+  document.getElementById("file-viewer-note").textContent = note;
+  document.getElementById("file-viewer-text").textContent = text;
+  fileViewer.showModal();
+}
+
 // ---------- Drawing the screen ----------
 function render() {
+  renderHeader();
   renderMessages();
   renderConversationList();
   sendButton.disabled = isWaiting;
@@ -185,20 +300,27 @@ function renderMessages() {
   streamingBubble = isWaiting ? addBubble("assistant thinking", "Thinking…") : null;
 }
 
-// Adds one chat bubble. We use textContent (not innerHTML) so any text,
-// including text from the AI, is shown as plain text and never run as code.
+// Adds one chat bubble. AI replies are shown formatted (see showFormatted);
+// everything else uses textContent, which always shows plain text, never code.
 function addBubble(kind, text, attachment) {
   const bubble = document.createElement("div");
   bubble.className = `bubble ${kind}`;
   if (attachment) {
-    const tag = document.createElement("div");
+    const tag = document.createElement("button");
     tag.className = "attachment-tag";
     tag.textContent = `📎 ${attachment.name}`;
+    tag.title = "Show the text the AI was given";
+    tag.onclick = () => openFileViewer(attachment);
     bubble.append(tag);
   }
   if (text) {
     const body = document.createElement("div");
-    body.textContent = text;
+    if (kind === "assistant") {
+      body.className = "formatted";
+      showFormatted(body, text);
+    } else {
+      body.textContent = text;
+    }
     bubble.append(body);
   }
   messagesEl.append(bubble);
@@ -213,26 +335,76 @@ async function renderConversationList() {
     const row = document.createElement("div");
     row.className = "conversation-row" + (conv.id === conversation.id ? " active" : "");
 
-    const item = document.createElement("button");
-    item.className = "conversation-item";
-    item.textContent = conv.title;
-    item.onclick = () => {
-      if (isWaiting) return;
-      conversation = conv;
-      clearAttachment();
-      render();
-    };
-
-    row.append(item, makeDeleteButton(conv));
+    if (conv.id === renamingId) {
+      row.append(makeRenameBox(conv));
+    } else {
+      const item = document.createElement("button");
+      item.className = "conversation-item";
+      item.textContent = conv.title;
+      item.onclick = () => {
+        if (!isWaiting) showConversation(conv);
+      };
+      item.ondblclick = () => startRenaming(conv);
+      row.append(item, makeRenameButton(conv), makeDeleteButton(conv));
+    }
     conversationList.append(row);
   }
 }
 
+// ---------- Renaming a chat ----------
+function makeRenameButton(conv) {
+  const button = document.createElement("button");
+  button.className = "row-action";
+  button.textContent = "✎";
+  button.title = "Rename chat";
+  button.onclick = () => startRenaming(conv);
+  return button;
+}
+
+function startRenaming(conv) {
+  renamingId = conv.id;
+  renderConversationList();
+}
+
+// A text box in place of the title: Enter (or clicking away) saves, Escape cancels.
+function makeRenameBox(conv) {
+  const box = document.createElement("input");
+  box.className = "rename-box";
+  box.value = conv.title;
+  let finished = false;
+
+  const finish = async (save) => {
+    if (finished) return; // Enter and "clicking away" can both fire; only act once
+    finished = true;
+    renamingId = null;
+    const newTitle = box.value.trim();
+    if (save && newTitle && newTitle !== conv.title) {
+      // If it's the chat on screen, rename that copy (it has the latest messages).
+      const target = conv.id === conversation.id ? conversation : conv;
+      target.title = newTitle.slice(0, 80);
+      await storage.saveConversation(target, { keepTimestamp: true });
+    }
+    render();
+  };
+
+  box.onkeydown = (event) => {
+    if (event.key === "Enter") finish(true);
+    if (event.key === "Escape") finish(false);
+  };
+  box.onblur = () => finish(true);
+  setTimeout(() => {
+    box.focus();
+    box.select();
+  });
+  return box;
+}
+
+// ---------- Deleting a chat ----------
 // The × button shows a native "Are you sure?" pop-up before deleting,
 // so one stray click can't lose a chat.
 function makeDeleteButton(conv) {
   const button = document.createElement("button");
-  button.className = "delete-chat";
+  button.className = "row-action delete-chat";
   button.textContent = "×";
   button.title = "Delete chat";
   button.onclick = async () => {
@@ -256,10 +428,10 @@ async function deleteChat(conv) {
   // If we just deleted the chat on screen, show the next most recent one (or a new chat).
   if (conv.id === conversation.id) {
     const saved = await storage.listConversations();
-    conversation = saved[0] ?? makeNewConversation();
-    clearAttachment();
+    showConversation(saved[0] ?? makeNewConversation());
+  } else {
+    render();
   }
-  render();
 }
 
 // ---------- Wiring up events ----------
@@ -278,11 +450,16 @@ input.addEventListener("keydown", (event) => {
 
 fileInput.addEventListener("change", onFilePicked);
 
+filesButton.addEventListener("click", () => {
+  filesPanelOpen = !filesPanelOpen;
+  renderHeader();
+});
+
+document.getElementById("file-viewer-close").addEventListener("click", () => fileViewer.close());
+
 newChatButton.addEventListener("click", () => {
   if (isWaiting) return;
-  conversation = makeNewConversation();
-  clearAttachment();
-  render();
+  showConversation(makeNewConversation());
   input.focus();
 });
 

@@ -11,3 +11,4 @@ tauri-build = { version = "2", features = [] }
 tauri = { version = "2", features = [] }
 tauri-plugin-dialog = "2"   # native pop-ups like "Are you sure?"
 tauri-plugin-fs = "2"   # lets the web page read/write files (see capabilities/default.json)
+tauri-plugin-opener = "2"   # opens links from replies in your normal browser

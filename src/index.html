@@ -15,6 +15,13 @@
 
   <!-- Right column: the current chat -->
   <main class="chat">
+    <!-- Top bar: chat title + the list of files attached in this chat -->
+    <header class="chat-header">
+      <h1 id="chat-title"></h1>
+      <button id="files-button" class="files-button" hidden></button>
+    </header>
+    <div id="files-panel" class="files-panel" hidden></div>
+
     <div id="messages" class="messages"></div>
 
     <form id="composer" class="composer">
@@ -30,6 +37,16 @@
       </div>
     </form>
   </main>
+
+  <!-- Pop-up that shows the text extracted from an attached file -->
+  <dialog id="file-viewer" class="file-viewer">
+    <header>
+      <h2 id="file-viewer-title"></h2>
+      <button id="file-viewer-close" title="Close">×</button>
+    </header>
+    <p id="file-viewer-note" class="file-viewer-note"></p>
+    <pre id="file-viewer-text"></pre>
+  </dialog>
 
   <!-- type="module" lets our JS files import each other -->
   <script type="module" src="app.js"></script>

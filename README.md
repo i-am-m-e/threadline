@@ -18,10 +18,11 @@ npm run build      # makes Threadline.app in src-tauri/target/release/bundle/mac
 | File | Job |
 | --- | --- |
 | `src/index.html`, `src/styles.css` | The page layout and look |
-| `src/app.js` | Interface logic: shows messages, handles typing, clicks and attachments |
+| `src/app.js` | Interface logic: messages, formatting replies, attachments, renaming/deleting chats |
 | `src/model.js` | **The only file that talks to the AI.** `getModelResponse(messages)` |
 | `src/extract.js` | Turns a `.txt` / `.pdf` into plain text (PDFs via pdf.js in `src/vendor/`) |
 | `src/storage.js` | Saves/loads conversations and documents as files |
+| `src/vendor/` | Libraries copied in as-is: pdf.js (reads PDFs), marked (Markdown → HTML), DOMPurify (strips unsafe HTML) |
 | `src-tauri/` | The native Mac window wrapper (Rust, rarely needs touching) |
 
 `app.js` uses the other three modules; they never use each other.

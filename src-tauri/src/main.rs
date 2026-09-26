@@ -4,6 +4,7 @@ fn main() {
     tauri::Builder::default()
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_dialog::init()) // native pop-ups, e.g. "Are you sure?"
+        .plugin(tauri_plugin_opener::init()) // open links in the default browser
         .run(tauri::generate_context!())
         .expect("error while running Threadline");
 }
