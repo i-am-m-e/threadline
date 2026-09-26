@@ -100,6 +100,11 @@ export async function saveDocument(file, { text, type, pages, pageUnit }) {
   return ref;
 }
 
+/** Permanently delete one document's folder (the original file and its text). */
+export async function deleteDocument(id) {
+  await fs.remove(`documents/${id}`, { ...inAppData, recursive: true });
+}
+
 export async function loadDocumentText(id) {
   return fs.readTextFile(`documents/${id}/text.txt`, inAppData);
 }

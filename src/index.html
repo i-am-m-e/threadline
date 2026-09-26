@@ -17,7 +17,17 @@
       <span id="search-icon"></span>
       <input id="search" type="search" placeholder="Search threads" autocomplete="off" />
     </label>
+    <div class="history-toolbar">
+      <button id="select-threads" class="text-button" title="Choose several threads to delete">Select</button>
+    </div>
     <nav id="history" class="history"></nav>
+    <!-- Shown while selecting threads -->
+    <div id="thread-select-bar" class="select-bar select-bar-dark" hidden>
+      <span id="thread-select-count"></span>
+      <button id="thread-select-all" class="text-button">All</button>
+      <button id="thread-select-delete" class="danger-button">Delete</button>
+      <button id="thread-select-cancel" class="text-button">Cancel</button>
+    </div>
     <div class="sidebar-foot"><button class="theme-button" data-label="true"></button></div>
   </aside>
 
@@ -40,7 +50,8 @@
         <select id="thread-picker" title="Switch thread"></select>
         <span id="thread-picker-icon"></span>
       </label>
-      <button class="theme-button icon-button review-theme"></button>
+      <button class="export-button icon-button review-theme" title="Export this thread"></button>
+      <button class="theme-button icon-button"></button>
       <div class="mode-switch" role="tablist"></div>
     </header>
 
@@ -51,6 +62,7 @@
           <h1 id="thread-title"></h1>
           <span id="sources-pill" class="pill pill-thread" hidden></span>
           <div class="mode-switch" role="tablist"></div>
+          <button class="export-button icon-button" title="Export this thread"></button>
           <button id="toggle-sources" class="icon-button" title="Show or hide sources"></button>
         </header>
 
@@ -96,9 +108,17 @@
         <div class="sources-heading">
           <span>Sources</span>
           <span id="sources-summary" class="sources-summary"></span>
+          <button id="select-sources" class="text-button" title="Choose several sources to delete">Select</button>
         </div>
         <div id="source-cards" class="source-cards"></div>
-        <div class="help-box">
+        <!-- Shown while selecting sources -->
+        <div id="source-select-bar" class="select-bar" hidden>
+          <span id="source-select-count"></span>
+          <button id="source-select-all" class="text-button">All</button>
+          <button id="source-select-delete" class="danger-button">Delete</button>
+          <button id="source-select-cancel" class="text-button">Cancel</button>
+        </div>
+        <div id="help-box" class="help-box">
           <div class="help-title">Pull a thread</div>
           Hover a citation to trace it to its source. Drag a dot from a message or source onto
           something else to link them. Drop a source on the message box to ask about it.
@@ -117,6 +137,9 @@
       </section>
     </div>
   </div>
+
+  <!-- Short messages like "Exported to …" -->
+  <div id="toast" class="toast" role="status" hidden></div>
 
   <!-- The lines (citations → sources, and your own links) are drawn on this see-through layer -->
   <svg id="lines" class="lines-overlay"></svg>

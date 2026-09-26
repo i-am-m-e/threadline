@@ -41,6 +41,7 @@ npm run build      # makes Threadline.app in src-tauri/target/release/bundle/mac
 | `src/passages.js` | Splits documents into numbered passages, builds the "cite like [3]" instructions, finds citations in replies |
 | `src/lines.js` | Draws the lines: citation traces (one color + dash pattern per source), your links, the drag line |
 | `src/theme.js` | The Auto / Light / Dark switch |
+| `src/export.js` | Turns a thread into a Markdown file (conversation, sources, links, cited passages as footnotes) |
 | `src/extract.js` | Turns a file into plain text (PDF via pdf.js, Word via mammoth, Excel via SheetJS) |
 | `src/storage.js` | Saves/loads threads and documents as files |
 | `src/icons.js` | The Lucide icons and Threadline mark used in the UI |
@@ -51,6 +52,10 @@ npm run build      # makes Threadline.app in src-tauri/target/release/bundle/mac
 
 1. Each document is cut into passages of about a paragraph (`passages.js`).
 2. Every passage in the thread gets a number, and the AI is asked to cite them like `[3]`.
+   Small threads send every passage. When documents are bigger than `PASSAGE_BUDGET_CHARS`
+   (16,000 characters, in `app.js`), Threadline **searches** them (BM25 ranking) and sends the
+   best-matching passages for the question, plus each document's opening and anything cited in
+   the last two answers. So all 500 pages of a manual are searchable, not just the start.
 3. Citations in the reply become numbered markers (renumbered 1, 2, 3… per thread).
    Hover one to draw a line to its passage in the Sources panel; click to keep the line;
    click a passage to read it highlighted in context.
@@ -90,6 +95,9 @@ saved in that thread's JSON (`"model"`), so reopening an old thread keeps it; ne
 - **command-r** (default): answers directly; about 2 seconds for a short cited answer after it has loaded.
 - **qwen3:8b**: "thinks" before answering (hidden), so about 7 seconds; smaller and lighter on memory.
 
+Link reviews always use `LINK_REVIEW_MODEL` (Command R), whatever the thread uses, because it
+handled comparisons best. Long document questions take Command R roughly 40 seconds.
+
 ## Switching to a cloud AI later
 
 Only `src/model.js` changes (including its `MODELS` list). Keep the same shape:
@@ -99,6 +107,14 @@ Only `src/model.js` changes (including its `MODELS` list). Keep the same shape:
 - **Options:** `{ model, onProgress }` — which model to use, and an optional progress callback
 - **Out:** the reply as a string (or throw an `Error` with a readable message)
 - Call `onProgress(textSoFar)` as the reply streams in; `app.js` shows it sentence by sentence
+
+## Managing threads and sources
+
+- **Delete a source:** hover its card in Sources and click the trash icon. Its links and message-box
+  references go too; answers that cited it keep their text, but those citations stop linking.
+- **Delete several:** click **Select** (above the thread list, or in the Sources heading), tick
+  items, then **Delete**. There's always an "Are you sure?" first.
+- **Export:** the download icon in the header saves the thread as a Markdown (`.md`) file.
 
 ## Where your data lives
 
@@ -113,7 +129,8 @@ Delete that folder to start fresh.
 
 - Both models cited the right passage 10/10 in testing, but qwen3 can mix up details on
   comparison questions (e.g. which policy is newer). command-r handled those correctly.
-- Documents longer than 30,000 characters are cut off (`MAX_DOCUMENT_CHARS` in `app.js`).
+- Search is keyword-based: it finds passages that share words with the question, not ones that
+  mean the same thing in different words.
 - Scanned PDFs are images, so there's no text to extract.
 - Word files don't have reliable page numbers, so their passages are labeled by text only.
 - Review mode shows extracted text, not the original page layout.

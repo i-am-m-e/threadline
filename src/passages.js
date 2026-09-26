@@ -82,41 +82,135 @@ export function passageLabel(passage, pageUnit = "page") {
 /**
  * Build the instructions + numbered passages we send to the AI.
  *
- * @param {Array<{id: string, name: string, text: string, pageUnit?: string}>} documents  In the order they were added.
- * @param {number} maxCharsPerDocument  Passages past this point are left out (small models run out of room).
- * @param {Set<string> | null} [onlyDocIds]  If given, only these documents are shown to the AI (e.g. the
- *        source you linked). Numbering still counts every document, so numbers stay the same.
- * @returns {{ prompt: string, numbers: Object<string, {docId: string, index: number}> }}
+ * Every passage of every document gets a number (the same number every time, so
+ * citations stay stable). Small threads send everything. When the documents are
+ * bigger than `budgetChars`, only the passages most relevant to the question are
+ * sent (see rankPassages), plus each document's opening and any passages cited
+ * recently, so follow-up questions still work.
+ *
+ * @param {Array<{id, name, text, pageUnit?, passages?}>} documents  In the order they were added.
+ *        (`passages` can be passed in to skip re-splitting big documents.)
+ * @param {object} [options]
+ * @param {string} [options.query]  The question, used to pick relevant passages.
+ * @param {number} [options.budgetChars]  Roughly how much passage text to send.
+ * @param {Set<string> | null} [options.onlyDocIds]  Only show these documents (e.g. the source you linked).
+ * @param {Set<string>} [options.mustInclude]  Passage keys ("docId#index") to always send.
+ * @returns {{ prompt: string, numbers: Object<string, {docId, index}>, shown: number, total: number }}
  *          `numbers` maps each passage number the AI sees to where that passage lives.
  */
-export function buildSourcesPrompt(documents, maxCharsPerDocument, onlyDocIds = null) {
-  const numbers = {};
+export function buildSourcesPrompt(documents, { query = "", budgetChars = 24000, onlyDocIds = null, mustInclude = new Set() } = {}) {
+  // 1. Number every passage in the thread (documents in the order they were added).
+  const all = [];
   let n = 0;
+  for (const doc of documents) {
+    for (const passage of doc.passages ?? splitIntoPassages(doc.text)) {
+      n += 1;
+      if (!onlyDocIds || onlyDocIds.has(doc.id)) all.push({ n, doc, passage, key: `${doc.id}#${passage.index}` });
+    }
+  }
+
+  // 2. Choose what to send.
+  const totalChars = all.reduce((sum, c) => sum + c.passage.text.length, 0);
+  let chosen;
+  if (totalChars <= budgetChars) {
+    chosen = all; // it all fits
+  } else {
+    const picked = new Set();
+    let used = 0;
+    const take = (c) => {
+      if (picked.has(c) || used + c.passage.text.length > budgetChars) return;
+      picked.add(c);
+      used += c.passage.text.length;
+    };
+    all.filter((c) => mustInclude.has(c.key)).forEach(take);   // cited recently
+    all.filter((c) => c.passage.index === 0).forEach(take);    // each document's opening
+    rankPassages(all, query).forEach(take);                    // best matches for the question
+    chosen = all.filter((c) => picked.has(c));                 // back in document order
+  }
+
+  // 3. Write it out, grouped by document.
+  const numbers = {};
   const sections = [];
   for (const doc of documents) {
-    const passages = splitIntoPassages(doc.text).filter((p) => p.start < maxCharsPerDocument);
-    if (onlyDocIds && !onlyDocIds.has(doc.id)) {
-      n += passages.length; // skip this document, but keep everyone else's numbers unchanged
-      continue;
-    }
-    const lines = passages.map((p) => {
-        n += 1;
-        numbers[n] = { docId: doc.id, index: p.index };
-        return `[${n}]${p.page ? ` (${doc.pageUnit === "sheet" ? "sheet" : "page"} ${p.page})` : ""} ${p.text.replace(/\s+/g, " ")}`;
+    const lines = chosen
+      .filter((c) => c.doc === doc)
+      .map((c) => {
+        numbers[c.n] = { docId: doc.id, index: c.passage.index };
+        const place = c.passage.page ? ` (${doc.pageUnit === "sheet" ? "sheet" : "page"} ${c.passage.page})` : "";
+        return `[${c.n}]${place} ${c.passage.text.replace(/\s+/g, " ")}`;
       });
-    sections.push(`Document: "${doc.name}"\n${lines.join("\n")}`);
+    if (lines.length > 0) sections.push(`Document: "${doc.name}"\n${lines.join("\n")}`);
   }
+
+  const partial = chosen.length < all.length
+    ? `\n\n(These are the passages most relevant to the question, not the whole documents.)`
+    : "";
 
   // The rules go AFTER the documents: small models follow what they read last best.
   const prompt =
     `You are Threadline, an assistant that answers questions using the user's documents.\n\n` +
-    sections.join("\n\n") +
+    sections.join("\n\n") + partial +
     `\n\nAnswer using the numbered passages above. After each sentence that uses a passage, ` +
     `write that passage's number in square brackets, like [2]. Every fact from the documents ` +
     `needs a citation. Check the number matches the passage you used. ` +
     `If the documents don't cover the question, say so plainly instead of guessing.`;
 
-  return { prompt, numbers };
+  return { prompt, numbers, shown: chosen.length, total: all.length };
+}
+
+// ---------- Finding the passages that match a question ----------
+// BM25, a standard way search engines rank text: a passage scores higher when it
+// contains the question's words, especially rare ones (a word that appears in every
+// passage, like "policy", counts for little; "weekend" counts for a lot).
+
+const STOP_WORDS = new Set((
+  "a an and are as at be been but by can could did do does for from had has have how i if in into is it " +
+  "its me my no not of on or our so than that the their them then there these they this those to was we " +
+  "were what when where which who why will with would you your about any all also after before between " +
+  "document documents passage passages please tell explain show find should take need use get give make " +
+  "know say says said like just more most some such very"
+).split(" "));
+
+export function words(text) {
+  return (text.toLowerCase().match(/[a-z0-9]+/g) ?? [])
+    .filter((w) => w.length > 1 && !STOP_WORDS.has(w))
+    .map((w) => (w.length > 3 && w.endsWith("s") && !w.endsWith("ss") ? w.slice(0, -1) : w)); // "reviews" → "review"
+}
+
+/** Passages ordered best match first. With no useful words in the query, earlier passages come first. */
+export function rankPassages(candidates, query) {
+  const queryList = words(query);
+  const queryWords = [...new Set(queryList)];
+  // Neighbouring words in the question ("chest pain", "red flags") score extra when
+  // they also appear side by side in a passage.
+  const pairs = [...new Set(queryList.slice(1).map((w, i) => `${queryList[i]} ${w}`))];
+  if (queryWords.length === 0) return [...candidates].sort((a, b) => a.passage.index - b.passage.index);
+
+  const docsWords = candidates.map((c) => words(c.passage.text));
+  const averageLength = docsWords.reduce((sum, w) => sum + w.length, 0) / (docsWords.length || 1);
+  const containing = Object.fromEntries(
+    queryWords.map((q) => [q, docsWords.filter((w) => w.includes(q)).length])
+  );
+  const k1 = 1.2;
+  const b = 0.75;
+  const rarity = (q) => Math.log(1 + (candidates.length - containing[q] + 0.5) / (containing[q] + 0.5));
+  const scored = candidates.map((c, i) => {
+    const w = docsWords[i];
+    let score = 0;
+    for (const q of queryWords) {
+      const count = w.filter((x) => x === q).length;
+      if (count === 0) continue;
+      score += rarity(q) * ((count * (k1 + 1)) / (count + k1 * (1 - b + (b * w.length) / averageLength)));
+    }
+    if (score > 0 && pairs.length > 0) {
+      const joined = ` ${w.join(" ")} `;
+      for (const pair of pairs) {
+        if (joined.includes(` ${pair} `)) score += pair.split(" ").reduce((sum, q) => sum + rarity(q), 0);
+      }
+    }
+    return { c, score };
+  });
+  return scored.filter((s) => s.score > 0).sort((x, y) => y.score - x.score).map((s) => s.c);
 }
 
 /** A short reminder added to the user's latest question (small models forget the rules). */
@@ -137,6 +231,11 @@ export function findCitations(text) {
     at: m.index,
     numbers: m[1].split(/[,;]/).map((s) => Number(s.trim())),
   }));
+}
+
+/** Remove citation markers, e.g. before re-sending an old answer (its numbers may not apply any more). */
+export function stripCitations(text) {
+  return text.replace(/\s?\[(?:passages?\s*)?\d+(?:\s*[,;]\s*\d+)*\](?!\()/gi, "");
 }
 
 /**

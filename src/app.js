@@ -8,21 +8,26 @@
 // drag to link · document pop-up · composer · model picker · header & modes ·
 // sidebar · renaming · deleting · drawing everything · helpers.
 
-import { getModelResponse, MODELS, DEFAULT_MODEL, resolveModel } from "./model.js";
+import { getModelResponse, MODELS, DEFAULT_MODEL, LINK_REVIEW_MODEL, resolveModel } from "./model.js";
 import { extractText } from "./extract.js";
 import * as storage from "./storage.js";
 import { documentsIn } from "./storage.js";
 import {
-  splitIntoPassages, passageLabel, passagePlace, buildSourcesPrompt, findCitations, replaceCitations, CITE_REMINDER,
+  splitIntoPassages, passageLabel, passagePlace, buildSourcesPrompt, findCitations, replaceCitations, stripCitations,
+  CITE_REMINDER,
 } from "./passages.js";
 import { drawLines, styleFor, swatch, colorOf } from "./lines.js";
 import { icons, logo } from "./icons.js";
 import { initTheme } from "./theme.js";
+import { threadToMarkdown } from "./export.js";
 import { marked } from "./vendor/marked.esm.js";
 import DOMPurify from "./vendor/purify.es.mjs";
 
-// Small models can only read so much at once, so long documents get cut off here.
-const MAX_DOCUMENT_CHARS = 30000;
+// How much document text to send the AI with each question (about 4,500 words).
+// Bigger documents are searched, and only the best-matching passages are sent.
+// More text can mean better answers, but the AI takes longer to read it
+// (Command R needs roughly 40 seconds for this much).
+const PASSAGE_BUDGET_CHARS = 16000;
 
 // ---------- Page elements we'll work with ----------
 const $ = (id) => document.getElementById(id);
@@ -35,7 +40,10 @@ const el = {
   sources: $("sources"), sourcesSummary: $("sources-summary"), sourceCards: $("source-cards"),
   review: $("review"), reviewTabs: $("review-tabs"), reviewScroll: $("review-scroll"), reviewPage: $("review-page"),
   reviewIndicator: $("review-page-indicator"), threadPicker: $("thread-picker"),
-  lines: $("lines"), viewer: $("file-viewer"),
+  lines: $("lines"), viewer: $("file-viewer"), toast: $("toast"),
+  selectThreads: $("select-threads"), threadSelectBar: $("thread-select-bar"), threadSelectCount: $("thread-select-count"),
+  selectSources: $("select-sources"), sourceSelectBar: $("source-select-bar"), sourceSelectCount: $("source-select-count"),
+  helpBox: $("help-box"),
 };
 
 // ---------- App state (what's going on right now) ----------
@@ -52,6 +60,10 @@ let mode = readSetting("mode", "standard"); // "standard" | "focus" | "review"
 let drag = null;          // while dragging a dot: { from: linkId, to: {x, y} }
 let review = { docId: null, key: null, anchor: null }; // what Review mode is showing
 const docs = {};          // document id -> { text, passages } (loaded from disk once)
+let selectingThreads = false;       // "Select" mode in the sidebar
+const selectedThreads = new Set();
+let selectingSources = false;       // "Select" mode in the Sources panel
+const selectedSources = new Set();
 
 // ---------- Starting up ----------
 async function start() {
@@ -67,6 +79,10 @@ async function start() {
   el.send.innerHTML = icons.arrowUp(16);
   el.toggleSources.innerHTML = icons.panelRight(17);
   $("file-viewer-close").innerHTML = icons.x(18);
+  document.querySelectorAll(".export-button").forEach((b) => {
+    b.innerHTML = icons.download(16);
+    b.addEventListener("click", exportThread);
+  });
   initTheme();
   document.body.dataset.mode = mode;
 
@@ -90,6 +106,8 @@ async function showConversation(conv) {
   pinned.clear();
   hover = null;
   review = { docId: null, key: null, anchor: null };
+  selectingSources = false;
+  selectedSources.clear();
   closeDrawer();
   await loadDocuments();
   render();
@@ -153,11 +171,12 @@ async function send() {
   await askModel();
 }
 
-async function askModel() {
+// `modelOverride` is for tasks that use a set model, like link reviews.
+async function askModel(modelOverride) {
   const { messages, numbers } = buildModelMessages();
   // Threads from before model switching don't have a model saved yet; this fills it in.
-  const model = resolveModel(conversation.model);
-  conversation.model = model;
+  conversation.model = resolveModel(conversation.model);
+  const model = modelOverride ?? conversation.model;
   isWaiting = true;
   live = { text: "", shown: "", numbers, row: null };
   render();
@@ -188,7 +207,7 @@ async function askModel() {
 // (see passages.js), then the conversation so far.
 function buildModelMessages() {
   const documents = documentsIn(conversation).map((d) => ({
-    id: d.id, name: d.name, pageUnit: d.pageUnit, text: docs[d.id]?.text ?? "",
+    id: d.id, name: d.name, pageUnit: d.pageUnit, text: docs[d.id]?.text ?? "", passages: docs[d.id]?.passages,
   }));
   const talk = conversation.messages.filter((m) => m.role === "user" || m.role === "assistant");
   const last = talk[talk.length - 1];
@@ -199,7 +218,12 @@ function buildModelMessages() {
   const messages = [];
   let numbers = {};
   if (documents.length > 0) {
-    const built = buildSourcesPrompt(documents, MAX_DOCUMENT_CHARS, only);
+    // Passages the last two answers cited always come along, so follow-ups work.
+    const recent = conversation.messages.filter((m) => m.role === "assistant").slice(-2);
+    const mustInclude = new Set(recent.flatMap((m) => citedKeys(m.text, m.citations)));
+    const built = buildSourcesPrompt(documents, {
+      query: last?.query ?? last?.text ?? "", budgetChars: PASSAGE_BUDGET_CHARS, onlyDocIds: only, mustInclude,
+    });
     messages.push({ role: "system", content: built.prompt });
     numbers = built.numbers;
   }
@@ -213,6 +237,9 @@ function buildModelMessages() {
 
     // Link requests show a short line on screen but send the full instructions.
     let content = m.prompt ?? (m.text || (m.attachment ? `Please summarize "${m.attachment.name}".` : ""));
+    // Earlier answers go back without their [n] markers: those numbers may point at
+    // passages that aren't included this time.
+    if (m.role === "assistant") content = stripCitations(content);
     if (m.role === "user" && justAttached.length > 0) {
       content = `(I just attached: ${justAttached.map((n) => `"${n}"`).join(", ")}.)\n\n` + content;
       justAttached = [];
@@ -258,7 +285,7 @@ function citedKeys(text, citations, everyUse = false) {
   for (const c of findCitations(text)) {
     for (const n of c.numbers) {
       const ref = citations?.[n];
-      if (ref) keys.push(`${ref.docId}#${ref.index}`);
+      if (ref && docById(ref.docId)) keys.push(`${ref.docId}#${ref.index}`);
     }
   }
   return everyUse ? keys : [...new Set(keys)];
@@ -270,6 +297,9 @@ const docById = (id) => documentsIn(conversation).find((d) => d.id === id);
 // Each source's line style (color + dash pattern) comes from its position in the thread.
 const docStyle = (docId) => styleFor(Math.max(0, documentsIn(conversation).findIndex((d) => d.id === docId)));
 const srcColor = (docId) => colorOf(docStyle(docId));
+// A reply's citations, minus any pointing at documents that have since been deleted.
+const existingCitations = (citations) =>
+  citations && Object.fromEntries(Object.entries(citations).filter(([, ref]) => docById(ref.docId)));
 
 // ---------- Formatted replies ----------
 // The AI writes Markdown (**bold**, lists, `code`...). marked turns that into HTML,
@@ -319,6 +349,7 @@ function tidyCodeFences(text) {
 function threadItems() {
   const items = [];
   conversation.messages.forEach((msg, i) => {
+    if (msg.role === "event" && msg.attachments.length === 0) return; // all its documents were deleted
     if (msg.attachment) {
       items.push({ role: "event", time: msg.attachment.addedAt, attachments: [msg.attachment], linkId: `m${i}d` });
     }
@@ -393,7 +424,7 @@ function messageBlock(item, numberOf) {
     body.className = "msg-body";
     if (item.role === "assistant") {
       body.classList.add("formatted");
-      showFormatted(body, item.text, item.citations, numberOf);
+      showFormatted(body, item.text, existingCitations(item.citations), numberOf);
     } else {
       body.textContent = item.text; // your own words: always plain text
     }
@@ -589,6 +620,11 @@ function renderSources() {
 
   const list = documentsIn(conversation);
   const { numberOf, uses } = citationIndex();
+  if (list.length === 0) selectingSources = false;
+  el.selectSources.hidden = list.length === 0 || selectingSources;
+  el.sourceSelectBar.hidden = !selectingSources;
+  el.helpBox.hidden = selectingSources;
+  el.sourceSelectCount.textContent = `${selectedSources.size} selected`;
   el.sourcesSummary.textContent = list.length ? `${plural(list.length, "document")} · ${plural(uses, "citation")}` : "";
 
   el.sourceCards.innerHTML = "";
@@ -625,8 +661,16 @@ function renderSources() {
     meta.insertAdjacentHTML("afterbegin", swatch(style, 20));
     text.append(textSpan(doc.name, "source-name"), meta);
     head.append(text);
-    head.onclick = () => openViewer(doc);
+    head.onclick = () => (selectingSources ? toggleIn(selectedSources, doc.id, renderSources) : openViewer(doc));
     card.append(handle, head);
+    if (selectingSources) {
+      card.classList.toggle("is-selected", selectedSources.has(doc.id));
+      card.append(checkMark(selectedSources.has(doc.id)));
+    } else {
+      const remove = actionButton(icons.trash(14), "Delete this source", () => removeSources([doc.id]));
+      remove.className = "source-delete";
+      card.append(remove);
+    }
 
     // One row per passage of this document that has been cited, in citation order.
     const cited = [...numberOf].filter(([key]) => docIdOf(key) === doc.id);
@@ -946,9 +990,10 @@ async function reviewConnection(a, b) {
   conversation.messages.push({
     role: "user", kind: "link", time: new Date().toISOString(),
     text: `${A.short} ↔ ${B.short}`, prompt, docIds: docIds.length > 0 ? docIds : null,
+    query: [A.searchText, B.searchText].join(" "),
   });
   await storage.saveConversation(conversation);
-  await askModel();
+  await askModel(LINK_REVIEW_MODEL);
 }
 
 // How to describe one end of a link: shortly (on screen) and fully (to the AI).
@@ -956,13 +1001,13 @@ function describeEnd(linkId) {
   if (linkId.startsWith("s:")) {
     const doc = docById(linkId.slice(2));
     if (!doc) return null;
-    return { short: doc.name, long: `the document "${doc.name}"`, docIds: [doc.id] };
+    return { short: doc.name, long: `the document "${doc.name}"`, docIds: [doc.id], searchText: "" };
   }
   const item = threadItems().find((i) => i.linkId === linkId);
   if (!item) return null;
   if (item.role === "event") {
     const names = item.attachments.map((d) => `"${d.name}"`).join(", ");
-    return { short: names, long: `the documents ${names}`, docIds: item.attachments.map((d) => d.id) };
+    return { short: names, long: `the documents ${names}`, docIds: item.attachments.map((d) => d.id), searchText: "" };
   }
   const who = item.kind === "link" ? "my link request" : item.role === "user" ? "my question" : "your earlier answer";
   const text = item.text ?? "";
@@ -970,6 +1015,7 @@ function describeEnd(linkId) {
     short: `“${text.length > 50 ? text.slice(0, 50) + "…" : text}”`,
     long: `${who}:\n"""\n${text}\n"""`,
     docIds: [],
+    searchText: stripCitations(text),
   };
 }
 
@@ -1054,7 +1100,6 @@ function openViewer(doc, passageIndex) {
 
   $("file-viewer-title").textContent = doc.name;
   let note = documentMeta(doc) + ` · ${text.length.toLocaleString()} characters`;
-  if (text.length > MAX_DOCUMENT_CHARS) note += ` · the AI only reads the first ${MAX_DOCUMENT_CHARS.toLocaleString()}`;
   $("file-viewer-note").textContent = note;
 
   const out = $("file-viewer-text");
@@ -1172,7 +1217,7 @@ function pendingStatus(item) {
   const { type, pages, pageUnit, text } = item.extracted;
   const parts = [type];
   if (pages) parts.push(plural(pages, pageUnit === "sheet" ? "sheet" : "page"));
-  parts.push(text.length > MAX_DOCUMENT_CHARS ? `long, AI reads first ${MAX_DOCUMENT_CHARS.toLocaleString()} chars` : "Ready");
+  parts.push("Ready");
   return parts.join(" · ");
 }
 
@@ -1260,6 +1305,9 @@ el.toggleSources.addEventListener("click", toggleSources);
 // ---------- Sidebar (past threads) ----------
 async function renderSidebar() {
   const all = await storage.listConversations();
+  el.selectThreads.hidden = selectingThreads || all.length === 0;
+  el.threadSelectBar.hidden = !selectingThreads;
+  el.threadSelectCount.textContent = `${selectedThreads.size} selected`;
   renderThreadPicker(all);
 
   let saved = all;
@@ -1286,6 +1334,7 @@ function historyItem(conv) {
   const item = document.createElement("div");
   item.className = "history-item" + (conv.id === conversation.id ? " is-active" : "");
   item.append(textSpan("", "history-node"));
+  if (selectingThreads) item.classList.toggle("is-selected", selectedThreads.has(conv.id));
 
   if (conv.id === renamingId) {
     item.append(renameBox(conv));
@@ -1301,12 +1350,17 @@ function historyItem(conv) {
   const meta = plural(talk, "message") + (sourceCount ? ` · ${plural(sourceCount, "source")}` : "");
   open.append(textSpan(conv.title, "history-title"), textSpan(meta, "history-meta"));
   open.onclick = () => {
+    if (selectingThreads) return toggleIn(selectedThreads, conv.id, renderSidebar);
     if (!isWaiting && conv.id !== conversation.id) showConversation(conv);
   };
   // Double-click: open this thread in Focus mode (sidebar folds away, sources move beside the answers).
   open.ondblclick = () => {
-    if (!isWaiting) setMode("focus");
+    if (!isWaiting && !selectingThreads) setMode("focus");
   };
+  if (selectingThreads) {
+    item.append(open, checkMark(selectedThreads.has(conv.id)));
+    return item;
+  }
 
   const actions = document.createElement("div");
   actions.className = "history-actions";
@@ -1451,6 +1505,162 @@ async function confirmDelete(conv) {
   } else {
     renderSidebar();
   }
+}
+
+// ---------- Selecting several threads or sources ----------
+function toggleIn(set, id, redraw) {
+  set.has(id) ? set.delete(id) : set.add(id);
+  redraw();
+}
+
+function checkMark(on) {
+  const span = document.createElement("span");
+  span.className = "check" + (on ? " is-on" : "");
+  if (on) span.innerHTML = icons.check(12);
+  return span;
+}
+
+el.selectThreads.addEventListener("click", () => {
+  selectingThreads = true;
+  selectedThreads.clear();
+  renderSidebar();
+});
+$("thread-select-cancel").addEventListener("click", () => {
+  selectingThreads = false;
+  selectedThreads.clear();
+  renderSidebar();
+});
+$("thread-select-all").addEventListener("click", async () => {
+  for (const conv of await storage.listConversations()) selectedThreads.add(conv.id);
+  renderSidebar();
+});
+$("thread-select-delete").addEventListener("click", async () => {
+  if (selectedThreads.size === 0 || isWaiting) return;
+  const all = await storage.listConversations();
+  const chosen = all.filter((c) => selectedThreads.has(c.id));
+  const names = chosen.slice(0, 5).map((c) => `• ${c.title}`).join("\n") + (chosen.length > 5 ? `\n…and ${chosen.length - 5} more` : "");
+  const confirmed = await window.__TAURI__.dialog.ask(
+    `Are you sure you want to delete ${plural(chosen.length, "thread")}?\n\n${names}\n\nThis also deletes any files attached in them, and can't be undone.`,
+    { title: "Delete threads", kind: "warning", okLabel: "Delete", cancelLabel: "Cancel" }
+  );
+  if (!confirmed) return;
+  for (const conv of chosen) {
+    try {
+      await storage.deleteConversation(conv);
+    } catch (err) {
+      showError(`Couldn't delete "${conv.title}": ${err.message}`);
+    }
+  }
+  selectingThreads = false;
+  selectedThreads.clear();
+  if (chosen.some((c) => c.id === conversation.id)) {
+    const saved = await storage.listConversations();
+    await showConversation(saved[0] ?? makeNewThread());
+  } else {
+    renderSidebar();
+  }
+});
+
+el.selectSources.addEventListener("click", () => {
+  selectingSources = true;
+  selectedSources.clear();
+  renderSources();
+  refreshLines();
+});
+$("source-select-cancel").addEventListener("click", () => {
+  selectingSources = false;
+  selectedSources.clear();
+  renderSources();
+  refreshLines();
+});
+$("source-select-all").addEventListener("click", () => {
+  for (const doc of documentsIn(conversation)) selectedSources.add(doc.id);
+  renderSources();
+});
+$("source-select-delete").addEventListener("click", () => {
+  if (selectedSources.size > 0) removeSources([...selectedSources]);
+});
+
+// Delete sources from this thread: the files, their links, and message-box references.
+// Answers that cited them keep their words, but those citations stop being clickable.
+async function removeSources(ids) {
+  if (isWaiting) return;
+  const docsToGo = documentsIn(conversation).filter((d) => ids.includes(d.id));
+  if (docsToGo.length === 0) return;
+  const names = docsToGo.slice(0, 5).map((d) => `• ${d.name}`).join("\n") + (docsToGo.length > 5 ? `\n…and ${docsToGo.length - 5} more` : "");
+  const confirmed = await window.__TAURI__.dialog.ask(
+    `Are you sure you want to delete ${plural(docsToGo.length, "source")} from this thread?\n\n${names}\n\n` +
+      "Answers that cited them keep their text, but those citations will no longer link. This can't be undone.",
+    { title: "Delete sources", kind: "warning", okLabel: "Delete", cancelLabel: "Cancel" }
+  );
+  if (!confirmed) return;
+
+  const gone = new Set(docsToGo.map((d) => d.id));
+  conversation.messages.forEach((msg, i) => {
+    if (msg.role === "event") {
+      msg.attachments = msg.attachments.filter((a) => !gone.has(a.id));
+      // An event with no documents left disappears, so links to it go too.
+      if (msg.attachments.length === 0) conversation.links = conversation.links.filter((l) => l.a !== `m${i}` && l.b !== `m${i}`);
+    }
+    if (msg.attachment && gone.has(msg.attachment.id)) {
+      conversation.links = conversation.links.filter((l) => l.a !== `m${i}d` && l.b !== `m${i}d`);
+      delete msg.attachment;
+    }
+  });
+  conversation.links = conversation.links.filter((l) => ![l.a, l.b].some((id) => gone.has(id.slice(2)) && id.startsWith("s:")));
+  conversation.composerRefs = conversation.composerRefs.filter((id) => !gone.has(id));
+  await storage.saveConversation(conversation, { keepTimestamp: true });
+
+  for (const id of gone) {
+    try {
+      await storage.deleteDocument(id);
+    } catch {
+      // Already gone from disk; nothing else to do.
+    }
+    delete docs[id];
+    selectedSources.delete(id);
+  }
+  if (gone.has(review.docId)) review = { docId: null, key: null, anchor: null };
+  pinned.clear();
+  selectingSources = false;
+  render({ keepScroll: true });
+  showToast(`Deleted ${plural(gone.size, "source")}`);
+}
+
+// ---------- Export ----------
+// Saves the thread as a Markdown file wherever you choose (the Save dialog gives
+// the app permission to write just that one file).
+async function exportThread() {
+  if (conversation.messages.length === 0) return showToast("Nothing to export yet");
+  const safeName = conversation.title.replace(/[\/\\:*?"<>|]/g, "-").slice(0, 80) || "Threadline thread";
+  const path = await window.__TAURI__.dialog.save({
+    title: "Export thread",
+    defaultPath: `${safeName}.md`,
+    filters: [{ name: "Markdown", extensions: ["md"] }],
+  });
+  if (!path) return; // cancelled
+  const markdown = threadToMarkdown({
+    conversation,
+    documents: documentsIn(conversation),
+    passagesOf: (id) => docs[id]?.passages,
+    numberOf: citationIndex().numberOf,
+    modelLabel,
+  });
+  try {
+    await window.__TAURI__.fs.writeTextFile(path, markdown);
+    showToast(`Exported to ${path.split("/").pop()}`);
+  } catch (err) {
+    showError(`Couldn't export: ${err.message ?? err}`);
+  }
+}
+
+// A short message at the bottom of the window that fades away.
+let toastTimer = 0;
+function showToast(text) {
+  el.toast.textContent = text;
+  el.toast.hidden = false;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => (el.toast.hidden = true), 3000);
 }
 
 // ---------- Drawing everything ----------

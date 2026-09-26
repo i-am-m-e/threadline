@@ -1313,3 +1313,102 @@ body.is-dragging, body.is-dragging * { cursor: grabbing !important; user-select:
 
 /* A link whose other end is scrolled out of view: drawn lighter, along the margin */
 .lines-overlay .is-faded { opacity: 0.4; }
+
+/* ==========================================================================
+   Selecting and deleting several threads or sources
+   ========================================================================== */
+.text-button {
+  padding: 3px 8px;
+  border: 0;
+  border-radius: 7px;
+  background: none;
+  color: var(--accent);
+  font: 500 12.5px var(--sans);
+}
+.text-button:hover { background: var(--hover); }
+.danger-button {
+  padding: 4px 10px;
+  border: 0;
+  border-radius: 7px;
+  background: var(--error);
+  color: #fff;
+  font: 500 12.5px var(--sans);
+}
+.danger-button:hover { filter: brightness(1.08); }
+
+.history-toolbar { display: flex; justify-content: flex-end; margin: -6px 0 -10px; }
+.sidebar .text-button { color: var(--panel-ink3); }
+.sidebar .text-button:hover { background: rgba(255, 255, 255, 0.06); color: var(--panel-ink); }
+.sources-heading .text-button { margin-left: 8px; }
+.sources-summary { margin-left: auto; }
+
+.select-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--chip);
+  font: 500 12.5px var(--sans);
+  color: var(--ink2);
+}
+.select-bar > span { margin-right: auto; }
+.select-bar-dark { background: rgba(255, 255, 255, 0.06); color: var(--panel-ink); }
+
+/* The round tick box shown on each item while selecting */
+.check {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 1.5px solid var(--ink3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--on-accent);
+}
+.check.is-on { background: var(--accent); border-color: var(--accent); }
+.history-item .check { margin: 10px 8px 0 0; border-color: var(--panel-ink3); }
+.history-item.is-selected { background: rgba(255, 255, 255, 0.1); }
+.source-card .check { position: absolute; top: 14px; right: 14px; }
+.source-card.is-selected { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+
+/* The trash button on a source card (shown when you hover the card) */
+.source-delete {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 26px;
+  height: 26px;
+  border: 0;
+  border-radius: 7px;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  background: var(--raised);
+  color: var(--ink3);
+}
+.source-card:hover .source-delete { display: flex; }
+.source-delete:hover { background: var(--hover); color: var(--error); }
+
+/* Short notices like "Exported to …" */
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: 28px;
+  transform: translateX(-50%);
+  z-index: 40;
+  padding: 9px 16px;
+  border-radius: 999px;
+  background: var(--ink);
+  color: var(--bg);
+  font: 500 13px var(--sans);
+  box-shadow: var(--shadow-composer);
+  animation: toast-in 0.2s var(--ease);
+}
+@keyframes toast-in { from { opacity: 0; transform: translate(-50%, 6px); } }
+
+/* Sources heading: "Sources … Select" on one line, the counts on the line below */
+.sources-heading { flex-wrap: wrap; row-gap: 2px; }
+.sources-heading .text-button { margin-left: auto; }
+.sources-heading .sources-summary { order: 3; flex-basis: 100%; margin-left: 0; }

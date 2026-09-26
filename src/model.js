@@ -14,6 +14,10 @@ export const MODELS = [
 ];
 export const DEFAULT_MODEL = "command-r";
 
+// When you link two things, this model reviews the connection, whatever model the
+// thread uses. Command R handled comparisons best in testing.
+export const LINK_REVIEW_MODEL = "command-r";
+
 /** The model to use for a saved choice: falls back to the default if it's missing or no longer offered. */
 export function resolveModel(id) {
   return MODELS.some((m) => m.id === id) ? id : DEFAULT_MODEL;
