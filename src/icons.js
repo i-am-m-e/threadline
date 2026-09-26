@@ -14,6 +14,11 @@ export const icons = {
   x: lucide('<path d="M18 6 6 18"/><path d="m6 6 12 12"/>'),
   pencil: lucide('<path d="M21.17 6.81a1 1 0 0 0-3.99-3.99L3.84 16.17a2 2 0 0 0-.5.83l-1.32 4.35a.5.5 0 0 0 .62.62l4.35-1.32a2 2 0 0 0 .83-.5z"/>'),
   panelRight: lucide('<rect width="18" height="18" x="3" y="3" rx="2"/><path d="M15 3v18"/>'),
+  clock: lucide('<circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>'),
+  chevronDown: lucide('<path d="m6 9 6 6 6-6"/>'),
+  sun: lucide('<circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/>'),
+  moon: lucide('<path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/>'),
+  monitor: lucide('<rect width="20" height="14" x="2" y="3" rx="2"/><path d="M8 21h8"/><path d="M12 17v4"/>'),
 };
 
 // The Threadline mark from the design: a wavy copper line with a hollow and a filled circle.

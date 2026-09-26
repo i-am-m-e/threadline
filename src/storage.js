@@ -31,10 +31,12 @@ export async function initStorage() {
 //   id, title, createdAt, updatedAt,
 //   model,                          ← which AI model answers (an id from MODELS in model.js)
 //   messages: [
-//     { role: "event", time, attachments: [ { id, name, type, pages, addedAt } ] }  ← "documents added"
-//     { role: "user", text, time }
+//     { role: "event", time, attachments: [ { id, name, type, pages, pageUnit, addedAt } ] }  ← "documents added"
+//     { role: "user", text, time, refs: [docId] }   ← refs: sources dropped on the message box
 //     { role: "assistant", text, time, model, citations: { "3": { docId, index } } }  ← see passages.js
-//   ]
+//   ],
+//   links: [ { a, b } ],   ← lines you drew by dragging ("m3" = message 3, "s:<docId>" = a source)
+//   composerRefs: [docId],  ← sources dropped on the message box, not sent yet
 // }
 // (Chats from before the redesign kept one file per user message as `attachment`.)
 
@@ -81,10 +83,10 @@ export async function listConversations() {
 /**
  * Save an attached file and its extracted text.
  * @param {File} file
- * @param {{text: string, type: string, pages: number | null}} extracted  What extractText() returned.
- * @returns {Promise<{id, name, type, pages, addedAt}>}  A small reference to store in a message.
+ * @param {{text: string, type: string, pages: number | null, pageUnit?: string}} extracted  What extractText() returned.
+ * @returns {Promise<{id, name, type, pages, pageUnit?, addedAt}>}  A small reference to store in a message.
  */
-export async function saveDocument(file, { text, type, pages }) {
+export async function saveDocument(file, { text, type, pages, pageUnit }) {
   const id = newId();
   const folder = `documents/${id}`;
   const safeName = file.name.replace(/[\/\\:]/g, "_");
@@ -93,7 +95,9 @@ export async function saveDocument(file, { text, type, pages }) {
   await fs.writeFile(`${folder}/${safeName}`, new Uint8Array(await file.arrayBuffer()), inAppData);
   await fs.writeTextFile(`${folder}/text.txt`, text, inAppData);
 
-  return { id, name: file.name, type, pages, addedAt: new Date().toISOString() };
+  const ref = { id, name: file.name, type, pages, addedAt: new Date().toISOString() };
+  if (pageUnit) ref.pageUnit = pageUnit; // "page" (PDF) or "sheet" (Excel)
+  return ref;
 }
 
 export async function loadDocumentText(id) {

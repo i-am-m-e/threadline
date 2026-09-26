@@ -6,76 +6,120 @@
   <title>Threadline</title>
   <link rel="stylesheet" href="styles.css" />
 </head>
-<body>
-  <!-- Left: brand, new thread, search, and past threads grouped by date -->
-  <aside class="sidebar">
-    <div class="brand"><span id="logo"></span>Threadline</div>
+<!-- data-mode is "standard", "focus" or "review"; styles.css shows/hides parts for each -->
+<body data-mode="standard">
+  <!-- Standard mode: brand, new thread, search, past threads grouped by date.
+       (In Focus mode it slides out over the page from the rail's History/Search buttons.) -->
+  <aside id="sidebar" class="sidebar">
+    <div class="brand"><span class="logo-slot"></span>Threadline</div>
     <button id="new-thread" class="new-thread"></button>
     <label class="search">
       <span id="search-icon"></span>
       <input id="search" type="search" placeholder="Search threads" autocomplete="off" />
     </label>
     <nav id="history" class="history"></nav>
+    <div class="sidebar-foot"><button class="theme-button" data-label="true"></button></div>
   </aside>
 
-  <!-- Middle: the current thread -->
-  <main id="main" class="main">
-    <header class="thread-header">
-      <h1 id="thread-title"></h1>
-      <span id="sources-pill" class="pill pill-thread" hidden></span>
-      <button id="toggle-sources" class="icon-button" title="Show or hide sources"></button>
+  <!-- Focus mode: the sidebar folds into this 64px rail -->
+  <nav id="rail" class="rail">
+    <span class="logo-slot rail-logo"></span>
+    <button id="rail-new" class="rail-button" title="New thread"></button>
+    <button id="rail-history" class="rail-button" title="History"></button>
+    <button id="rail-search" class="rail-button" title="Search"></button>
+    <button class="theme-button rail-button rail-theme"></button>
+  </nav>
+  <div id="drawer-backdrop" class="drawer-backdrop"></div>
+
+  <div class="workspace">
+    <!-- Review mode: one bar across the top instead of the sidebar -->
+    <header class="review-bar">
+      <div class="brand brand-inline"><span class="logo-slot"></span>Threadline</div>
+      <span class="bar-divider"></span>
+      <label class="thread-picker">
+        <select id="thread-picker" title="Switch thread"></select>
+        <span id="thread-picker-icon"></span>
+      </label>
+      <button class="theme-button icon-button review-theme"></button>
+      <div class="mode-switch" role="tablist"></div>
     </header>
 
-    <div id="scroller" class="scroller">
-      <div id="thread" class="thread">
-        <span class="thread-line"><span class="thread-glint"></span></span>
-        <div id="messages" class="messages"></div>
-      </div>
-    </div>
+    <div class="workspace-row">
+      <!-- The current thread -->
+      <main id="main" class="main">
+        <header class="thread-header">
+          <h1 id="thread-title"></h1>
+          <span id="sources-pill" class="pill pill-thread" hidden></span>
+          <div class="mode-switch" role="tablist"></div>
+          <button id="toggle-sources" class="icon-button" title="Show or hide sources"></button>
+        </header>
 
-    <div class="composer-area">
-      <!-- Shown only when the thread is empty -->
-      <div class="empty-hero">
-        <span class="empty-node"></span>
-        <h2>Start a thread</h2>
-        <p>Ask a question, or attach policies, reports and records to reference them as you go.</p>
-      </div>
-
-      <form id="composer" class="composer">
-        <span class="pending-seg" aria-hidden="true"></span>
-        <div id="pending" class="pending"></div>
-        <textarea id="message-input" rows="1" placeholder="Continue the thread" autofocus></textarea>
-        <div class="composer-row">
-          <label class="attach-button" title="Attach .txt, .md, .csv or .pdf files">
-            <span id="attach-icon"></span>Attach
-            <input id="file-input" type="file" multiple accept=".txt,.md,.csv,.json,.log,.pdf,text/*,application/pdf" hidden />
-          </label>
-          <!-- Which AI model answers in this thread (options come from MODELS in model.js) -->
-          <select id="model-select" class="model-select" title="Which model answers in this thread"></select>
-          <span id="composer-hint" class="composer-hint"></span>
-          <button id="send" class="send-button" type="submit" aria-label="Send"></button>
+        <div id="scroller" class="scroller">
+          <div id="thread" class="thread">
+            <span class="thread-line"><span class="thread-glint"></span></span>
+            <div id="messages" class="messages"></div>
+          </div>
         </div>
-      </form>
 
-      <p class="empty-footnote">Files stay on this device · PDF, TXT, MD, CSV</p>
-    </div>
-  </main>
+        <div class="composer-area">
+          <!-- Shown only when the thread is empty -->
+          <div class="empty-hero">
+            <span class="empty-node"></span>
+            <h2>Start a thread</h2>
+            <p>Ask a question, or attach policies, reports and records to reference them as you go.</p>
+          </div>
 
-  <!-- Right: documents in this thread and the passages that were cited -->
-  <aside id="sources" class="sources">
-    <div class="sources-heading">
-      <span>Sources</span>
-      <span id="sources-summary" class="sources-summary"></span>
-    </div>
-    <div id="source-cards" class="source-cards"></div>
-    <div class="help-box">
-      <div class="help-title">Follow a thread</div>
-      Hover a numbered citation to see which passage it came from. Click it to keep the line. Click a source to read it.
-    </div>
-  </aside>
+          <form id="composer" class="composer" data-drop="composer">
+            <span class="pending-seg" aria-hidden="true"></span>
+            <div id="composer-refs" class="composer-refs"></div>
+            <div id="pending" class="pending"></div>
+            <textarea id="message-input" rows="1" placeholder="Continue the thread" autofocus></textarea>
+            <div class="composer-row">
+              <label class="attach-button" title="Attach PDF, Word, Excel or text files">
+                <span id="attach-icon"></span>Attach
+                <input id="file-input" type="file" multiple hidden
+                  accept=".txt,.md,.csv,.json,.log,.pdf,.docx,.xlsx,text/*,application/pdf" />
+              </label>
+              <!-- Which AI model answers in this thread (options come from MODELS in model.js) -->
+              <select id="model-select" class="model-select" title="Which model answers in this thread"></select>
+              <span id="composer-hint" class="composer-hint"></span>
+              <button id="send" class="send-button" type="submit" aria-label="Send"></button>
+            </div>
+          </form>
 
-  <!-- The lines between citations and sources are drawn on this see-through layer -->
-  <svg id="lines" class="lines-overlay" aria-hidden="true"></svg>
+          <p class="empty-footnote">Files stay on this device · PDF, DOCX, XLSX, CSV, TXT</p>
+        </div>
+      </main>
+
+      <!-- Standard mode: this thread's documents and the passages that were cited -->
+      <aside id="sources" class="sources">
+        <div class="sources-heading">
+          <span>Sources</span>
+          <span id="sources-summary" class="sources-summary"></span>
+        </div>
+        <div id="source-cards" class="source-cards"></div>
+        <div class="help-box">
+          <div class="help-title">Pull a thread</div>
+          Hover a citation to trace it to its source. Drag a dot from a message or source onto
+          something else to link them. Drop a source on the message box to ask about it.
+        </div>
+      </aside>
+
+      <!-- Review mode: the cited document, opened beside the conversation -->
+      <section id="review" class="review">
+        <div class="review-tabs">
+          <div id="review-tabs" class="review-tab-list"></div>
+          <span id="review-page-indicator" class="review-page-indicator"></span>
+        </div>
+        <div id="review-scroll" class="review-scroll">
+          <article id="review-page" class="review-page"></article>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <!-- The lines (citations → sources, and your own links) are drawn on this see-through layer -->
+  <svg id="lines" class="lines-overlay"></svg>
 
   <!-- Pop-up that shows a document's text, with a cited passage highlighted -->
   <dialog id="file-viewer" class="file-viewer">

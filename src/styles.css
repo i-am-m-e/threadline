@@ -2,6 +2,7 @@
    Threadline styles — built from the Claude Design handoff (round 5a).
    Color rule: steel (--accent) = anything you can click.
                copper (--thread) = the thread: lines, nodes, documents.
+               --src-0…5 = one color per source, so its lines are easy to tell apart.
    ========================================================================== */
 
 /* Fonts are stored in the app (src/vendor/fonts), so nothing loads from the internet. */
@@ -40,16 +41,26 @@
   --error: #b42318;
   --shadow-composer: 0 1px 2px rgba(20, 30, 50, 0.06), 0 14px 36px -10px rgba(20, 30, 50, 0.16);
   --shadow-card: 0 1px 2px rgba(20, 30, 50, 0.04);
+  /* Each source in a thread gets one of these for its lines (see lines.js) */
+  --src-0: #b87a4b;
+  --src-1: #2f8475;
+  --src-2: #8f5389;
+  --src-3: #a67f1c;
+  --src-4: #b04f67;
+  --src-5: #607a26;
 
   --sans: "Geist", -apple-system, system-ui, sans-serif;
   --mono: "Geist Mono", ui-monospace, Menlo, monospace;
   --ease: cubic-bezier(0.2, 0.7, 0.2, 1);
   color-scheme: light;
 }
+:root[data-theme="light"] { color-scheme: light; }
 
-/* ---------- Design tokens (dark) — follows your Mac's appearance ---------- */
+/* ---------- Design tokens (dark) ----------
+   Used when the theme switch is on "Dark", or on "Auto" while your Mac is in dark mode.
+   (The same list appears twice because CSS can't share it between those two cases.) */
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme="light"]) {
     --bg: #131619;
     --raised: #1b1f24;
     --panel: #0e1115;
@@ -72,8 +83,45 @@
     --error: #f0a39b;
     --shadow-composer: 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 24px rgba(0, 0, 0, 0.25);
     --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.3);
+    --src-0: #d29a6c;
+    --src-1: #6fbfae;
+    --src-2: #c795c3;
+    --src-3: #d9b95e;
+    --src-4: #e38da1;
+    --src-5: #a8c46a;
     color-scheme: dark;
   }
+}
+:root[data-theme="dark"] {
+  --bg: #131619;
+  --raised: #1b1f24;
+  --panel: #0e1115;
+  --panel-ink: #e3e8ee;
+  --panel-ink3: #8791a0;
+  --panel-line: #23282f;
+  --ink: #e8eaed;
+  --ink2: #aab1bb;
+  --ink3: #838b97;
+  --line: #282d34;
+  --chip: #23272c;
+  --accent: #8fb3d9;
+  --accent-soft: #1d2834;
+  --accent-ink: #b9d0e8;
+  --thread: #d29a6c;
+  --thread-soft: #33261c;
+  --thread-ink: #e6b890;
+  --on-accent: #0d1621;
+  --hover: rgba(255, 255, 255, 0.05);
+  --error: #f0a39b;
+  --shadow-composer: 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 24px rgba(0, 0, 0, 0.25);
+  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --src-0: #d29a6c;
+  --src-1: #6fbfae;
+  --src-2: #c795c3;
+  --src-3: #d9b95e;
+    --src-4: #e38da1;
+    --src-5: #a8c46a;
+  color-scheme: dark;
 }
 
 /* ---------- Basics ---------- */
@@ -169,7 +217,7 @@ button { cursor: pointer; }
 .search input::placeholder { color: var(--panel-ink3); }
 .search input:focus { border-color: var(--panel-ink3); }
 
-.history { display: flex; flex-direction: column; gap: 18px; padding-top: 6px; }
+.history { flex: 1; display: flex; flex-direction: column; gap: 18px; padding-top: 6px; }
 .history-group { display: flex; flex-direction: column; }
 .history-label {
   padding: 0 0 7px 22px;
@@ -280,6 +328,12 @@ button { cursor: pointer; }
 }
 
 /* ==========================================================================
+   Workspace: everything right of the sidebar/rail
+   ========================================================================== */
+.workspace { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.workspace-row { flex: 1; min-height: 0; display: flex; }
+
+/* ==========================================================================
    Main column
    ========================================================================== */
 .main {
@@ -334,7 +388,7 @@ button { cursor: pointer; }
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.thread-header .icon-button { margin-left: auto; }
+.thread-header .mode-switch { margin-left: auto; }
 
 .pill {
   flex: none;
@@ -489,7 +543,7 @@ button { cursor: pointer; }
   transition: border-color 0.15s;
 }
 .doc-chip:hover { border-color: color-mix(in srgb, var(--thread) 45%, var(--line)); }
-.doc-chip svg { flex: none; color: var(--thread-ink); }
+.doc-chip svg { flex: none; color: var(--src, var(--thread-ink)); }
 .doc-chip { max-width: 100%; min-width: 0; }
 .doc-chip-name { font: 500 14px var(--sans); overflow: hidden; text-overflow: ellipsis; }
 .doc-chip-meta { flex: none; }
@@ -510,6 +564,8 @@ button { cursor: pointer; }
   color: var(--accent-ink);
   font: 500 11px var(--mono);
   vertical-align: 1px;
+  /* a thin underline in the source's color, matching its line */
+  box-shadow: inset 0 -1.5px 0 var(--src, transparent);
   transition: background 0.15s, color 0.15s;
 }
 button.cite:hover,
@@ -687,7 +743,6 @@ button.cite:hover,
 
 /* ---------- Empty state ---------- */
 .empty-hero, .empty-footnote { display: none; }
-.main.is-empty .thread-header,
 .main.is-empty .scroller { display: none; }
 .main.is-empty .composer-area {
   flex: 1;
@@ -833,10 +888,15 @@ button.cite:hover,
 }
 .line, .line-halo { fill: none; stroke-linecap: round; }
 .line { stroke: var(--thread); stroke-width: 2; }
+.reveal { fill: none; stroke: #fff; stroke-width: 16; stroke-linecap: round; stroke-dasharray: 1; animation: tl-draw 0.45s var(--ease) both; }
 .line-halo { stroke: var(--bg); stroke-width: 6; opacity: 0.85; }
-.line-ring { fill: none; stroke: var(--thread); stroke-width: 1.5; }
-.line-dot { fill: var(--thread); }
-.draw-in { stroke-dasharray: 1; animation: tl-draw 0.45s var(--ease) both; }
+.line-ring { fill: none; stroke-width: 1.5; }
+/* An invisible, wide copy of each link line, so it's easy to click (to remove it) */
+.link-hit { fill: none; stroke: transparent; stroke-width: 14; pointer-events: stroke; cursor: pointer; }
+.link-hit:hover + .link-hit, .link-hit:hover { stroke: color-mix(in srgb, var(--thread) 18%, transparent); }
+/* The dashed line that follows your pointer while dragging a dot */
+.drag-line { stroke-width: 2; stroke-dasharray: 4 5; animation: tl-dash 0.8s linear infinite; }
+.drag-dot { fill: var(--thread); }
 
 /* ==========================================================================
    Document viewer (pop-up)
@@ -906,3 +966,350 @@ button.cite:hover,
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }
 }
+
+/* ==========================================================================
+   Theme button (Auto / Light / Dark)
+   ========================================================================== */
+.sidebar-foot { padding-top: 8px; border-top: 1px solid var(--panel-line); }
+.sidebar .theme-button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 10px;
+  border: 0;
+  border-radius: 9px;
+  background: none;
+  color: var(--panel-ink3);
+  font: 500 13px var(--sans);
+}
+.sidebar .theme-button:hover { background: rgba(255, 255, 255, 0.06); color: var(--panel-ink); }
+
+/* ==========================================================================
+   Mode switch (Standard / Focus / Review)
+   ========================================================================== */
+.mode-switch {
+  flex: none;
+  display: flex;
+  gap: 2px;
+  padding: 3px;
+  border-radius: 10px;
+  background: var(--chip);
+}
+.mode-option {
+  padding: 5px 11px;
+  border: 0;
+  border-radius: 7px;
+  background: none;
+  color: var(--ink2);
+  font: 500 12.5px var(--sans);
+}
+.mode-option:hover { color: var(--ink); }
+.mode-option[aria-selected="true"] { background: var(--raised); color: var(--ink); box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08); }
+
+/* Which parts show in which mode */
+.rail, .review-bar, .review, .drawer-backdrop { display: none; }
+body[data-mode="focus"] .sidebar,
+body[data-mode="review"] .sidebar,
+body[data-mode="focus"] .sources,
+body[data-mode="review"] .sources,
+body:not([data-mode="standard"]) #toggle-sources { display: none; }
+
+/* ==========================================================================
+   Focus mode: rail, margin notes
+   ========================================================================== */
+body[data-mode="focus"] .rail {
+  width: 64px;
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 18px 0;
+  background: var(--panel);
+  border-right: 1px solid var(--line);
+}
+.rail-logo { display: flex; padding: 4px 0 12px; }
+.rail-button {
+  width: 40px;
+  height: 40px;
+  border: 0;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  color: var(--panel-ink3);
+}
+.rail-button:hover { background: rgba(255, 255, 255, 0.08); color: #fff; }
+.rail-theme { margin-top: auto; }
+
+/* History / Search open the sidebar as a drawer over the page */
+body[data-mode="focus"].drawer-open .sidebar {
+  display: flex;
+  position: fixed;
+  left: 64px;
+  top: 0;
+  bottom: 0;
+  z-index: 30;
+  box-shadow: 12px 0 40px rgba(0, 0, 0, 0.3);
+  animation: drawer-in 0.2s var(--ease);
+}
+body[data-mode="focus"].drawer-open .drawer-backdrop {
+  display: block;
+  position: fixed;
+  inset: 0;
+  z-index: 29;
+  background: rgb(10 14 20 / 0.25);
+}
+@keyframes drawer-in { from { transform: translateX(-16px); opacity: 0; } }
+
+/* Each message row: message · connector · notes (600 / 64 / 300 in the design) */
+body[data-mode="focus"] .scroller { padding: 0 40px; }
+body[data-mode="focus"] .thread { max-width: calc(42px + 600px + 64px + 300px); margin-left: 0; }
+body[data-mode="focus"] .msg-row {
+  display: grid;
+  grid-template-columns: minmax(0, 600px) 64px minmax(200px, 300px);
+  align-items: start;
+}
+body[data-mode="focus"] .composer-area { padding: 0 40px 24px; }
+body[data-mode="focus"] .composer { max-width: 642px; margin: 0; }
+body[data-mode="focus"] .main.is-empty .composer { margin: 0 auto; }
+.msg-gutter, .msg-notes { display: none; }
+body[data-mode="focus"] .msg-gutter { display: block; padding-top: 2px; }
+body[data-mode="focus"] .msg-notes { display: flex; flex-direction: column; gap: 8px; }
+.msg-gutter path {
+  stroke: var(--thread);
+  stroke-width: 1.5;
+  stroke-dasharray: 4 4;
+  stroke-linecap: round;
+  animation: tl-dash 1.6s linear infinite;
+}
+
+.note {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 11px 13px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  border-left: 2px solid var(--src, var(--line));
+  background: var(--raised);
+  text-align: left;
+  color: var(--ink);
+  transition: border-color 0.15s;
+}
+.note:hover { border-color: color-mix(in srgb, var(--thread) 45%, var(--line)); border-left-color: var(--src); }
+.note-head { display: flex; align-items: center; gap: 8px; }
+.note-source { font: 500 12px var(--sans); color: var(--ink2); }
+.note-quote { font: 400 13px/1.5 var(--sans); color: var(--ink2); text-wrap: pretty; }
+
+/* ==========================================================================
+   Review mode: top bar, conversation pane, document viewer
+   ========================================================================== */
+body[data-mode="review"] .review-bar {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 10px 20px;
+  border-bottom: 1px solid var(--line);
+}
+.brand-inline { padding: 0; color: var(--ink); font-size: 16px; }
+.brand-inline svg circle:first-of-type { fill: var(--bg); }
+.bar-divider { width: 1px; height: 20px; background: var(--line); }
+.thread-picker { position: relative; display: flex; align-items: center; min-width: 0; }
+.thread-picker select {
+  appearance: none;
+  -webkit-appearance: none;
+  max-width: 420px;
+  padding: 6px 30px 6px 10px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--ink);
+  font: 500 14px var(--sans);
+  text-overflow: ellipsis;
+  cursor: pointer;
+}
+.thread-picker select:hover { background: var(--hover); }
+.thread-picker > span { position: absolute; right: 9px; display: flex; color: var(--ink3); pointer-events: none; }
+.review-theme { margin-left: auto; }
+
+body[data-mode="review"] .thread-header { display: none; }
+body[data-mode="review"] .main { flex: none; width: 560px; border-right: 1px solid var(--line); }
+body[data-mode="review"] .main::before { display: none; }
+body[data-mode="review"] .composer-area { padding: 0 20px 20px; }
+body[data-mode="review"] .composer { max-width: 100%; }
+
+body[data-mode="review"] .review {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--chip);
+}
+.review-tabs { display: flex; align-items: center; gap: 12px; padding: 12px 20px; }
+.review-tab-list { display: flex; gap: 6px; min-width: 0; overflow-x: auto; }
+.review-tab {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  max-width: 260px;
+  padding: 6px 12px 6px 10px;
+  border: 0;
+  border-radius: 999px;
+  background: none;
+  color: var(--ink2);
+  font: 500 13px var(--sans);
+}
+.review-tab svg { flex: none; color: var(--ink3); }
+.review-tab-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.review-tab:hover { color: var(--ink); }
+.review-tab.is-active { background: var(--raised); color: var(--ink); box-shadow: 0 1px 2px rgba(20, 30, 50, 0.08); }
+.review-tab.is-active svg { color: var(--src, var(--thread-ink)); }
+.review-page-indicator { margin-left: auto; flex: none; font: 400 12px var(--mono); color: var(--ink3); }
+
+.review-scroll { flex: 1; min-height: 0; overflow-y: auto; padding: 0 28px; }
+.review-page {
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 40px 48px 40px 60px;
+  border-radius: 12px 12px 0 0;
+  background: var(--raised);
+  box-shadow: var(--shadow-composer);
+}
+.review-doc-meta { font: 400 11.5px var(--mono); letter-spacing: 0.02em; color: var(--ink3); }
+.review-page .page-break { margin: 10px 0 0; }
+.review-passage {
+  position: relative;
+  margin: 0;
+  font: 400 14px/1.7 var(--sans);
+  color: var(--ink2);
+  white-space: pre-wrap;
+}
+/* The cited passage: a copper highlight sweeps in from the left, and a bar grows down the margin */
+.review-passage.is-selected { color: var(--ink); }
+.review-passage.is-selected::before {
+  content: "";
+  position: absolute;
+  inset: -6px -12px;
+  z-index: -1;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--thread) 16%, transparent);
+  transform-origin: left;
+  animation: tl-sweep 0.8s var(--ease) 0.15s both;
+}
+.review-passage.is-selected::after {
+  content: "";
+  position: absolute;
+  left: -26px;
+  top: -6px;
+  bottom: -6px;
+  width: 2.5px;
+  border-radius: 1.25px;
+  background: var(--thread);
+  transform-origin: top;
+  animation: tl-grow 0.6s var(--ease) both;
+}
+.review-page { isolation: isolate; }
+
+/* ==========================================================================
+   Linking by dragging dots
+   ========================================================================== */
+.node[data-drag-from] { cursor: grab; transition: transform 0.15s; }
+.node[data-drag-from]:hover { transform: scale(1.3); }
+body.is-dragging, body.is-dragging * { cursor: grabbing !important; user-select: none; }
+
+/* The diamond on a source card's left edge */
+.source-card { position: relative; }
+.source-handle {
+  position: absolute;
+  left: -10px;
+  top: 14px;
+  width: 19px;
+  height: 19px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: grab;
+  z-index: 2;
+  transition: transform 0.15s;
+}
+.source-handle::after {
+  content: "";
+  width: 9px;
+  height: 9px;
+  border-radius: 2px;
+  background: var(--raised);
+  border: 1.5px solid var(--src, var(--thread));
+  transform: rotate(45deg);
+}
+.source-handle:hover { transform: scale(1.3); }
+.source-linked {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font: 500 12px var(--sans);
+  color: var(--thread-ink);
+}
+.source-linked::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--thread); }
+.source-meta .swatch { margin-right: 6px; vertical-align: 1px; }
+
+/* Where a dragged dot would land */
+.is-drop-target.msg { outline: 1.5px dashed var(--thread); outline-offset: 6px; border-radius: 6px; }
+.is-drop-target.source-card { border-color: var(--thread); }
+.is-drop-target#composer { border-color: var(--thread); }
+
+/* Sources dropped on the message box, and shown on the message they were sent with */
+.composer-refs, .msg-refs { display: flex; gap: 8px; flex-wrap: wrap; }
+.composer-refs:empty { display: none; }
+.ref-chip {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 4px 4px 4px 9px;
+  border-radius: 999px;
+  background: var(--thread-soft);
+  color: var(--thread-ink);
+  font: 500 12.5px var(--sans);
+  white-space: nowrap;
+}
+.ref-chip svg { flex: none; }
+.msg-refs .ref-chip { padding: 2px 9px 2px 8px; font-size: 12px; }
+.ref-chip .chip-remove { color: inherit; }
+
+@keyframes tl-sweep { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+@keyframes tl-grow { from { transform: scaleY(0); } to { transform: scaleY(1); } }
+
+/* ==========================================================================
+   Links: the chip a link line starts from, filled diamonds, "You linked" entries
+   ========================================================================== */
+.link-chip {
+  align-self: center;
+  padding: 1px 8px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--src, var(--thread)) 55%, transparent);
+  background: color-mix(in srgb, var(--src, var(--thread)) 12%, transparent);
+  color: var(--ink2);
+  font: 500 11.5px var(--sans);
+  white-space: nowrap;
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.msg-label { flex-wrap: wrap; row-gap: 4px; }
+
+/* A linked source's diamond fills in with its color */
+.source-handle.is-linked::after { background: var(--src, var(--thread)); }
+
+/* "You linked A ↔ B": a quieter entry than a normal question */
+.msg-link-request .msg-body {
+  font-size: 13.5px;
+  color: var(--thread-ink);
+}
+.msg-link-request .node::after { border-style: dashed; }
+
+/* A link whose other end is scrolled out of view: drawn lighter, along the margin */
+.lines-overlay .is-faded { opacity: 0.4; }

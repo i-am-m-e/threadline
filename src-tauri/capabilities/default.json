@@ -2,7 +2,9 @@
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
   "description": "What the app window is allowed to do. File access is limited to the app's own data folder.",
-  "windows": ["main"],
+  "windows": [
+    "main"
+  ],
   "permissions": [
     "core:default",
     "fs:default",
@@ -10,6 +12,7 @@
     "fs:allow-appdata-write-recursive",
     "dialog:allow-ask",
     "opener:allow-open-url",
-    "opener:allow-default-urls"
+    "opener:allow-default-urls",
+    "core:window:allow-set-theme"
   ]
 }

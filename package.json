@@ -12,7 +12,9 @@
     "@tauri-apps/cli": "^2.11.5",
     "dompurify": "^3.4.16",
     "geist": "^1.7.2",
+    "mammoth": "^1.12.3",
     "marked": "^15.0.12",
-    "pdfjs-dist": "^4.10.38"
+    "pdfjs-dist": "^4.10.38",
+    "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz"
   }
 }

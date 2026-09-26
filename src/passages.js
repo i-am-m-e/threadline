@@ -65,34 +65,47 @@ export function splitIntoPassages(text) {
   return passages;
 }
 
+/** Where a passage is, like "p. 4" or "sheet 2" (empty for files without pages). */
+export function passagePlace(passage, pageUnit = "page") {
+  if (!passage.page) return "";
+  return pageUnit === "sheet" ? `sheet ${passage.page}` : `p. ${passage.page}`;
+}
+
 /** A short human label for a passage, like: p. 4 · "The warehouse in Denver stores…" */
-export function passageLabel(passage) {
+export function passageLabel(passage, pageUnit = "page") {
   const words = passage.text.replace(/\s+/g, " ").split(" ");
   const snippet = words.slice(0, 7).join(" ") + (words.length > 7 ? "…" : "");
-  return (passage.page ? `p. ${passage.page} · ` : "") + `“${snippet}”`;
+  const place = passagePlace(passage, pageUnit);
+  return (place ? `${place} · ` : "") + `“${snippet}”`;
 }
 
 /**
  * Build the instructions + numbered passages we send to the AI.
  *
- * @param {Array<{id: string, name: string, text: string}>} documents  In the order they were added.
+ * @param {Array<{id: string, name: string, text: string, pageUnit?: string}>} documents  In the order they were added.
  * @param {number} maxCharsPerDocument  Passages past this point are left out (small models run out of room).
+ * @param {Set<string> | null} [onlyDocIds]  If given, only these documents are shown to the AI (e.g. the
+ *        source you linked). Numbering still counts every document, so numbers stay the same.
  * @returns {{ prompt: string, numbers: Object<string, {docId: string, index: number}> }}
  *          `numbers` maps each passage number the AI sees to where that passage lives.
  */
-export function buildSourcesPrompt(documents, maxCharsPerDocument) {
+export function buildSourcesPrompt(documents, maxCharsPerDocument, onlyDocIds = null) {
   const numbers = {};
   let n = 0;
-  const sections = documents.map((doc) => {
-    const lines = splitIntoPassages(doc.text)
-      .filter((p) => p.start < maxCharsPerDocument)
-      .map((p) => {
+  const sections = [];
+  for (const doc of documents) {
+    const passages = splitIntoPassages(doc.text).filter((p) => p.start < maxCharsPerDocument);
+    if (onlyDocIds && !onlyDocIds.has(doc.id)) {
+      n += passages.length; // skip this document, but keep everyone else's numbers unchanged
+      continue;
+    }
+    const lines = passages.map((p) => {
         n += 1;
         numbers[n] = { docId: doc.id, index: p.index };
-        return `[${n}]${p.page ? ` (page ${p.page})` : ""} ${p.text.replace(/\s+/g, " ")}`;
+        return `[${n}]${p.page ? ` (${doc.pageUnit === "sheet" ? "sheet" : "page"} ${p.page})` : ""} ${p.text.replace(/\s+/g, " ")}`;
       });
-    return `Document: "${doc.name}"\n${lines.join("\n")}`;
-  });
+    sections.push(`Document: "${doc.name}"\n${lines.join("\n")}`);
+  }
 
   // The rules go AFTER the documents: small models follow what they read last best.
   const prompt =
