@@ -7,45 +7,86 @@
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
-  <!-- Left column: list of saved chats -->
+  <!-- Left: brand, new thread, search, and past threads grouped by date -->
   <aside class="sidebar">
-    <button id="new-chat" class="new-chat">+ New chat</button>
-    <nav id="conversation-list"></nav>
+    <div class="brand"><span id="logo"></span>Threadline</div>
+    <button id="new-thread" class="new-thread"></button>
+    <label class="search">
+      <span id="search-icon"></span>
+      <input id="search" type="search" placeholder="Search threads" autocomplete="off" />
+    </label>
+    <nav id="history" class="history"></nav>
   </aside>
 
-  <!-- Right column: the current chat -->
-  <main class="chat">
-    <!-- Top bar: chat title + the list of files attached in this chat -->
-    <header class="chat-header">
-      <h1 id="chat-title"></h1>
-      <button id="files-button" class="files-button" hidden></button>
+  <!-- Middle: the current thread -->
+  <main id="main" class="main">
+    <header class="thread-header">
+      <h1 id="thread-title"></h1>
+      <span id="sources-pill" class="pill pill-thread" hidden></span>
+      <button id="toggle-sources" class="icon-button" title="Show or hide sources"></button>
     </header>
-    <div id="files-panel" class="files-panel" hidden></div>
 
-    <div id="messages" class="messages"></div>
-
-    <form id="composer" class="composer">
-      <div id="attachment-chip" class="attachment-chip" hidden></div>
-      <div class="composer-row">
-        <!-- The real file picker is hidden; the 📎 label opens it. -->
-        <label class="attach-button" title="Attach a .txt or .pdf file">
-          📎
-          <input id="file-input" type="file" accept=".txt,.md,.csv,.json,.log,.pdf,text/*,application/pdf" hidden />
-        </label>
-        <textarea id="message-input" rows="1" placeholder="Message Threadline…  (Shift+Enter for a new line)" autofocus></textarea>
-        <button id="send" type="submit">Send</button>
+    <div id="scroller" class="scroller">
+      <div id="thread" class="thread">
+        <span class="thread-line"><span class="thread-glint"></span></span>
+        <div id="messages" class="messages"></div>
       </div>
-    </form>
+    </div>
+
+    <div class="composer-area">
+      <!-- Shown only when the thread is empty -->
+      <div class="empty-hero">
+        <span class="empty-node"></span>
+        <h2>Start a thread</h2>
+        <p>Ask a question, or attach policies, reports and records to reference them as you go.</p>
+      </div>
+
+      <form id="composer" class="composer">
+        <span class="pending-seg" aria-hidden="true"></span>
+        <div id="pending" class="pending"></div>
+        <textarea id="message-input" rows="1" placeholder="Continue the thread" autofocus></textarea>
+        <div class="composer-row">
+          <label class="attach-button" title="Attach .txt, .md, .csv or .pdf files">
+            <span id="attach-icon"></span>Attach
+            <input id="file-input" type="file" multiple accept=".txt,.md,.csv,.json,.log,.pdf,text/*,application/pdf" hidden />
+          </label>
+          <!-- Which AI model answers in this thread (options come from MODELS in model.js) -->
+          <select id="model-select" class="model-select" title="Which model answers in this thread"></select>
+          <span id="composer-hint" class="composer-hint"></span>
+          <button id="send" class="send-button" type="submit" aria-label="Send"></button>
+        </div>
+      </form>
+
+      <p class="empty-footnote">Files stay on this device · PDF, TXT, MD, CSV</p>
+    </div>
   </main>
 
-  <!-- Pop-up that shows the text extracted from an attached file -->
+  <!-- Right: documents in this thread and the passages that were cited -->
+  <aside id="sources" class="sources">
+    <div class="sources-heading">
+      <span>Sources</span>
+      <span id="sources-summary" class="sources-summary"></span>
+    </div>
+    <div id="source-cards" class="source-cards"></div>
+    <div class="help-box">
+      <div class="help-title">Follow a thread</div>
+      Hover a numbered citation to see which passage it came from. Click it to keep the line. Click a source to read it.
+    </div>
+  </aside>
+
+  <!-- The lines between citations and sources are drawn on this see-through layer -->
+  <svg id="lines" class="lines-overlay" aria-hidden="true"></svg>
+
+  <!-- Pop-up that shows a document's text, with a cited passage highlighted -->
   <dialog id="file-viewer" class="file-viewer">
     <header>
-      <h2 id="file-viewer-title"></h2>
-      <button id="file-viewer-close" title="Close">×</button>
+      <div>
+        <h2 id="file-viewer-title"></h2>
+        <p id="file-viewer-note" class="file-viewer-note"></p>
+      </div>
+      <button id="file-viewer-close" class="icon-button" title="Close"></button>
     </header>
-    <p id="file-viewer-note" class="file-viewer-note"></p>
-    <pre id="file-viewer-text"></pre>
+    <div id="file-viewer-text" class="file-viewer-text"></div>
   </dialog>
 
   <!-- type="module" lets our JS files import each other -->

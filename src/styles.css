@@ -1,331 +1,908 @@
-/* Colors live in one place so light/dark mode is just a swap. */
-:root {
-  --bg: #ffffff;
-  --sidebar-bg: #f4f4f5;
-  --text: #18181b;
-  --muted: #71717a;
-  --border: #e4e4e7;
-  --user-bubble: #2563eb;
-  --user-text: #ffffff;
-  --ai-bubble: #f4f4f5;
-  --error-bg: #fef2f2;
-  --error-text: #b91c1c;
+/* ==========================================================================
+   Threadline styles — built from the Claude Design handoff (round 5a).
+   Color rule: steel (--accent) = anything you can click.
+               copper (--thread) = the thread: lines, nodes, documents.
+   ========================================================================== */
+
+/* Fonts are stored in the app (src/vendor/fonts), so nothing loads from the internet. */
+@font-face {
+  font-family: "Geist";
+  src: url("vendor/fonts/Geist-Variable.woff2") format("woff2");
+  font-weight: 100 900;
+}
+@font-face {
+  font-family: "Geist Mono";
+  src: url("vendor/fonts/GeistMono-Variable.woff2") format("woff2");
+  font-weight: 100 900;
 }
 
+/* ---------- Design tokens (light) ---------- */
+:root {
+  --bg: #f5f6f8;
+  --raised: #ffffff;
+  --panel: #1a2432;
+  --panel-ink: #e3e8ee;
+  --panel-ink3: #8e9bad;
+  --panel-line: #2b3748;
+  --ink: #15181c;
+  --ink2: #4a5260;
+  --ink3: #737b88;
+  --line: #dfe3e8;
+  --chip: #e9ecf0;
+  --accent: #3d6a96;
+  --accent-soft: #e3ecf5;
+  --accent-ink: #2b5078;
+  --thread: #b87a4b;
+  --thread-soft: #f4e6da;
+  --thread-ink: #8a5530;
+  --on-accent: #ffffff;
+  --hover: rgba(22, 25, 29, 0.05);
+  --error: #b42318;
+  --shadow-composer: 0 1px 2px rgba(20, 30, 50, 0.06), 0 14px 36px -10px rgba(20, 30, 50, 0.16);
+  --shadow-card: 0 1px 2px rgba(20, 30, 50, 0.04);
+
+  --sans: "Geist", -apple-system, system-ui, sans-serif;
+  --mono: "Geist Mono", ui-monospace, Menlo, monospace;
+  --ease: cubic-bezier(0.2, 0.7, 0.2, 1);
+  color-scheme: light;
+}
+
+/* ---------- Design tokens (dark) — follows your Mac's appearance ---------- */
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #18181b;
-    --sidebar-bg: #111113;
-    --text: #f4f4f5;
-    --muted: #a1a1aa;
-    --border: #2e2e33;
-    --user-bubble: #2563eb;
-    --user-text: #ffffff;
-    --ai-bubble: #27272a;
-    --error-bg: #3b1515;
-    --error-text: #fca5a5;
+    --bg: #131619;
+    --raised: #1b1f24;
+    --panel: #0e1115;
+    --panel-ink: #e3e8ee;
+    --panel-ink3: #8791a0;
+    --panel-line: #23282f;
+    --ink: #e8eaed;
+    --ink2: #aab1bb;
+    --ink3: #838b97;
+    --line: #282d34;
+    --chip: #23272c;
+    --accent: #8fb3d9;
+    --accent-soft: #1d2834;
+    --accent-ink: #b9d0e8;
+    --thread: #d29a6c;
+    --thread-soft: #33261c;
+    --thread-ink: #e6b890;
+    --on-accent: #0d1621;
+    --hover: rgba(255, 255, 255, 0.05);
+    --error: #f0a39b;
+    --shadow-composer: 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 24px rgba(0, 0, 0, 0.25);
+    --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.3);
+    color-scheme: dark;
   }
 }
 
+/* ---------- Basics ---------- */
 * { box-sizing: border-box; }
 
 body {
   margin: 0;
   height: 100vh;
   display: flex;
-  font: 15px/1.5 -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif;
+  overflow: hidden;
   background: var(--bg);
-  color: var(--text);
+  color: var(--ink);
+  font: 400 15px/1.5 var(--sans);
+  -webkit-font-smoothing: antialiased;
 }
 
-button, textarea { font: inherit; color: inherit; }
+button, input, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; }
+[hidden] { display: none !important; }
 
-/* ---------- Sidebar ---------- */
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+:focus:not(:focus-visible) { outline: none; }
+
+.icon-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  flex: none;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--ink2);
+}
+.icon-button:hover { background: var(--hover); color: var(--ink); }
+.icon-button[aria-pressed="true"] { color: var(--accent); }
+
+/* ==========================================================================
+   Sidebar
+   ========================================================================== */
 .sidebar {
-  width: 240px;
-  flex-shrink: 0;
-  background: var(--sidebar-bg);
-  border-right: 1px solid var(--border);
-  padding: 12px;
+  width: 248px;
+  flex: none;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 14px;
+  padding: 18px 14px;
+  background: var(--panel);
+  color: var(--panel-ink);
   overflow-y: auto;
 }
 
-.new-chat {
-  padding: 8px 12px;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  background: var(--bg);
-  cursor: pointer;
-  text-align: left;
-}
-
-/* Each sidebar row = chat title button + delete (×) button */
-.conversation-row {
+.brand {
   display: flex;
   align-items: center;
-  border-radius: 6px;
+  gap: 9px;
+  padding: 4px 6px 6px;
+  font: 600 17px/1 var(--sans);
+  letter-spacing: -0.02em;
+  color: #fff;
 }
-.conversation-row:hover { background: var(--border); }
-.conversation-row.active { background: var(--border); font-weight: 600; }
+.brand span { display: flex; }
 
-.conversation-item {
+.new-thread {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 9px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--panel-line);
+  background: rgba(255, 255, 255, 0.04);
+  color: #fff;
+  font: 500 14px var(--sans);
+  transition: border-color 0.15s;
+}
+.new-thread:hover { border-color: var(--thread); }
+
+.search { position: relative; display: block; }
+.search > span { position: absolute; left: 11px; top: 10px; display: flex; color: var(--panel-ink3); }
+.search input {
+  width: 100%;
+  height: 35px;
+  padding: 0 12px 0 33px;
+  border-radius: 10px;
+  border: 1px solid var(--panel-line);
+  background: transparent;
+  color: var(--panel-ink);
+  font: 400 14px var(--sans);
+  outline: none;
+}
+.search input::placeholder { color: var(--panel-ink3); }
+.search input:focus { border-color: var(--panel-ink3); }
+
+.history { display: flex; flex-direction: column; gap: 18px; padding-top: 6px; }
+.history-group { display: flex; flex-direction: column; }
+.history-label {
+  padding: 0 0 7px 22px;
+  font: 500 11px/1 var(--mono);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--panel-ink3);
+}
+.history-empty { padding-left: 22px; font-size: 13px; color: var(--panel-ink3); }
+
+/* The mini thread: a thin line with a node per thread */
+.history-items {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-left: 22px;
+}
+.history-items::before {
+  content: "";
+  position: absolute;
+  left: 7px;
+  top: 4px;
+  bottom: 4px;
+  width: 1px;
+  background: var(--panel-line);
+}
+
+.history-item {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  border-radius: 9px;
+}
+.history-item:hover { background: rgba(255, 255, 255, 0.05); }
+.history-item.is-active { background: rgba(255, 255, 255, 0.08); }
+
+.history-node {
+  position: absolute;
+  left: -18px;
+  top: 13px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--panel);
+  border: 1px solid var(--panel-ink3);
+}
+.history-item.is-active .history-node { background: var(--thread); border-color: var(--thread); }
+
+.history-open {
   flex: 1;
   min-width: 0;
-  padding: 6px 10px;
-  border: none;
+  padding: 8px 10px;
+  border: 0;
   background: none;
   text-align: left;
-  cursor: pointer;
+  color: var(--panel-ink);
+}
+.history-title {
+  display: block;
+  font: 400 14px/1.35 var(--sans);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
+.history-item.is-active .history-title { font-weight: 500; color: #fff; }
+.history-meta { display: block; font: 400 12px/1.4 var(--sans); color: var(--panel-ink3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-/* The ✎ (rename) and × (delete) buttons on each row */
-.row-action {
-  flex-shrink: 0;
-  padding: 2px 6px;
-  border: none;
-  border-radius: 4px;
-  background: none;
-  color: var(--muted);
-  font-weight: normal;
-  cursor: pointer;
-  visibility: hidden; /* only shown when hovering the row */
+/* Rename (✎) and delete (×) appear when you hover a thread */
+/* They float over the right edge so they don't take room from the title. */
+.history-actions {
+  position: absolute;
+  right: 4px;
+  top: 6px;
+  display: none;
+  gap: 1px;
+  padding-left: 14px;
+  border-radius: 7px;
+  /* fades in from the row's own (hovered) background color */
+  background: linear-gradient(to right, transparent, color-mix(in srgb, var(--panel) 94%, #fff) 14px);
 }
-.row-action:last-child { margin-right: 4px; }
-.conversation-row:hover .row-action { visibility: visible; }
-.row-action:hover { color: var(--text); }
-.delete-chat:hover { color: var(--error-text); }
+.history-item:hover .history-actions,
+.history-item:focus-within .history-actions { display: flex; }
+.history-action {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  color: var(--panel-ink3);
+}
+.history-action:hover { background: rgba(255, 255, 255, 0.08); color: #fff; }
 
 .rename-box {
   flex: 1;
   min-width: 0;
-  margin: 2px;
-  padding: 4px 8px;
-  border: 1px solid var(--user-bubble);
-  border-radius: 5px;
-  background: var(--bg);
-  color: var(--text);
-  font: inherit;
-  font-weight: normal;
+  margin: 4px;
+  padding: 5px 8px;
+  border: 1px solid var(--thread);
+  border-radius: 7px;
+  background: rgba(0, 0, 0, 0.2);
+  color: #fff;
+  font: 400 14px var(--sans);
+  outline: none;
 }
 
-/* ---------- Chat area ---------- */
-.chat {
+/* ==========================================================================
+   Main column
+   ========================================================================== */
+.main {
   flex: 1;
+  min-width: 0;
   display: flex;
   flex-direction: column;
-  min-width: 0;
+  position: relative;
+  isolation: isolate;
 }
-
-/* ---------- Chat header + files list ---------- */
-.chat-header {
+/* Ambient copper/steel wash in the corners */
+.main::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(55% 45% at 90% 0%, color-mix(in srgb, var(--thread) 10%, transparent), transparent 70%),
+    radial-gradient(60% 40% at 35% 100%, color-mix(in srgb, var(--accent) 9%, transparent), transparent 72%);
+}
+.main.is-dropping::after {
+  content: "Drop files to attach";
+  position: absolute;
+  inset: 12px;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 10px 24px;
-  border-bottom: 1px solid var(--border);
-  min-height: 49px;
+  justify-content: center;
+  border: 2px dashed var(--thread);
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--bg) 85%, transparent);
+  color: var(--thread-ink);
+  font: 500 15px var(--sans);
+  pointer-events: none;
 }
-.chat-header h1 {
-  margin: 0;
-  font-size: 15px;
-  font-weight: 600;
+
+/* ---------- Header ---------- */
+.thread-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 20px 12px 28px;
+  min-height: 57px;
+  border-bottom: 1px solid var(--line);
+}
+.thread-header h1 {
+  min-width: 0;
+  margin: 0 8px 0 0;
+  font: 600 16px/1.2 var(--sans);
+  letter-spacing: -0.01em;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.files-button {
-  flex-shrink: 0;
-  padding: 4px 10px;
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  background: none;
-  font-size: 13px;
-  cursor: pointer;
-}
-.files-button:hover { background: var(--ai-bubble); }
+.thread-header .icon-button { margin-left: auto; }
 
-.files-panel {
+.pill {
+  flex: none;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font: 500 12px var(--sans);
+  white-space: nowrap;
+}
+.pill-thread { background: var(--thread-soft); color: var(--thread-ink); }
+
+/* ---------- The thread ---------- */
+.scroller {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
   display: flex;
   flex-direction: column;
-  padding: 6px 16px;
-  border-bottom: 1px solid var(--border);
-  background: var(--sidebar-bg);
-  max-height: 30vh;
-  overflow-y: auto;
+  padding: 0 28px;
 }
-.files-panel[hidden] { display: none; }
-.file-item {
-  display: flex;
-  justify-content: space-between;
-  gap: 16px;
-  padding: 6px 8px;
-  border: none;
-  border-radius: 6px;
-  background: none;
-  text-align: left;
-  cursor: pointer;
+.thread {
+  position: relative;
+  width: 100%;
+  max-width: 700px;
+  margin: auto auto 0; /* sits at the bottom, like a chat, and scrolls up */
+  padding: 24px 0 22px 42px;
 }
-.file-item:hover { background: var(--border); }
-.file-date { color: var(--muted); font-size: 13px; white-space: nowrap; }
 
-/* Pop-up showing a file's extracted text */
-.file-viewer {
-  width: min(720px, 90vw);
-  max-height: 80vh;
-  padding: 0;
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  background: var(--bg);
-  color: var(--text);
+/* The copper line the whole conversation hangs on */
+.thread-line {
+  position: absolute;
+  left: 13px;
+  top: 0;
+  bottom: 0;
+  width: 1.5px;
+  overflow: hidden;
+  background: linear-gradient(to bottom, transparent, var(--thread) 70px);
 }
-.file-viewer::backdrop { background: rgb(0 0 0 / 0.4); }
-.file-viewer header {
+.thread-glint { display: none; }
+.thread.is-live .thread-glint {
+  display: block;
+  position: absolute;
+  left: 0;
+  width: 2px;
+  height: 90px;
+  border-radius: 2px;
+  background: linear-gradient(to bottom, transparent, var(--thread), transparent);
+  filter: brightness(1.35);
+  animation: tl-travel 2.6s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+}
+
+.messages { display: flex; flex-direction: column; gap: 26px; }
+
+.msg { position: relative; display: flex; flex-direction: column; gap: 6px; }
+.msg-assistant { gap: 8px; }
+.msg-event { gap: 10px; }
+
+.msg-label {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 12px 16px 0;
+  align-items: baseline;
+  gap: 8px;
+  font: 600 13px/1.2 var(--sans);
+  color: var(--ink);
 }
-.file-viewer h2 { margin: 0; font-size: 15px; }
-.file-viewer header button {
-  border: none;
-  background: none;
-  font-size: 20px;
-  cursor: pointer;
-}
-.file-viewer-note { margin: 4px 16px 8px; color: var(--muted); font-size: 13px; }
-.file-viewer pre {
-  margin: 0;
-  padding: 12px 16px 16px;
-  max-height: 60vh;
-  overflow: auto;
-  border-top: 1px solid var(--border);
+.msg-assistant .msg-label { color: var(--accent-ink); }
+.msg-time { font: 400 11.5px var(--mono); color: var(--ink3); }
+.live-status { font: 400 11.5px var(--mono); color: var(--thread-ink); }
+
+.msg-body {
+  font: 400 15px/1.65 var(--sans);
+  text-wrap: pretty;
   white-space: pre-wrap;
-  font: 13px/1.5 ui-monospace, Menlo, monospace;
+  overflow-wrap: anywhere;
+}
+.msg-error .msg-body { color: var(--error); }
+
+/* Nodes sit on the thread line, one per message */
+.node {
+  position: absolute;
+  left: -38px;
+  top: -1px;
+  width: 19px;
+  height: 19px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.node::after { content: ""; display: block; }
+.msg-user .node::after {
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background: var(--bg);
+  border: 1.5px solid var(--thread);
+}
+.msg-assistant .node::after {
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background: var(--thread);
+  box-shadow: 0 0 0 4px var(--bg);
+}
+.msg-event .node::after {
+  width: 9px;
+  height: 9px;
+  border-radius: 2px;
+  background: var(--bg);
+  border: 1.5px solid var(--thread);
+  transform: rotate(45deg);
+}
+.msg-error .node::after {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--bg);
+  border: 1.5px solid var(--error);
 }
 
-.messages {
+/* The reply being written: pulsing node, flowing dashes, blinking caret */
+.msg.is-live .node::after { animation: tl-breathe 1.8s ease-out infinite; box-shadow: none; }
+.live-seg { position: absolute; left: -30px; top: -30px; }
+.live-seg svg { display: block; }
+.live-seg line {
+  stroke: var(--thread);
+  stroke-width: 1.5;
+  stroke-dasharray: 3 5;
+  stroke-linecap: round;
+  animation: tl-dash 0.8s linear infinite;
+}
+.caret {
+  display: inline-block;
+  width: 2px;
+  height: 1.05em;
+  margin-left: 3px;
+  vertical-align: -2px;
+  border-radius: 1px;
+  background: var(--thread);
+  animation: tl-blink 1s steps(1) infinite;
+}
+
+/* "Documents added" chips */
+.doc-chips { display: flex; gap: 10px; flex-wrap: wrap; }
+.doc-chip {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 8px 12px 8px 10px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: var(--raised);
+  white-space: nowrap;
+  color: var(--ink);
+  transition: border-color 0.15s;
+}
+.doc-chip:hover { border-color: color-mix(in srgb, var(--thread) 45%, var(--line)); }
+.doc-chip svg { flex: none; color: var(--thread-ink); }
+.doc-chip { max-width: 100%; min-width: 0; }
+.doc-chip-name { font: 500 14px var(--sans); overflow: hidden; text-overflow: ellipsis; }
+.doc-chip-meta { flex: none; }
+.doc-chip-meta { font: 400 11.5px var(--mono); color: var(--ink3); }
+
+/* ---------- Citation markers ---------- */
+.cite {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 19px;
+  height: 19px;
+  padding: 0 5px;
+  margin-left: 2px;
+  border: 0;
+  border-radius: 6px;
+  background: var(--accent-soft);
+  color: var(--accent-ink);
+  font: 500 11px var(--mono);
+  vertical-align: 1px;
+  transition: background 0.15s, color 0.15s;
+}
+button.cite:hover,
+.cite.is-pinned { background: var(--accent); color: var(--on-accent); }
+.cite-static { margin-left: 0; flex: none; }
+
+/* ---------- Formatted AI replies (Markdown turned into HTML) ---------- */
+.formatted { white-space: normal; }
+.formatted > :first-child { margin-top: 0; }
+.formatted > :last-child { margin-bottom: 0; }
+.formatted p, .formatted pre, .formatted blockquote, .formatted table { margin: 0.55em 0; }
+.formatted ul, .formatted ol {
+  margin: 0.55em 0;
+  padding-left: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.formatted h1, .formatted h2, .formatted h3, .formatted h4 { margin: 0.9em 0 0.3em; font-size: 15px; font-weight: 600; }
+.formatted code {
+  padding: 1px 5px;
+  border-radius: 5px;
+  background: var(--chip);
+  font: 0.88em var(--mono);
+}
+.formatted pre {
+  padding: 12px 14px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: var(--raised);
+  overflow-x: auto;
+  font-size: 13px;
+  line-height: 1.55;
+}
+.formatted pre code { padding: 0; background: none; }
+.formatted a { color: var(--accent); }
+.formatted blockquote { padding-left: 12px; border-left: 2px solid var(--line); color: var(--ink2); }
+.formatted table { border-collapse: collapse; font-size: 14px; }
+.formatted th, .formatted td { padding: 5px 9px; border: 1px solid var(--line); text-align: left; }
+
+/* ---------- Composer ---------- */
+.composer-area { padding: 0 28px 24px; }
+
+.composer {
+  position: relative;
+  width: 100%;
+  max-width: 700px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 12px 10px 16px;
+  border-radius: 18px;
+  border: 1px solid var(--line);
+  background: var(--raised);
+  box-shadow: var(--shadow-composer);
+}
+.composer textarea {
+  border: 0;
+  background: transparent;
+  resize: none;
+  outline: none;
+  padding: 2px 0;
+  min-height: 28px;
+  max-height: 220px;
+  font: 400 15px/1.55 var(--sans);
+  color: var(--ink);
+  field-sizing: content; /* grows as you type */
+}
+.composer textarea::placeholder { color: var(--ink3); }
+
+.composer-row { display: flex; align-items: center; gap: 12px; }
+.attach-button {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px 6px 8px;
+  margin-left: -8px;
+  border-radius: 9px;
+  color: var(--ink2);
+  font: 500 13px var(--sans);
+  cursor: pointer;
+  user-select: none;
+}
+.attach-button:hover { background: var(--hover); color: var(--ink); }
+.attach-button span { display: flex; }
+.composer-hint { flex: 1; font: 400 12px var(--sans); color: var(--ink3); }
+
+/* Model picker: a quiet pill that looks like the Attach button until you use it */
+.model-select {
+  appearance: none;
+  -webkit-appearance: none;
+  padding: 5px 24px 5px 10px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: transparent
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23737b88' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E")
+    no-repeat right 8px center;
+  color: var(--ink2);
+  font: 500 12.5px var(--sans);
+  cursor: pointer;
+}
+.model-select:hover { background-color: var(--hover); color: var(--ink); }
+.model-select:disabled { opacity: 0.5; cursor: default; }
+.msg-model { font: 400 11.5px var(--mono); color: var(--ink3); }
+.msg-model::before { content: "· "; }
+.send-button {
+  width: 34px;
+  height: 34px;
+  flex: none;
+  margin-left: auto;
+  border: 0;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--accent);
+  color: var(--on-accent);
+}
+.send-button:disabled { opacity: 0.4; cursor: default; }
+
+/* Files waiting to be sent */
+.pending { display: flex; gap: 8px; flex-wrap: wrap; }
+.pending:empty { display: none; }
+.pending-chip {
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 7px 6px 7px 10px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: var(--bg);
+}
+.pending-chip > svg { flex: none; color: var(--thread-ink); }
+.pending-chip > div { display: flex; flex-direction: column; min-width: 0; }
+.pending-name { font: 500 13px/1.3 var(--sans); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 260px; }
+.pending-status { font: 400 11.5px/1.3 var(--mono); color: var(--ink3); }
+.pending-chip.is-reading .pending-status { color: var(--accent-ink); }
+.pending-chip .progress {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  height: 2px;
+  background: var(--accent);
+  transition: width 0.2s;
+}
+.chip-remove {
+  width: 20px;
+  height: 20px;
+  flex: none;
+  border: 0;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  color: var(--ink3);
+}
+.chip-remove:hover { background: var(--hover); color: var(--ink); }
+
+/* While files are waiting, a dashed thread runs from the last message into the box */
+.pending-seg {
+  display: none;
+  position: absolute;
+  left: 12px; /* lines up with the thread line above (13px, minus the box's 1px border) */
+  bottom: 100%;
+  width: 1.5px;
+  height: 22px;
+  background: repeating-linear-gradient(to bottom, var(--thread) 0 3px, transparent 3px 8px);
+}
+.composer.has-pending .pending-seg { display: block; }
+.main.is-empty .pending-seg { display: none; }
+
+/* ---------- Empty state ---------- */
+.empty-hero, .empty-footnote { display: none; }
+.main.is-empty .thread-header,
+.main.is-empty .scroller { display: none; }
+.main.is-empty .composer-area {
   flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding-bottom: 12vh;
+}
+.main.is-empty .empty-hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  max-width: 700px;
+  margin: 0 auto 28px;
+}
+.empty-node {
+  position: relative;
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  border: 1.5px solid var(--thread);
+  margin-bottom: 56px;
+}
+.empty-node::after {
+  content: "";
+  position: absolute;
+  left: 4.25px;
+  top: 14px;
+  width: 1.5px;
+  height: 44px;
+  background: linear-gradient(to bottom, var(--thread), transparent);
+}
+.empty-hero h2 { margin: 0 0 8px; font: 600 32px/1.15 var(--sans); letter-spacing: -0.025em; }
+.empty-hero p { margin: 0; max-width: 460px; font-size: 15px; color: var(--ink2); text-wrap: pretty; }
+.main.is-empty .empty-footnote {
+  display: block;
+  margin: 14px 0 0;
+  text-align: center;
+  font: 400 12px var(--mono);
+  color: var(--ink3);
+}
+
+/* ==========================================================================
+   Sources panel
+   ========================================================================== */
+.sources {
+  width: 300px;
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 18px 20px 18px 24px;
+  border-left: 1px solid var(--line);
+  background: var(--bg);
+}
+.sources.is-closed { display: none; }
+
+.sources-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding: 0 2px;
+  font: 600 14px var(--sans);
+}
+.sources-summary { font: 400 12px var(--sans); color: var(--ink3); }
+.sources-empty { font-size: 13px; color: var(--ink3); line-height: 1.5; }
+
+.source-cards {
+  flex: 1;
+  min-height: 0;
   overflow-y: auto;
-  padding: 24px;
   display: flex;
   flex-direction: column;
   gap: 12px;
+  margin: 0 -6px;
+  padding: 0 6px 4px;
 }
-
-.bubble {
-  max-width: 75%;
-  padding: 10px 14px;
-  border-radius: 14px;
-  white-space: pre-wrap;       /* keep the line breaks in replies */
-  overflow-wrap: anywhere;
-}
-.bubble.user      { align-self: flex-end;   background: var(--user-bubble); color: var(--user-text); }
-.bubble.assistant { align-self: flex-start; background: var(--ai-bubble); }
-.bubble.thinking  { color: var(--muted); font-style: italic; }
-.bubble.error     { align-self: center; background: var(--error-bg); color: var(--error-text); }
-.bubble.empty     { align-self: center; color: var(--muted); margin-top: 30vh; }
-
-.attachment-tag {
-  display: block;
-  margin-bottom: 4px;
-  padding: 0;
-  border: none;
-  background: none;
-  font-size: 13px;
-  opacity: 0.85;
-  cursor: pointer;
-}
-.attachment-tag:hover { text-decoration: underline; }
-
-/* ---------- Formatted AI replies (Markdown turned into HTML) ---------- */
-.bubble .formatted { white-space: normal; }
-.formatted > :first-child { margin-top: 0; }
-.formatted > :last-child { margin-bottom: 0; }
-.formatted p, .formatted ul, .formatted ol, .formatted pre, .formatted blockquote, .formatted table { margin: 0.5em 0; }
-.formatted ul, .formatted ol { padding-left: 1.4em; }
-.formatted h1, .formatted h2, .formatted h3, .formatted h4 { margin: 0.8em 0 0.3em; font-size: 1.05em; }
-.formatted code {
-  padding: 1px 5px;
-  border-radius: 4px;
-  background: var(--bg);
-  font: 0.9em ui-monospace, Menlo, monospace;
-}
-.formatted pre {
-  padding: 10px 12px;
-  border-radius: 8px;
-  background: var(--bg);
-  overflow-x: auto;
-}
-.formatted pre code { padding: 0; background: none; }
-.formatted a { color: var(--user-bubble); }
-.formatted blockquote { padding-left: 10px; border-left: 3px solid var(--border); color: var(--muted); }
-.formatted table { border-collapse: collapse; }
-.formatted th, .formatted td { padding: 4px 8px; border: 1px solid var(--border); }
-
-/* ---------- Composer (the input area) ---------- */
-.composer {
-  border-top: 1px solid var(--border);
-  padding: 12px 16px;
-}
-
-.composer-row {
+.source-card {
   display: flex;
-  gap: 8px;
-  align-items: flex-end;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: var(--raised);
+  box-shadow: var(--shadow-card);
+  transition: border-color 0.15s;
 }
+.source-card:hover { border-color: color-mix(in srgb, var(--thread) 45%, var(--line)); }
 
-.attach-button {
-  cursor: pointer;
-  font-size: 20px;
-  padding: 6px;
-  user-select: none;
-}
-
-#message-input {
-  flex: 1;
-  resize: none;
-  min-height: 40px;
-  max-height: 200px;
-  padding: 9px 12px;
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  background: var(--bg);
-  field-sizing: content; /* grow as you type */
-}
-
-#send {
-  padding: 9px 16px;
-  border: none;
-  border-radius: 10px;
-  background: var(--user-bubble);
-  color: var(--user-text);
-  cursor: pointer;
-}
-#send:disabled { opacity: 0.5; cursor: default; }
-
-.attachment-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  margin-bottom: 8px;
-  padding: 4px 6px 4px 10px;
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  font-size: 13px;
-}
-/* Without this, display: inline-flex above would override the "hidden" attribute. */
-.attachment-chip[hidden] { display: none; }
-.attachment-chip button {
-  border: none;
+.source-head {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 0;
+  border: 0;
   background: none;
-  cursor: pointer;
-  font-size: 16px;
-  line-height: 1;
+  text-align: left;
+}
+.source-head svg { flex: none; color: var(--thread-ink); }
+.source-head > div { min-width: 0; }
+.source-name { display: block; font: 500 14px/1.3 var(--sans); overflow-wrap: anywhere; }
+.source-meta { display: block; font: 400 12px/1.4 var(--sans); color: var(--ink3); }
+
+.source-rows { display: flex; flex-direction: column; gap: 8px; }
+.source-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  padding: 0;
+  border: 0;
+  background: none;
+  text-align: left;
+  font: 400 13px/1.45 var(--sans);
+  color: var(--ink2);
+}
+.source-row:hover { color: var(--ink); }
+.source-row-label { padding-top: 1px; }
+
+.help-box {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: var(--chip);
+  font: 400 12.5px/1.5 var(--sans);
+  color: var(--ink2);
+}
+.help-title { font: 600 12px var(--sans); color: var(--ink); }
+
+/* ==========================================================================
+   Lines between citations and sources (drawn by lines.js)
+   ========================================================================== */
+.lines-overlay {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  pointer-events: none;
+  z-index: 10;
+}
+.line, .line-halo { fill: none; stroke-linecap: round; }
+.line { stroke: var(--thread); stroke-width: 2; }
+.line-halo { stroke: var(--bg); stroke-width: 6; opacity: 0.85; }
+.line-ring { fill: none; stroke: var(--thread); stroke-width: 1.5; }
+.line-dot { fill: var(--thread); }
+.draw-in { stroke-dasharray: 1; animation: tl-draw 0.45s var(--ease) both; }
+
+/* ==========================================================================
+   Document viewer (pop-up)
+   ========================================================================== */
+.file-viewer {
+  width: min(760px, 90vw);
+  max-height: 84vh;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--raised);
+  color: var(--ink);
+  box-shadow: var(--shadow-composer);
+}
+.file-viewer[open] { display: flex; flex-direction: column; }
+.file-viewer::backdrop { background: rgb(10 14 20 / 0.45); }
+.file-viewer header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  padding: 18px 16px 14px 24px;
+  border-bottom: 1px solid var(--line);
+}
+.file-viewer h2 { margin: 0; font: 600 16px/1.3 var(--sans); overflow-wrap: anywhere; }
+.file-viewer-note { margin: 3px 0 0; font-size: 12px; color: var(--ink3); }
+.file-viewer-text {
+  overflow: auto;
+  padding: 20px 28px 28px;
+  white-space: pre-wrap;
+  font: 400 14px/1.7 var(--sans);
+  color: var(--ink2);
+}
+.file-viewer-text mark {
+  padding: 3px 0;
+  border-radius: 4px;
+  background: var(--thread-soft);
+  color: var(--ink);
+  box-shadow: -3px 0 0 var(--thread);
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+}
+.page-break {
+  display: block;
+  margin: 18px 0 10px;
+  padding-top: 10px;
+  border-top: 1px dashed var(--line);
+  font: 500 11px var(--mono);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink3);
+}
+
+/* ==========================================================================
+   Animations (from the design file)
+   ========================================================================== */
+@keyframes tl-draw { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
+@keyframes tl-travel { from { top: -90px; } to { top: 100%; } }
+@keyframes tl-breathe {
+  0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--thread) 50%, transparent); }
+  60% { box-shadow: 0 0 0 7px color-mix(in srgb, var(--thread) 0%, transparent); }
+}
+@keyframes tl-dash { to { stroke-dashoffset: -16; } }
+@keyframes tl-blink { 50% { opacity: 0; } }
+
+/* If you've asked your Mac to reduce motion, nothing animates. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
 }

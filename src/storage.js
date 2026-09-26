@@ -29,8 +29,19 @@ export async function initStorage() {
 // A conversation looks like:
 // {
 //   id, title, createdAt, updatedAt,
-//   messages: [ { role: "user" | "assistant", text, attachment?: { id, name, addedAt } } ]
+//   model,                          ← which AI model answers (an id from MODELS in model.js)
+//   messages: [
+//     { role: "event", time, attachments: [ { id, name, type, pages, addedAt } ] }  ← "documents added"
+//     { role: "user", text, time }
+//     { role: "assistant", text, time, model, citations: { "3": { docId, index } } }  ← see passages.js
+//   ]
 // }
+// (Chats from before the redesign kept one file per user message as `attachment`.)
+
+/** Every document attached anywhere in a conversation, oldest first. */
+export function documentsIn(conversation) {
+  return conversation.messages.flatMap((msg) => msg.attachments ?? (msg.attachment ? [msg.attachment] : []));
+}
 
 // Pass { keepTimestamp: true } for small edits like renaming, so the chat
 // doesn't jump to the top of the list as if it had new messages.
@@ -47,10 +58,8 @@ export async function loadConversation(id) {
 
 /** Permanently delete a conversation and every document attached in it. */
 export async function deleteConversation(conversation) {
-  for (const msg of conversation.messages) {
-    if (msg.attachment) {
-      await fs.remove(`documents/${msg.attachment.id}`, { ...inAppData, recursive: true });
-    }
+  for (const doc of documentsIn(conversation)) {
+    await fs.remove(`documents/${doc.id}`, { ...inAppData, recursive: true });
   }
   await fs.remove(`conversations/${conversation.id}.json`, inAppData);
 }
@@ -72,10 +81,10 @@ export async function listConversations() {
 /**
  * Save an attached file and its extracted text.
  * @param {File} file
- * @param {string} text  The text extractText() pulled out of it.
- * @returns {Promise<{id: string, name: string, addedAt: string}>}  A small reference to store in a message.
+ * @param {{text: string, type: string, pages: number | null}} extracted  What extractText() returned.
+ * @returns {Promise<{id, name, type, pages, addedAt}>}  A small reference to store in a message.
  */
-export async function saveDocument(file, text) {
+export async function saveDocument(file, { text, type, pages }) {
   const id = newId();
   const folder = `documents/${id}`;
   const safeName = file.name.replace(/[\/\\:]/g, "_");
@@ -84,7 +93,7 @@ export async function saveDocument(file, text) {
   await fs.writeFile(`${folder}/${safeName}`, new Uint8Array(await file.arrayBuffer()), inAppData);
   await fs.writeTextFile(`${folder}/text.txt`, text, inAppData);
 
-  return { id, name: file.name, addedAt: new Date().toISOString() };
+  return { id, name: file.name, type, pages, addedAt: new Date().toISOString() };
 }
 
 export async function loadDocumentText(id) {

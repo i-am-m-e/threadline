@@ -1,12 +1,23 @@
 // model.js — the ONE place in the app that talks to an AI model.
 //
 // Nothing else in the app knows (or cares) that we use Ollama. The rest of
-// the app only calls getModelResponse(messages, onProgress) and gets back a string.
-// To switch to a cloud API later, rewrite the inside of this function and
-// keep its inputs and output the same.
+// the app only calls getModelResponse(messages, { model, onProgress }) and gets
+// back a string. To switch to a cloud API later, rewrite the inside of this
+// file (including the MODELS list) and keep the function's inputs and output the same.
 
 const OLLAMA_URL = "http://localhost:11434/api/chat";
-const MODEL_NAME = "llama3.2";
+
+// The models you can pick from in the app. `id` is the name Ollama knows it by.
+export const MODELS = [
+  { id: "command-r", label: "Command R" },
+  { id: "qwen3:8b", label: "Qwen3 8B" },
+];
+export const DEFAULT_MODEL = "command-r";
+
+/** The model to use for a saved choice: falls back to the default if it's missing or no longer offered. */
+export function resolveModel(id) {
+  return MODELS.some((m) => m.id === id) ? id : DEFAULT_MODEL;
+}
 
 /**
  * Send a conversation to the AI and get its reply.
@@ -14,20 +25,22 @@ const MODEL_NAME = "llama3.2";
  * @param {Array<{role: "user" | "assistant" | "system", content: string}>} messages
  *        The conversation so far, oldest first. The last one is usually the
  *        user's newest message.
- * @param {(textSoFar: string) => void} [onProgress]
- *        Optional. Called repeatedly while the reply is being written, each time
+ * @param {object} [options]
+ * @param {string} [options.model]  Which model answers (an `id` from MODELS). Defaults to DEFAULT_MODEL.
+ * @param {(textSoFar: string) => void} [options.onProgress]
+ *        Called repeatedly while the reply is being written, each time
  *        with all of the reply received so far.
  * @returns {Promise<string>} The AI's complete reply text.
  * @throws {Error} With a human-readable message if something goes wrong.
  */
-export async function getModelResponse(messages, onProgress) {
+export async function getModelResponse(messages, { model = DEFAULT_MODEL, onProgress } = {}) {
   let response;
   try {
     response = await fetch(OLLAMA_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        model: MODEL_NAME,
+        model: model,
         messages: messages,
         stream: true, // send the reply in small pieces as it's written
         // How much text (in "tokens", roughly ¾ of a word each) the model can
@@ -40,6 +53,9 @@ export async function getModelResponse(messages, onProgress) {
     throw new Error("Couldn't reach Ollama. Is it running? (Try opening the Ollama app.)");
   }
 
+  if (response.status === 404) {
+    throw new Error(`The model "${model}" isn't installed in Ollama. In Terminal, run: ollama pull ${model}`);
+  }
   if (!response.ok) {
     const details = await response.text();
     throw new Error(`Ollama returned an error (${response.status}): ${details}`);
@@ -49,6 +65,8 @@ export async function getModelResponse(messages, onProgress) {
   //   {"message": {"role": "assistant", "content": "Hel"}, "done": false}
   //   {"message": {"role": "assistant", "content": "lo!"}, "done": false}
   // We read the lines as they arrive and add each piece to the full reply.
+  // (Thinking models like qwen3 first send their reasoning in a separate
+  // "thinking" field; we skip that and only keep the answer in "content".)
   const reader = response.body.getReader();
   const decoder = new TextDecoder();
   let unfinishedLine = ""; // a line can be split across two network chunks
