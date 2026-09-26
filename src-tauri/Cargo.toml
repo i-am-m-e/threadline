@@ -1,0 +1,13 @@
+# Rust's equivalent of package.json: lists what the native wrapper needs.
+[package]
+name = "threadline"
+version = "0.1.0"
+edition = "2021"
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+tauri-plugin-dialog = "2"   # native pop-ups like "Are you sure?"
+tauri-plugin-fs = "2"   # lets the web page read/write files (see capabilities/default.json)

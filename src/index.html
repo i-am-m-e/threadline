@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Threadline</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <!-- Left column: list of saved chats -->
+  <aside class="sidebar">
+    <button id="new-chat" class="new-chat">+ New chat</button>
+    <nav id="conversation-list"></nav>
+  </aside>
+
+  <!-- Right column: the current chat -->
+  <main class="chat">
+    <div id="messages" class="messages"></div>
+
+    <form id="composer" class="composer">
+      <div id="attachment-chip" class="attachment-chip" hidden></div>
+      <div class="composer-row">
+        <!-- The real file picker is hidden; the 📎 label opens it. -->
+        <label class="attach-button" title="Attach a .txt or .pdf file">
+          📎
+          <input id="file-input" type="file" accept=".txt,.md,.csv,.json,.log,.pdf,text/*,application/pdf" hidden />
+        </label>
+        <textarea id="message-input" rows="1" placeholder="Message Threadline…  (Shift+Enter for a new line)" autofocus></textarea>
+        <button id="send" type="submit">Send</button>
+      </div>
+    </form>
+  </main>
+
+  <!-- type="module" lets our JS files import each other -->
+  <script type="module" src="app.js"></script>
+</body>
+</html>
