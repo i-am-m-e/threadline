@@ -85,6 +85,35 @@ Links and those message-box references are saved in the thread's JSON (`links`, 
 Spreadsheets are turned into one line per row that names each column (e.g.
 `Unit: 4B; Reviews done: 9`), so a cited passage makes sense on its own.
 
+## Policy vs. practice (gap analysis)
+
+- **Source type:** every source card has a picker: **Authoritative** (what should happen: policies,
+  SOPs), **Observed** (what did happen: logs, reports, audits) or **Experiential** (what people
+  say). Threadline guesses from the file name and opening text; change it if it's wrong. Passages
+  are tagged with their source's type when sent to the AI.
+- **Find gaps** (next to the model picker) appears once a thread has at least one Authoritative and
+  one Observed source. The AI checks each requirement against what was observed and lists gaps,
+  triggers, and affected roles, citing both sides.
+- **Checks on every gap answer**, worked out in code each time it's shown (so relabelling a source or
+  adding a rule updates old answers):
+  - a claim citing a requirement but no Observed evidence gets an **Unsupported** badge;
+  - claims matching a house rule get its classification as a badge;
+  - a line counts the Observed and Authoritative passages cited.
+- **Domain** (the picker beside the model) chooses which house rules and terms apply to the thread.
+- **House rules** (`domain_rules.json` in the data folder; edit via the domain picker → "Edit house
+  rules…", or **Make a rule** on any finding): terms are added to the AI's instructions, and each
+  rule ("when the evidence mentions … → classify as …") is matched *in code* against a finding and
+  the log entries it cites (at least 2 words and 40% of the rule's words). The AI alone ignored rules
+  in testing; the code match doesn't depend on it.
+
+Try it with the sample packs in `samples/`: `HC_*` (urgent care) and `OG_*` (steam LOTO).
+
+## When you add files
+
+Threadline first gives a quick summary of each new file and a short overview of how it connects to
+the thread's other documents (with citations) and to your other threads that share its topics
+(by shared words). If you typed a question too, it's answered right after.
+
 ## Choosing a model
 
 The picker next to **Attach** sets which model answers in the current thread. The choice is
@@ -121,6 +150,7 @@ Only `src/model.js` changes (including its `MODELS` list). Keep the same shape:
 `~/Library/Application Support/com.threadline.desktop/`
 
 - `conversations/<id>.json` — one readable JSON file per thread
+- `domain_rules.json` — house rules and terms per domain
 - `documents/<id>/` — the original attached file plus `text.txt` (its extracted text; PDF pages are separated by a form-feed character)
 
 Delete that folder to start fresh.

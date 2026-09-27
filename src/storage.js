@@ -103,6 +103,44 @@ export async function saveDocument(file, { text, type, pages, pageUnit }) {
   return ref;
 }
 
+// ---------- House rules (domain_rules.json) ----------
+// Terms and rules per domain (Healthcare, Energy, …), shared by all threads.
+// Shape: { "Healthcare": { acronyms: { CTAS: "…" }, user_overrides: [ { pattern, action, weight } ] } }
+// See formatRulePack and matchHouseRules in passages.js for how they're used.
+
+const STARTER_RULES = {
+  Healthcare: {
+    acronyms: { CTAS: "Canadian Triage and Acuity Scale", CAM: "Confusion Assessment Method" },
+    user_overrides: [
+      {
+        pattern: "Resuscitation in progress overrides standard waiting room walk-through",
+        action: "Classify as Systemic Capacity Conflict rather than Staff Non-Compliance",
+        weight: 1.0,
+      },
+    ],
+  },
+  Energy: {
+    acronyms: { LOTO: "Lock-Out / Tag-Out", SAGD: "Steam-Assisted Gravity Drainage" },
+    user_overrides: [
+      { pattern: "Radio handovers during severe weather", action: "Flag as Weather-Induced SOP Bypass", weight: 1.0 },
+    ],
+  },
+};
+
+/** Load the house rules, creating the file with starter examples the first time. */
+export async function loadDomainRules() {
+  try {
+    return JSON.parse(await fs.readTextFile("domain_rules.json", inAppData));
+  } catch {
+    await saveDomainRules(STARTER_RULES);
+    return structuredClone(STARTER_RULES);
+  }
+}
+
+export async function saveDomainRules(rules) {
+  await fs.writeTextFile("domain_rules.json", JSON.stringify(rules, null, 2), inAppData);
+}
+
 /** Permanently delete one document's folder (the original file and its text). */
 export async function deleteDocument(id) {
   await fs.remove(`documents/${id}`, { ...inAppData, recursive: true });

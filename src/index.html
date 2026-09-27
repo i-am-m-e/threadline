@@ -94,6 +94,11 @@
               </label>
               <!-- Which AI model answers in this thread (options come from MODELS in model.js) -->
               <select id="model-select" class="model-select" title="Which model answers in this thread"></select>
+              <!-- Which domain's house rules and terms apply to this thread (from domain_rules.json) -->
+              <select id="domain-select" class="model-select" title="Domain: which house rules apply"></select>
+              <!-- Shown once the thread has an Authoritative and an Observed source -->
+              <button id="find-gaps" class="gaps-button" type="button" hidden
+                title="Compare what the policies require with what the logs show">Find gaps</button>
               <span id="composer-hint" class="composer-hint"></span>
               <button id="send" class="send-button" type="submit" aria-label="Send"></button>
             </div>
@@ -137,6 +142,47 @@
       </section>
     </div>
   </div>
+
+  <!-- House rules: terms and rules per domain, saved in domain_rules.json -->
+  <dialog id="rules-dialog" class="file-viewer rules-dialog">
+    <header>
+      <div>
+        <h2>House rules</h2>
+        <p class="file-viewer-note">
+          Terms and rules for a domain. They're added to the AI's instructions for threads in that
+          domain, and each rule is also checked in code against the evidence a gap cites.
+        </p>
+      </div>
+      <button id="rules-close" class="icon-button" title="Close"></button>
+    </header>
+    <div class="rules-body">
+      <div class="rules-row">
+        <label>Domain <select id="rules-domain" class="model-select"></select></label>
+        <input id="rules-new-domain" class="rules-input" placeholder="New domain, e.g. Aviation" />
+        <button id="rules-add-domain" class="text-button" type="button">Add domain</button>
+      </div>
+
+      <h3>Terms</h3>
+      <div id="rules-terms" class="rules-list"></div>
+      <div class="rules-row">
+        <input id="rules-term-short" class="rules-input rules-short" placeholder="CTAS" />
+        <input id="rules-term-long" class="rules-input" placeholder="Canadian Triage and Acuity Scale" />
+        <button id="rules-add-term" class="text-button" type="button">Add term</button>
+      </div>
+
+      <h3>Rules</h3>
+      <div id="rules-list" class="rules-list"></div>
+      <div class="rules-add">
+        <label>When the evidence mentions
+          <input id="rules-pattern" class="rules-input" placeholder="Radio handovers during severe weather" />
+        </label>
+        <label>Then
+          <input id="rules-action" class="rules-input" placeholder="Flag as Weather-Induced SOP Bypass" />
+        </label>
+        <button id="rules-add-rule" class="gaps-button" type="button">Add rule</button>
+      </div>
+    </div>
+  </dialog>
 
   <!-- Short messages like "Exported to …" -->
   <div id="toast" class="toast" role="status" hidden></div>

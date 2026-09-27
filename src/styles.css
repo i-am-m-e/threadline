@@ -1412,3 +1412,112 @@ body.is-dragging, body.is-dragging * { cursor: grabbing !important; user-select:
 .sources-heading { flex-wrap: wrap; row-gap: 2px; }
 .sources-heading .text-button { margin-left: auto; }
 .sources-heading .sources-summary { order: 3; flex-basis: 100%; margin-left: 0; }
+
+/* ==========================================================================
+   Gap analysis: Find gaps, source types, claim checks, house rules
+   ========================================================================== */
+.gaps-button {
+  flex: none;
+  padding: 5px 11px;
+  border: 1px solid var(--accent);
+  border-radius: 9px;
+  background: var(--accent-soft);
+  color: var(--accent-ink);
+  font: 500 12.5px var(--sans);
+}
+.gaps-button:hover { background: var(--accent); color: var(--on-accent); }
+.gaps-button:disabled { opacity: 0.45; cursor: default; }
+
+/* "Source type" on each source card */
+.trust-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font: 400 12px var(--sans);
+  color: var(--ink3);
+}
+.trust-select {
+  appearance: none;
+  -webkit-appearance: none;
+  padding: 2px 10px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--bg);
+  color: var(--ink2);
+  font: 500 12px var(--sans);
+  cursor: pointer;
+}
+.trust-select[data-label="Authoritative"] { border-color: var(--accent); color: var(--accent-ink); background: var(--accent-soft); }
+.trust-select[data-label="Observed"] { border-color: var(--thread); color: var(--thread-ink); background: var(--thread-soft); }
+.trust-select[data-label="Experiential"] { border-color: var(--ink3); color: var(--ink); }
+
+/* Badges on the claims of a gap answer */
+.claim-badges { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 5px; }
+.claim-badge {
+  padding: 1px 9px;
+  border-radius: 999px;
+  font: 500 11.5px/1.6 var(--sans);
+}
+.badge-warn {
+  background: color-mix(in srgb, var(--error) 12%, transparent);
+  color: var(--error);
+  border: 1px solid color-mix(in srgb, var(--error) 35%, transparent);
+}
+.badge-rule {
+  background: var(--thread-soft);
+  color: var(--thread-ink);
+  border: 1px solid color-mix(in srgb, var(--thread) 40%, transparent);
+}
+.claim-action {
+  padding: 1px 6px;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  color: var(--accent);
+  font: 500 11.5px/1.6 var(--sans);
+}
+.claim-action:hover { background: var(--hover); }
+.formatted .is-unsupported { opacity: 0.75; }
+.gap-evidence {
+  font: 400 11.5px var(--mono);
+  color: var(--ink3);
+}
+
+/* The House rules window */
+.rules-dialog { width: min(640px, 92vw); }
+.rules-body {
+  overflow: auto;
+  padding: 16px 24px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.rules-body h3 { margin: 10px 0 0; font: 600 13px var(--sans); }
+.rules-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 13px; color: var(--ink2); }
+.rules-row label { display: flex; align-items: center; gap: 8px; }
+.rules-input {
+  flex: 1;
+  min-width: 120px;
+  padding: 6px 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--ink);
+  font: 400 13px var(--sans);
+}
+.rules-short { flex: 0 0 90px; min-width: 0; }
+.rules-list { display: flex; flex-direction: column; gap: 4px; }
+.rules-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 6px 6px 10px;
+  border-radius: 8px;
+  background: var(--chip);
+  font-size: 13px;
+  color: var(--ink2);
+}
+.rules-item > span { flex: 1; }
+.rules-add { display: flex; flex-direction: column; gap: 8px; }
+.rules-add label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--ink3); }
+.rules-add .gaps-button { align-self: flex-start; }

@@ -285,27 +285,58 @@ export function citationEvidence(reply, numbers, trustLabelOf) {
 }
 
 /**
- * Check a gap analysis claim by claim. A gap needs evidence from both sides: something
- * that happened ([Observed]) and the rule it breaks ([Authoritative]). Claims (list items or
- * paragraphs) that cite only one side are returned, so the interface can mark them
- * "unsupported" instead of presenting them as findings.
- * @returns {Array<{claim: string, missing: "Observed" | "Authoritative"}>}
+ * Check a gap analysis claim by claim. The telltale sign of an invented gap is a claim
+ * that cites a requirement ([Authoritative]) but no evidence of what happened ([Observed]).
+ * Those are returned, so the interface can mark them "unsupported".
+ * Not flagged: claims citing only [Observed] passages (triggers and risks rightly cite just
+ * the log), and "no gap was detected" statements (which rightly cite just the policy).
+ * @returns {Array<{claim: string, missing: "Observed"}>}
  */
 export function unsupportedGapClaims(reply, numbers, trustLabelOf) {
-  const claims = reply
-    .split(/\n\s*\n|\n(?=\s*(?:[-*•]|\d+[.)])\s)/)
-    .map((c) => c.trim())
-    .filter((c) => findCitations(c).length > 0 && !/^(\s*\[\d+\]\s*)+$/.test(c)); // skip bare "[2] [3]" lines
   const problems = [];
-  for (const claim of claims) {
+  for (const claim of splitClaims(reply)) {
+    if (/\bno (gap|deviation)s?\b|\bnot (detected|found)\b|\bno .{0,40}\b(detected|identified)\b/i.test(claim)) continue;
     const labels = new Set(
       findCitations(claim).flatMap((c) => c.numbers).map((n) => numbers[n] && trustLabelOf(numbers[n].docId))
     );
-    for (const side of ["Observed", "Authoritative"]) {
-      if (!labels.has(side)) problems.push({ claim, missing: side });
-    }
+    if (labels.has("Authoritative") && !labels.has("Observed")) problems.push({ claim, missing: "Observed" });
   }
   return problems;
+}
+
+/** An answer's separate claims: its list items and paragraphs that cite something. */
+export function splitClaims(reply) {
+  return reply
+    .split(/\n\s*\n|\n(?=\s*(?:[-*•]|\d+[.)])\s)/)
+    .map((c) => c.trim())
+    .filter((c) => findCitations(c).length > 0 && !/^(\s*\[\d+\]\s*)+$/.test(c)); // skip bare "[2] [3]" lines
+}
+
+/**
+ * Apply house rules in code, rather than trusting the AI to follow them.
+ * A rule matches a claim when enough of the rule's words appear in the claim plus the
+ * passages it cites: at least 2 words, and at least 40% of the rule's words.
+ * (Checking the cited passages too means a rule about "resuscitation" matches when the
+ * log entry says it, even if the AI's sentence doesn't repeat the word.)
+ *
+ * @param {Array<{pattern, action}>} rules  From formatRulePack(...).applied.
+ * @param {(n: number) => string} passageTextOf  The text of cited passage number n.
+ * @returns {Array<{claim: string, pattern: string, action: string, matched: string[]}>}
+ */
+export function matchHouseRules(reply, rules, passageTextOf) {
+  const matches = [];
+  for (const claim of splitClaims(reply)) {
+    const cited = findCitations(claim).flatMap((c) => c.numbers).map(passageTextOf).join(" ");
+    const present = new Set(words(`${stripCitations(claim)} ${cited}`));
+    for (const rule of rules) {
+      const ruleWords = [...new Set(words(rule.pattern))];
+      const matched = ruleWords.filter((w) => present.has(w));
+      if (matched.length >= 2 && matched.length / ruleWords.length >= 0.4) {
+        matches.push({ claim, pattern: rule.pattern, action: rule.action, matched });
+      }
+    }
+  }
+  return matches;
 }
 
 // ---------- Finding the passages that match a question ----------

@@ -14,7 +14,8 @@ import * as storage from "./storage.js";
 import { documentsIn } from "./storage.js";
 import {
   splitIntoPassages, passageLabel, passagePlace, buildSourcesPrompt, findCitations, replaceCitations, stripCitations,
-  CITE_REMINDER,
+  CITE_REMINDER, TRUST_LABELS, guessTrustLabel, formatRulePack, matchHouseRules, unsupportedGapClaims,
+  citationEvidence, words,
 } from "./passages.js";
 import { drawLines, styleFor, swatch, colorOf } from "./lines.js";
 import { icons, logo } from "./icons.js";
@@ -37,6 +38,7 @@ const el = {
   scroller: $("scroller"), thread: $("thread"), messages: $("messages"),
   composer: $("composer"), composerRefs: $("composer-refs"), pending: $("pending"), input: $("message-input"),
   fileInput: $("file-input"), hint: $("composer-hint"), send: $("send"), modelSelect: $("model-select"),
+  domainSelect: $("domain-select"), findGaps: $("find-gaps"), rulesDialog: $("rules-dialog"),
   sources: $("sources"), sourcesSummary: $("sources-summary"), sourceCards: $("source-cards"),
   review: $("review"), reviewTabs: $("review-tabs"), reviewScroll: $("review-scroll"), reviewPage: $("review-page"),
   reviewIndicator: $("review-page-indicator"), threadPicker: $("thread-picker"),
@@ -60,6 +62,7 @@ let mode = readSetting("mode", "standard"); // "standard" | "focus" | "review"
 let drag = null;          // while dragging a dot: { from: linkId, to: {x, y} }
 let review = { docId: null, key: null, anchor: null }; // what Review mode is showing
 const docs = {};          // document id -> { text, passages } (loaded from disk once)
+let domainRules = {};     // house rules per domain, from domain_rules.json
 let selectingThreads = false;       // "Select" mode in the sidebar
 const selectedThreads = new Set();
 let selectingSources = false;       // "Select" mode in the Sources panel
@@ -79,6 +82,7 @@ async function start() {
   el.send.innerHTML = icons.arrowUp(16);
   el.toggleSources.innerHTML = icons.panelRight(17);
   $("file-viewer-close").innerHTML = icons.x(18);
+  $("rules-close").innerHTML = icons.x(18);
   document.querySelectorAll(".export-button").forEach((b) => {
     b.innerHTML = icons.download(16);
     b.addEventListener("click", exportThread);
@@ -87,6 +91,8 @@ async function start() {
   document.body.dataset.mode = mode;
 
   await storage.initStorage();
+  domainRules = await storage.loadDomainRules();
+  renderDomainOptions();
   const saved = await storage.listConversations();
   await showConversation(saved[0] ?? makeNewThread());
 }
@@ -141,35 +147,94 @@ async function send() {
   const time = new Date().toISOString();
 
   // 1. Attached files become a "documents added" event on the thread.
+  const added = [];
   if (pending.length > 0) {
-    const attachments = [];
     for (const item of pending) {
       const ref = await storage.saveDocument(item.file, item.extracted);
+      // A first guess at what kind of source this is; you can change it on its card.
+      ref.trustLabel = guessTrustLabel(ref.name, item.extracted.text);
       docs[ref.id] = { text: item.extracted.text, passages: splitIntoPassages(item.extracted.text) };
-      attachments.push(ref);
+      added.push(ref);
     }
-    conversation.messages.push({ role: "event", time, attachments });
+    conversation.messages.push({ role: "event", time, attachments: added });
     pending = [];
   }
+  if (isUntitled(conversation)) conversation.title = (text || added[0].name).slice(0, 60);
+  el.input.value = "";
+  await storage.saveConversation(conversation);
 
-  // 2. The question (if any), with any sources you dropped on the message box.
+  // 2. New files get a quick summary and an overview of how they connect to everything else.
+  if (added.length > 0) await reviewNewDocuments(added);
+
+  // 3. Then the question (if any), with any sources you dropped on the message box.
   if (text) {
-    const message = { role: "user", text, time };
+    const message = { role: "user", text, time: new Date().toISOString() };
     if (conversation.composerRefs.length > 0) {
       message.refs = [...conversation.composerRefs];
       message.docIds = message.refs; // the AI only sees these documents for this question
     }
     conversation.messages.push(message);
     conversation.composerRefs = [];
+    await storage.saveConversation(conversation);
+    await askModel();
   }
-  if (isUntitled(conversation)) conversation.title = (text || documentsIn(conversation)[0].name).slice(0, 60);
+}
 
-  el.input.value = "";
+// When files are added: summarize each one, then say how they connect to the thread's
+// other documents (with citations) and to your other threads that share their topics.
+async function reviewNewDocuments(added) {
+  const names = added.map((d) => `"${d.name}"`).join(", ");
+  const others = documentsIn(conversation).filter((d) => !added.includes(d));
+  const related = await relatedThreads(added);
+
+  let prompt = `I just added ${names}.\n\nFirst, summarize each new document in one or two sentences, citing it.`;
+  if (others.length > 0) {
+    prompt +=
+      "\n\nThen give a short, high-level overview of how the new documents connect to the other documents " +
+      "in this thread: where they agree, add detail, or conflict. Cite passages from both.";
+  }
+  if (related.length > 0) {
+    prompt +=
+      "\n\nFinally, say briefly which of my other threads below the new documents relate to, and why. " +
+      "Refer to them by their title in quotes (their documents aren't included here, so don't cite them).\n\n" +
+      "My other threads:\n" +
+      related.map((r) => `- "${r.title}"${r.docs ? ` (documents: ${r.docs})` : ""}${r.question ? `; I asked: "${r.question}"` : ""}`).join("\n");
+  }
+  prompt += "\n\nKeep the whole overview brief.";
+
+  conversation.messages.push({
+    role: "user", kind: "intake", time: new Date().toISOString(),
+    text: `Summary of ${names}${others.length || related.length ? " and how it connects" : ""}`,
+    prompt,
+    query: added.map((d) => (docs[d.id]?.text ?? "").slice(0, 800)).join(" "),
+    // Each new document's opening passages always come along.
+    mustInclude: added.flatMap((d) => (docs[d.id]?.passages ?? []).slice(0, 3).map((p) => `${d.id}#${p.index}`)),
+  });
   await storage.saveConversation(conversation);
-
-  // Files on their own just join the thread; the AI answers once you ask something.
-  if (!text) return render();
   await askModel();
+}
+
+// Your other threads that share topics with the new documents (by shared words in their
+// titles, document names and questions), best first. Only the top few are mentioned.
+async function relatedThreads(added) {
+  const newWords = new Set(added.flatMap((d) => words((docs[d.id]?.text ?? "").slice(0, 5000))).filter((w) => w.length > 3));
+  const all = await storage.listConversations();
+  return all
+    .filter((c) => c.id !== conversation.id && c.messages.length > 0)
+    .map((c) => {
+      const docNames = documentsIn(c).map((d) => d.name);
+      const questions = c.messages.filter((m) => m.role === "user" && m.text && !m.kind).map((m) => m.text);
+      const theirs = new Set(words(`${c.title} ${docNames.join(" ")} ${questions.join(" ")}`));
+      return {
+        title: c.title,
+        docs: docNames.join(", "),
+        question: (questions[0] ?? "").slice(0, 120),
+        score: [...theirs].filter((w) => newWords.has(w)).length,
+      };
+    })
+    .filter((r) => r.score >= 2)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 5);
 }
 
 // `modelOverride` is for tasks that use a set model, like link reviews.
@@ -191,9 +256,10 @@ async function askModel(modelOverride) {
         updateLiveReply();
       },
     });
-    conversation.messages.push({
-      role: "assistant", text: reply, time: new Date().toISOString(), model, citations: citationsUsed(reply, numbers),
-    });
+    const answer = { role: "assistant", text: reply, time: new Date().toISOString(), model, citations: citationsUsed(reply, numbers) };
+    // Gap analyses get checked (evidence, unsupported claims, house rules) whenever they're shown.
+    if (conversation.messages.findLast((m) => m.role === "user")?.task === "gaps") answer.gap = true;
+    conversation.messages.push(answer);
     await storage.saveConversation(conversation);
   } catch (err) {
     problem = err.message;
@@ -209,6 +275,7 @@ async function askModel(modelOverride) {
 function buildModelMessages() {
   const documents = documentsIn(conversation).map((d) => ({
     id: d.id, name: d.name, pageUnit: d.pageUnit, text: docs[d.id]?.text ?? "", passages: docs[d.id]?.passages,
+    trustLabel: d.trustLabel,
   }));
   const talk = conversation.messages.filter((m) => m.role === "user" || m.role === "assistant");
   const last = talk[talk.length - 1];
@@ -221,9 +288,11 @@ function buildModelMessages() {
   if (documents.length > 0) {
     // Passages the last two answers cited always come along, so follow-ups work.
     const recent = conversation.messages.filter((m) => m.role === "assistant").slice(-2);
-    const mustInclude = new Set(recent.flatMap((m) => citedKeys(m.text, m.citations)));
+    const mustInclude = new Set([...recent.flatMap((m) => citedKeys(m.text, m.citations)), ...(last?.mustInclude ?? [])]);
     const built = buildSourcesPrompt(documents, {
       query: last?.query ?? last?.text ?? "", budgetChars: PASSAGE_BUDGET_CHARS, onlyDocIds: only, mustInclude,
+      task: last?.task ?? "answer",
+      rulePack: formatRulePack(conversation.domain, domainRules), // this thread's domain terms and house rules
     });
     messages.push({ role: "system", content: built.prompt });
     numbers = built.numbers;
@@ -387,7 +456,7 @@ function messageRow(item, numberOf) {
 
 function messageBlock(item, numberOf) {
   const block = document.createElement("div");
-  block.className = `msg msg-${item.role}` + (item.kind === "link" ? " msg-link-request" : "");
+  block.className = `msg msg-${item.role}` + (item.kind ? " msg-link-request" : "");
   if (item.linkId) block.dataset.linkId = item.linkId;
   block.append(node(item.linkId), label(item));
 
@@ -426,6 +495,11 @@ function messageBlock(item, numberOf) {
     if (item.role === "assistant") {
       body.classList.add("formatted");
       showFormatted(body, item.text, existingCitations(item.citations), numberOf);
+      if (item.gap) {
+        block.append(body);
+        showGapChecks(block, body, item);
+        return block;
+      }
     } else {
       body.textContent = item.text; // your own words: always plain text
     }
@@ -457,6 +531,8 @@ function label(item) {
   if (item.time) div.append(textSpan(clock(item.time), "msg-time"));
   if (item.model) div.append(textSpan(modelLabel(item.model), "msg-model"));
   if (item.kind === "link") div.firstChild.textContent = "You linked";
+  if (item.kind === "gaps") div.firstChild.textContent = "Gap analysis";
+  if (item.kind === "intake") div.firstChild.textContent = "New documents";
   // One chip per source this message is linked to: "↔ MedRec_Policy_2024".
   // The link's line starts here, so you can see what it's attached to.
   if (item.linkId) {
@@ -615,6 +691,7 @@ function addNotes(row, text, citations, numberOf) {
 }
 
 // ---------- Sources panel (right column, Standard mode) ----------
+let trustPicker = null;
 function renderSources() {
   el.sources.classList.toggle("is-closed", !sourcesOpen);
   el.toggleSources.setAttribute("aria-pressed", String(sourcesOpen));
@@ -662,8 +739,9 @@ function renderSources() {
     meta.insertAdjacentHTML("afterbegin", swatch(style, 20));
     text.append(textSpan(doc.name, "source-name"), meta);
     head.append(text);
+    trustPicker = makeTrustPicker(doc);
     head.onclick = () => (selectingSources ? toggleIn(selectedSources, doc.id, renderSources) : openViewer(doc));
-    card.append(handle, head);
+    card.append(handle, head, trustPicker);
     if (selectingSources) {
       card.classList.toggle("is-selected", selectedSources.has(doc.id));
       card.append(checkMark(selectedSources.has(doc.id)));
@@ -1165,6 +1243,11 @@ function renderComposer() {
   el.send.disabled = isWaiting || stillReading;
   el.modelSelect.value = resolveModel(conversation.model);
   el.modelSelect.disabled = isWaiting; // no switching halfway through an answer
+  el.domainSelect.value = domainRules[conversation.domain] ? conversation.domain : "";
+  el.domainSelect.disabled = isWaiting;
+  const labels = new Set(documentsIn(conversation).map((d) => d.trustLabel));
+  el.findGaps.hidden = !(labels.has("Authoritative") && labels.has("Observed"));
+  el.findGaps.disabled = isWaiting || stillReading;
   el.composer.classList.toggle("has-pending", pending.length > 0);
 
   // Sources dropped on the box: "ask about these".
@@ -1507,6 +1590,239 @@ async function confirmDelete(conv) {
     renderSidebar();
   }
 }
+
+// ---------- Gaps, trust labels, domains and house rules ----------
+
+// "Find gaps": compare what the Authoritative sources require with what the Observed ones show.
+el.findGaps.addEventListener("click", async () => {
+  if (isWaiting) return;
+  const byLabel = (label) => documentsIn(conversation).filter((d) => d.trustLabel === label);
+  const list = (ds) => ds.map((d) => d.name).join(", ");
+  conversation.messages.push({
+    role: "user", kind: "gaps", task: "gaps", time: new Date().toISOString(),
+    text: `${list(byLabel("Authoritative"))} vs. ${list(byLabel("Observed"))}`,
+    prompt: "Where does practice deviate from policy? Check each requirement against what was observed.",
+    // Search the policies with the words of what was observed.
+    query: byLabel("Observed").map((d) => (docs[d.id]?.text ?? "").slice(0, 1500)).join(" "),
+  });
+  await storage.saveConversation(conversation);
+  await askModel();
+});
+
+// The checks under a gap answer, worked out fresh each time it's shown (so relabelling a
+// source or adding a house rule updates earlier answers):
+//   • claims citing only one side get an "Unsupported" badge
+//   • claims that match a house rule get its classification
+//   • a line counting the Observed and Authoritative evidence
+//   • "Make a rule" on each claim, to record how you'd classify it
+function showGapChecks(block, body, item) {
+  const citations = existingCitations(item.citations) ?? {};
+  const trustOf = (id) => docById(id)?.trustLabel;
+  const passageText = (n) => (citations[n] ? passageOf(`${citations[n].docId}#${citations[n].index}`)?.text ?? "" : "");
+  const unsupported = unsupportedGapClaims(item.text, citations, trustOf);
+  const rules = matchHouseRules(item.text, formatRulePack(conversation.domain, domainRules).applied, passageText);
+  const evidence = citationEvidence(item.text, citations, trustOf);
+
+  // Find the paragraph or list item on screen that shows a claim.
+  const plain = (s) => stripCitations(s).replace(/[*_`#>]/g, "").replace(/^\s*(?:[-*•]|\d+[.)])\s*/, "").replace(/\s+/g, " ").trim().toLowerCase();
+  const shown = (element) => {
+    const copy = element.cloneNode(true);
+    copy.querySelectorAll(".cite, .claim-badges").forEach((c) => c.remove());
+    return plain(copy.textContent);
+  };
+  const blocks = [...body.querySelectorAll("li, p")].filter((b) => !b.querySelector("li, p"));
+  const blockFor = (claim) => {
+    const key = plain(claim).slice(0, 40);
+    return blocks.find((b) => shown(b).startsWith(key)) ?? blocks.find((b) => shown(b).includes(key.slice(0, 25)));
+  };
+  const badgesOf = (b) => {
+    let row = b.querySelector(":scope > .claim-badges");
+    if (!row) {
+      row = document.createElement("span");
+      row.className = "claim-badges";
+      b.append(row);
+    }
+    return row;
+  };
+
+  const missingByClaim = new Map();
+  for (const u of unsupported) missingByClaim.set(u.claim, [...(missingByClaim.get(u.claim) ?? []), u.missing]);
+  for (const [claim, missing] of missingByClaim) {
+    const b = blockFor(claim);
+    if (!b) continue;
+    b.classList.add("is-unsupported");
+    const badge = textSpan(`Unsupported: no ${missing.join(" or ")} evidence cited`, "claim-badge badge-warn");
+    badge.title = "A gap needs both what happened (Observed) and the rule it breaks (Authoritative).";
+    badgesOf(b).append(badge);
+  }
+  for (const r of rules) {
+    const b = blockFor(r.claim);
+    if (!b) continue;
+    const badge = textSpan(r.action, "claim-badge badge-rule");
+    badge.title = `House rule (${conversation.domain}): when the evidence mentions "${r.pattern}"`;
+    badgesOf(b).append(badge);
+  }
+  // "Make a rule" on each finding (a claim citing both a requirement and a log entry);
+  // it starts from the log entry, since rules are matched against what happened.
+  for (const b of blocks) {
+    const keys = [...b.querySelectorAll(".cite[data-key]")].map((c) => c.dataset.key);
+    const labelOf = (k) => docById(docIdOf(k))?.trustLabel;
+    const observed = keys.find((k) => labelOf(k) === "Observed");
+    if (!observed || !keys.some((k) => labelOf(k) === "Authoritative")) continue;
+    const add = document.createElement("button");
+    add.type = "button";
+    add.className = "claim-action";
+    add.textContent = "Make a rule";
+    add.title = "Record how situations like this should be classified";
+    const evidenceText = (passageOf(observed)?.text ?? "").replace(/^\s*\d{1,2}:\d{2}\s*[-–—]\s*/, "");
+    add.onclick = () => openRulesDialog({ pattern: evidenceText.split(/\s+/).slice(0, 12).join(" "), fromClaim: true });
+    badgesOf(b).append(add);
+  }
+
+  const claimsWithIssues = missingByClaim.size;
+  block.append(textSpan(
+    `Evidence cited: ${plural(evidence.Observed, "Observed passage")} · ${plural(evidence.Authoritative, "Authoritative passage")}` +
+      (claimsWithIssues ? ` · ${plural(claimsWithIssues, "unsupported claim")}` : "") +
+      (rules.length ? ` · ${plural(rules.length, "house rule")} applied` : ""),
+    "gap-evidence"
+  ));
+}
+
+// The "Authoritative / Observed / Experiential" picker on a source card.
+function makeTrustPicker(doc) {
+  const row = document.createElement("label");
+  row.className = "trust-row";
+  row.append("Source type");
+  const select = document.createElement("select");
+  select.className = "trust-select";
+  select.dataset.label = doc.trustLabel ?? "";
+  select.add(new Option("Unlabelled", ""));
+  for (const [name, meaning] of Object.entries(TRUST_LABELS)) {
+    const option = new Option(name, name);
+    option.title = meaning;
+    select.add(option);
+  }
+  select.value = doc.trustLabel ?? "";
+  select.title = doc.trustLabel ? TRUST_LABELS[doc.trustLabel] : "Choose what kind of source this is";
+  select.onchange = async () => {
+    doc.trustLabel = select.value || null; // saved with the thread
+    await saveQuietly();
+    render({ keepScroll: true }); // gap checks and the Find gaps button depend on labels
+  };
+  row.append(select);
+  return row;
+}
+
+// The domain picker in the message box.
+function renderDomainOptions() {
+  el.domainSelect.innerHTML = "";
+  el.domainSelect.add(new Option("No domain", ""));
+  for (const name of Object.keys(domainRules)) el.domainSelect.add(new Option(name, name));
+  el.domainSelect.add(new Option("Edit house rules…", "__rules"));
+}
+el.domainSelect.addEventListener("change", async () => {
+  if (el.domainSelect.value === "__rules") {
+    el.domainSelect.value = conversation.domain ?? "";
+    return openRulesDialog();
+  }
+  conversation.domain = el.domainSelect.value || null;
+  await saveQuietly();
+  render({ keepScroll: true }); // house-rule badges depend on the domain
+});
+
+// ----- The House rules window -----
+let rulesDomain = null;
+let rulesFromClaim = false;
+
+function openRulesDialog({ pattern = "", fromClaim = false } = {}) {
+  rulesDomain = domainRules[conversation.domain] ? conversation.domain : Object.keys(domainRules)[0] ?? null;
+  rulesFromClaim = fromClaim;
+  renderRulesDialog();
+  $("rules-pattern").value = pattern;
+  $("rules-action").value = "";
+  el.rulesDialog.showModal();
+  (pattern ? $("rules-action") : $("rules-pattern")).focus();
+}
+
+function renderRulesDialog() {
+  const select = $("rules-domain");
+  select.innerHTML = "";
+  for (const name of Object.keys(domainRules)) select.add(new Option(name, name));
+  select.value = rulesDomain ?? "";
+  const pack = domainRules[rulesDomain] ?? { acronyms: {}, user_overrides: [] };
+
+  const terms = $("rules-terms");
+  terms.innerHTML = "";
+  for (const [short, long] of Object.entries(pack.acronyms ?? {})) {
+    terms.append(rulesRow(`${short} = ${long}`, async () => {
+      delete pack.acronyms[short];
+      await saveRules();
+    }));
+  }
+  if (!terms.children.length) terms.append(textSpan("No terms yet.", "sources-empty"));
+
+  const list = $("rules-list");
+  list.innerHTML = "";
+  (pack.user_overrides ?? []).forEach((rule, i) => {
+    list.append(rulesRow(`When the evidence mentions “${rule.pattern}” → ${rule.action}`, async () => {
+      pack.user_overrides.splice(i, 1);
+      await saveRules();
+    }));
+  });
+  if (!list.children.length) list.append(textSpan("No rules yet.", "sources-empty"));
+}
+
+function rulesRow(text, onRemove) {
+  const row = document.createElement("div");
+  row.className = "rules-item";
+  const remove = actionButton(icons.x(13), "Remove", onRemove);
+  remove.className = "chip-remove";
+  row.append(textSpan(text, ""), remove);
+  return row;
+}
+
+async function saveRules() {
+  await storage.saveDomainRules(domainRules);
+  renderRulesDialog();
+  renderDomainOptions();
+  render({ keepScroll: true }); // re-check gap answers against the new rules
+}
+
+$("rules-domain").addEventListener("change", () => {
+  rulesDomain = $("rules-domain").value;
+  renderRulesDialog();
+});
+$("rules-add-domain").addEventListener("click", async () => {
+  const name = $("rules-new-domain").value.trim().slice(0, 40);
+  if (!name || name.startsWith("__")) return;
+  domainRules[name] ??= { acronyms: {}, user_overrides: [] };
+  rulesDomain = name;
+  $("rules-new-domain").value = "";
+  await saveRules();
+});
+$("rules-add-term").addEventListener("click", async () => {
+  const short = $("rules-term-short").value.trim();
+  const long = $("rules-term-long").value.trim();
+  if (!rulesDomain || !short || !long) return;
+  (domainRules[rulesDomain].acronyms ??= {})[short] = long;
+  $("rules-term-short").value = $("rules-term-long").value = "";
+  await saveRules();
+});
+$("rules-add-rule").addEventListener("click", async () => {
+  const pattern = $("rules-pattern").value.trim();
+  const action = $("rules-action").value.trim();
+  if (!rulesDomain || !pattern || !action) return;
+  (domainRules[rulesDomain].user_overrides ??= []).push({ pattern, action, weight: 1.0 });
+  // A rule made from a finding should apply to this thread.
+  if (rulesFromClaim && !conversation.domain) {
+    conversation.domain = rulesDomain;
+    await saveQuietly();
+  }
+  $("rules-pattern").value = $("rules-action").value = "";
+  await saveRules();
+  showToast("House rule added");
+});
+$("rules-close").addEventListener("click", () => el.rulesDialog.close());
 
 // ---------- Selecting several threads or sources ----------
 function toggleIn(set, id, redraw) {
