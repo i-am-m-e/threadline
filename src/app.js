@@ -123,7 +123,8 @@ async function loadDocuments() {
     } catch {
       // The file is missing; the thread still works, it just can't show that document.
     }
-    docs[doc.id] = { text, passages: splitIntoPassages(text) };
+    // Documents attached before passage-cutting version 2 keep version 1 (see passages.js).
+    docs[doc.id] = { text, passages: splitIntoPassages(text, doc.splitVersion ?? 1) };
   }
 }
 

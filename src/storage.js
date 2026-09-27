@@ -9,6 +9,8 @@
 // Tauri gives us file access through window.__TAURI__.fs (a plain browser
 // can't write to your disk, which is why this only works inside the app window).
 
+import { CURRENT_SPLIT_VERSION } from "./passages.js";
+
 const fs = window.__TAURI__.fs;
 const inAppData = { baseDir: fs.BaseDirectory.AppData };
 
@@ -97,6 +99,7 @@ export async function saveDocument(file, { text, type, pages, pageUnit }) {
 
   const ref = { id, name: file.name, type, pages, addedAt: new Date().toISOString() };
   if (pageUnit) ref.pageUnit = pageUnit; // "page" (PDF) or "sheet" (Excel)
+  ref.splitVersion = CURRENT_SPLIT_VERSION; // which passage-cutting rules this document uses
   return ref;
 }
 

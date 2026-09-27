@@ -1,0 +1,7 @@
+SAFETY NEAR-MISS & SHIFT HANDOVER REPORT
+Date: Sept 14, 2026 | Facility: Firebag Pad 14 | Reported by: Shift B Ops Lead
+
+06:45 - Shift A to Shift B crew change brief conducted via radio due to heavy rain. Central control room log sign-off was postponed.
+08:20 - Maintenance contractor commenced work on Valve Assembly Steam Injector 4B assuming pressure bleed-off was completed during Shift A.
+08:35 - Operator noticed residual manifold pressure at 450 kPa during visual check. Secondary containment was partially unbolted without Form LOTO-B dual-signature verification.
+09:00 - Work stopped immediately. No injuries reported, but clear gap between field handoff procedure and radio shortcut during adverse weather.

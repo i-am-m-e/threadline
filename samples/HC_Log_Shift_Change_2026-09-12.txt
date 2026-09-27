@@ -1,0 +1,7 @@
+URGENT CARE SHIFT LOG - EVENING SHIFT (15:00 - 23:00)
+Date: Sept 12, 2026 | Unit: South Zone Urgent Care | Lead: RN J. Miller
+
+15:15 - Severe surge in waiting room. 28 waiting, 6 CTAS 3s exceeding 90 min wait.
+15:30 - Incoming shift walk-through omitted due to active resuscitation in Bay 2. Handoff completed verbally at central desk in under 3 minutes.
+18:45 - Patient in waiting room (CTAS 3, abdominal pain) deteriorated to CTAS 2. Re-evaluation was overdue by 75 minutes. No entry found in handoff log from day shift regarding this patient's arrival status.
+21:10 - Staffing short by 1 RN for night transition. Triage nurse covering both desk and waiting room re-evaluations.

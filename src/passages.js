@@ -12,15 +12,23 @@
 const TARGET_PASSAGE_CHARS = 600; // longest a passage usually gets
 const MIN_PASSAGE_CHARS = 80;     // shorter paragraphs (like headings) join the next one
 
+// Version 2 of the cutting rules also starts a new passage at lines that begin with a
+// clause number ("2.1 …"), a timestamp ("15:30 - …") or a Markdown heading ("## …"), so
+// each policy clause and each log entry can be cited on its own. Documents attached
+// before version 2 keep version 1, so the citations saved in old answers still line up.
+export const CURRENT_SPLIT_VERSION = 2;
+const STRUCTURE_LINE = /\n(?=\s*(?:\d+(?:\.\d+)+\s|\d{1,2}:\d{2}\s*[-–—]|#{1,6}\s))/g;
+
 /**
  * Cut a document's text into passages.
  * PDF text has a "\f" (form feed) between pages, so we can say which page a passage is on.
  *
  * @param {string} text
+ * @param {number} [version]  Which cutting rules to use (see CURRENT_SPLIT_VERSION).
  * @returns {Array<{index: number, page: number | null, start: number, end: number, text: string}>}
  *          start/end are character positions in `text`, used to highlight the passage later.
  */
-export function splitIntoPassages(text) {
+export function splitIntoPassages(text, version = CURRENT_SPLIT_VERSION) {
   const passages = [];
   const pageTexts = text.split("\f");
   const hasPages = pageTexts.length > 1;
@@ -31,6 +39,8 @@ export function splitIntoPassages(text) {
     // number, which helps small models cite the right one) or at sentence ends.
     const endsOf = (pattern) => [...pageText.matchAll(pattern)].map((m) => m.index + m[0].length);
     const paragraphCuts = endsOf(/\n\s*\n/g);
+    if (version >= 2) paragraphCuts.push(...endsOf(STRUCTURE_LINE));
+    paragraphCuts.sort((a, b) => a - b);
     const sentenceCuts = endsOf(/[.!?]["')\]]*\s+/g);
 
     let start = 0;
@@ -95,10 +105,17 @@ export function passageLabel(passage, pageUnit = "page") {
  * @param {number} [options.budgetChars]  Roughly how much passage text to send.
  * @param {Set<string> | null} [options.onlyDocIds]  Only show these documents (e.g. the source you linked).
  * @param {Set<string>} [options.mustInclude]  Passage keys ("docId#index") to always send.
+ * @param {"answer" | "gaps"} [options.task]  "gaps" asks for policy-vs-practice gaps instead of a normal answer.
+ * @param {{text: string}} [options.rulePack]  Domain rules from formatRulePack(), added to the instructions.
+ * Documents may carry a `trustLabel` ("Authoritative", "Observed", "Experiential"); each of their
+ * passages is then tagged with it, so the AI knows which sources say what *should* happen and
+ * which record what *did* happen.
  * @returns {{ prompt: string, numbers: Object<string, {docId, index}>, shown: number, total: number }}
  *          `numbers` maps each passage number the AI sees to where that passage lives.
  */
-export function buildSourcesPrompt(documents, { query = "", budgetChars = 24000, onlyDocIds = null, mustInclude = new Set() } = {}) {
+export function buildSourcesPrompt(documents, {
+  query = "", budgetChars = 24000, onlyDocIds = null, mustInclude = new Set(), task = "answer", rulePack = null,
+} = {}) {
   // 1. Number every passage in the thread (documents in the order they were added).
   const all = [];
   let n = 0;
@@ -137,25 +154,158 @@ export function buildSourcesPrompt(documents, { query = "", budgetChars = 24000,
       .map((c) => {
         numbers[c.n] = { docId: doc.id, index: c.passage.index };
         const place = c.passage.page ? ` (${doc.pageUnit === "sheet" ? "sheet" : "page"} ${c.passage.page})` : "";
-        return `[${c.n}]${place} ${c.passage.text.replace(/\s+/g, " ")}`;
+        const label = TRUST_LABELS[doc.trustLabel] ? ` [${doc.trustLabel}]` : "";
+        return `[${c.n}]${label}${place} ${c.passage.text.replace(/\s+/g, " ")}`;
       });
-    if (lines.length > 0) sections.push(`Document: "${doc.name}"\n${lines.join("\n")}`);
+    const kind = TRUST_LABELS[doc.trustLabel] ? ` — ${doc.trustLabel}: ${TRUST_LABELS[doc.trustLabel]}` : "";
+    if (lines.length > 0) sections.push(`Document: "${doc.name}"${kind}\n${lines.join("\n")}`);
   }
 
   const partial = chosen.length < all.length
     ? `\n\n(These are the passages most relevant to the question, not the whole documents.)`
     : "";
 
+  const labelled = documents.some((d) => TRUST_LABELS[d.trustLabel]);
+  const trustNote = labelled
+    ? `\n\nEach passage is tagged with where its authority comes from: ` +
+      Object.entries(TRUST_LABELS).map(([name, meaning]) => `[${name}] = ${meaning}`).join("; ") +
+      `. Keep them apart: a log shows what happened, not what the rule is.`
+    : "";
+  const rules = rulePack?.text ? `\n\n${rulePack.text}` : "";
+  const intro = task === "gaps"
+    ? "You are Threadline, an organizational intelligence assistant. You compare what policies require with what actually happened."
+    : "You are Threadline, an assistant that answers questions using the user's documents.";
+  const job = task === "gaps"
+    ? `Go through every [Authoritative] passage one by one and check it against every [Observed] passage. ` +
+      `Using only the numbered passages above, identify:\n` +
+      `1. Each gap where [Observed] practice deviates from an [Authoritative] requirement. ` +
+      `Cite at least one [Observed] passage AND the [Authoritative] passage it breaks.\n` +
+      `2. What triggered each deviation (for example surge, weather, staffing), citing the passage that shows it.\n` +
+      `3. The roles affected and the downstream risk.\n` +
+      `If practice matches policy, say that no gap was detected. Do not invent requirements or events.`
+    : `Answer using the numbered passages above.`;
+
   // The rules go AFTER the documents: small models follow what they read last best.
   const prompt =
-    `You are Threadline, an assistant that answers questions using the user's documents.\n\n` +
-    sections.join("\n\n") + partial +
-    `\n\nAnswer using the numbered passages above. After each sentence that uses a passage, ` +
+    `${intro}\n\n` +
+    sections.join("\n\n") + partial + trustNote +
+    `\n\n${job} After each sentence that uses a passage, ` +
     `write that passage's number in square brackets, like [2]. Every fact from the documents ` +
     `needs a citation. Check the number matches the passage you used. ` +
-    `If the documents don't cover the question, say so plainly instead of guessing.`;
+    `If the documents don't cover the question, say so plainly instead of guessing.` +
+    rules; // house rules go last: small models follow what they read last most closely
 
   return { prompt, numbers, shown: chosen.length, total: all.length };
+}
+
+// ---------- Trust labels ----------
+// What kind of authority a source has. Labels are set per document; its passages inherit it.
+// ("Inferred" and "Suggested" from the methodology describe the AI's *output*, so they
+// aren't labels you'd put on a source document.)
+export const TRUST_LABELS = {
+  Authoritative: "what should happen (policies, SOPs, standards, regulations)",
+  Observed: "what did happen (logs, incident reports, audits, minutes)",
+  Experiential: "what people say (interviews, notes, commentary)",
+};
+
+/**
+ * Suggest a trust label from a file's name, then its opening text. Returns null if unsure,
+ * so the person can choose. It's only a starting guess: always let the person change it.
+ */
+export function guessTrustLabel(name, text = "") {
+  const patterns = [
+    ["Authoritative", /\b(policy|policies|sop|procedure|standard|guideline|regulation|protocol|bylaw|code of)\b|document id:\s*(pol|sop)/i],
+    ["Observed", /\b(log|logs|report|incident|near[- ]?miss|audit|minutes|handover|shift|census|inspection)\b/i],
+    ["Experiential", /\b(interview|transcript|notes|feedback|survey|comment|comments|debrief)\b/i],
+  ];
+  const readable = (s) => s.replace(/[_\-.]+/g, " ");
+  for (const source of [readable(name), text.slice(0, 400)]) {
+    for (const [label, pattern] of patterns) if (pattern.test(source)) return label;
+  }
+  return null;
+}
+
+// ---------- Domain rule packs (from domain_rules.json) ----------
+/**
+ * Turn one domain's saved rules into short instructions for the AI.
+ * The store looks like: { "Healthcare": { acronyms: {CTAS: "…"}, user_overrides: [{pattern, action, weight}] } }.
+ * Malformed entries are skipped, long text is trimmed, and only the `maxRules` highest-weight
+ * overrides are used (every rule costs room in the prompt).
+ *
+ * @returns {{ text: string, applied: Array<{pattern, action}> }}  `applied` lists the rules used,
+ *          so the interface can show which house rules shaped an answer.
+ */
+export function formatRulePack(domain, store, { maxRules = 12 } = {}) {
+  const pack = store?.[domain];
+  if (!domain || !pack || typeof pack !== "object") return { text: "", applied: [] };
+  const clean = (v) => String(v ?? "").replace(/\s+/g, " ").trim().slice(0, 300);
+
+  const acronyms = Object.entries(pack.acronyms ?? {})
+    .filter(([short, long]) => clean(short) && clean(long))
+    .slice(0, 40)
+    .map(([short, long]) => `- ${clean(short)} = ${clean(long)}`);
+
+  const applied = (Array.isArray(pack.user_overrides) ? pack.user_overrides : [])
+    .map((r) => ({ pattern: clean(r?.pattern), action: clean(r?.action), weight: Number(r?.weight) || 0 }))
+    .filter((r) => r.pattern && r.action && r.weight > 0)
+    .sort((a, b) => b.weight - a.weight)
+    .slice(0, maxRules);
+
+  const parts = [];
+  if (acronyms.length) parts.push(`${clean(domain)} terms:\n${acronyms.join("\n")}`);
+  if (applied.length) {
+    parts.push(
+      `House rules for ${clean(domain)}, set by the user. When a situation matches a rule, apply it and ` +
+        `use the rule's wording (for example "Classified as: …") in your answer:\n` +
+        applied.map((r) => `- When: ${r.pattern} → ${r.action}`).join("\n")
+    );
+  }
+  return { text: parts.join("\n\n"), applied: applied.map(({ pattern, action }) => ({ pattern, action })) };
+}
+
+/**
+ * Evidence you can check, instead of a confidence score: how many distinct passages of each
+ * trust label a reply cites. A gap claim that cites no Observed passage, or no Authoritative
+ * one, isn't supported by both sides.
+ * @returns {{ Authoritative: number, Observed: number, Experiential: number, Unlabelled: number }}
+ */
+export function citationEvidence(reply, numbers, trustLabelOf) {
+  const counts = { Authoritative: 0, Observed: 0, Experiential: 0, Unlabelled: 0 };
+  const seen = new Set();
+  for (const c of findCitations(reply)) {
+    for (const n of c.numbers) {
+      const ref = numbers[n];
+      if (!ref || seen.has(n)) continue;
+      seen.add(n);
+      const label = trustLabelOf(ref.docId);
+      counts[label in counts ? label : "Unlabelled"] += 1;
+    }
+  }
+  return counts;
+}
+
+/**
+ * Check a gap analysis claim by claim. A gap needs evidence from both sides: something
+ * that happened ([Observed]) and the rule it breaks ([Authoritative]). Claims (list items or
+ * paragraphs) that cite only one side are returned, so the interface can mark them
+ * "unsupported" instead of presenting them as findings.
+ * @returns {Array<{claim: string, missing: "Observed" | "Authoritative"}>}
+ */
+export function unsupportedGapClaims(reply, numbers, trustLabelOf) {
+  const claims = reply
+    .split(/\n\s*\n|\n(?=\s*(?:[-*•]|\d+[.)])\s)/)
+    .map((c) => c.trim())
+    .filter((c) => findCitations(c).length > 0 && !/^(\s*\[\d+\]\s*)+$/.test(c)); // skip bare "[2] [3]" lines
+  const problems = [];
+  for (const claim of claims) {
+    const labels = new Set(
+      findCitations(claim).flatMap((c) => c.numbers).map((n) => numbers[n] && trustLabelOf(numbers[n].docId))
+    );
+    for (const side of ["Observed", "Authoritative"]) {
+      if (!labels.has(side)) problems.push({ claim, missing: side });
+    }
+  }
+  return problems;
 }
 
 // ---------- Finding the passages that match a question ----------
