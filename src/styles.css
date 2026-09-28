@@ -1750,3 +1750,10 @@ body[data-mode="signals"] .signals {
 .trust-experiential { color: var(--trust-experiential); }
 .trust-inferred { color: var(--trust-inferred); border-style: dashed; }
 .trust-suggested { color: var(--trust-suggested); border-style: dashed; }
+
+/* ---------- Digest ---------- */
+.digest { max-width: 760px; padding: 16px 20px; border: 1px solid var(--line); border-radius: 12px; background: var(--raised); }
+.digest h4 { margin: 10px 0 4px; font: 600 13.5px var(--sans); }
+.digest-row { display: block; width: 100%; padding: 6px 8px; border: 0; border-radius: 8px; background: none; text-align: left; color: var(--ink); font-size: 13.5px; }
+.digest-row:hover { background: var(--hover); }
+#signals-digest.is-active { background: var(--accent-soft); }

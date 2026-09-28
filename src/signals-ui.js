@@ -18,6 +18,7 @@ import {
   sendForValidation, notARealPattern, requestMoreInformation, recordDecision, closeWithOutcome,
 } from "./threads.js";
 import { SIGNALS_CONFIG } from "./config.js";
+import { routeAlerts, alertVolume, buildDigest, sendLocalNotification } from "./notify.js";
 
 const $ = (id) => document.getElementById(id);
 let threads = [];          // all Signals Threads, newest first
@@ -25,6 +26,8 @@ let selectedId = null;     // the Thread shown on the right
 let role = readSetting("signalsRole", "");
 let busy = false;          // a check is running
 let form = null;           // an inline form that's open: { threadId, kind }
+let showingDigest = false; // the digest panel is open
+let alertState = {};       // flags and digest items (signals/state.json)
 let rules, schemas, evidenceLibrary, toast, discussInThread;
 
 // ---------- Setup ----------
@@ -42,6 +45,15 @@ export async function initSignals({ domainRules, showToast, discuss }) {
   }
   threads = await storage.listSignalThreads();
   selectedId = threads[0]?.id ?? null;
+  alertState = await storage.loadSignalsState();
+  $("signals-digest").onclick = async () => {
+    showingDigest = !showingDigest;
+    renderSignals();
+    if (showingDigest) {
+      alertState.lastDigestAt = new Date().toISOString(); // next digest shows what's new after this
+      await storage.saveSignalsState(alertState);
+    }
+  };
 
   const roleSelect = $("signals-role");
   roleSelect.add(new Option("Choose a role…", ""));
@@ -84,6 +96,14 @@ async function checkNow({ quiet = false } = {}) {
     });
     threads = await storage.listSignalThreads();
     const changed = [...summary.created, ...summary.updated];
+    const changes = [
+      ...summary.created.map((id) => ({ thread: threads.find((t) => t.id === id), kind: "new" })),
+      ...summary.updated.map((id) => ({ thread: threads.find((t) => t.id === id), kind: "updated" })),
+    ].filter((c) => c.thread);
+    const toNotify = routeAlerts(changes, alertState, SIGNALS_CONFIG.dailyFlagCap);
+    for (const c of changes) await storage.saveSignalThread(c.thread); // records flag/digest on the Thread
+    await storage.saveSignalsState(alertState);
+    for (const t of toNotify) await sendLocalNotification(t, current(t).steps.pattern.confidence);
     if (changed.length) selectedId = changed[0];
     const parts = [];
     if (summary.files.length === 0 && summary.errors.length === 0) parts.push("No new files in the incoming folder");
@@ -111,6 +131,10 @@ function showProgress(message, isError = false) {
 export function renderSignals() {
   $("signals-check").disabled = busy;
   $("signals-check").textContent = busy ? "Checking…" : "Check now";
+  const volume = alertVolume(alertState);
+  $("signals-volume").textContent = `This week: ${plural(volume.flags, "flag")} · ${plural(volume.digest, "digest item")}`;
+  $("signals-volume").title = "Alert volume: flags raised and digest items in the last 7 days";
+  $("signals-digest").classList.toggle("is-active", showingDigest);
   renderList();
   renderTuning();
   renderDetail();
@@ -165,6 +189,7 @@ function renderTuning() {
 function renderDetail() {
   const detail = $("signals-detail");
   detail.innerHTML = "";
+  if (showingDigest) detail.append(renderDigest());
   const thread = threads.find((t) => t.id === selectedId);
   if (!thread) {
     detail.append(text("p", "signals-empty", "Select a Thread to see its review card, manager brief and map."));
@@ -188,6 +213,37 @@ function renderDetail() {
   head.append(facts);
   detail.append(head, renderCard(thread), renderBrief(thread));
   detail.append(renderHistory(thread));
+}
+
+// ---------- Digest (the default way Threads are shared) ----------
+function renderDigest() {
+  const box = document.createElement("section");
+  box.className = "digest";
+  box.append(text("div", "card-kicker", "Digest"));
+  const groups = buildDigest(threads, alertState);
+  if (groups.length === 0) {
+    box.append(text("p", "brief-small", "Nothing new since the last digest."));
+    return box;
+  }
+  for (const { domain, items } of groups) {
+    box.append(text("h4", "", domain));
+    for (const { thread, kinds, over_cap } of items) {
+      const row = document.createElement("button");
+      row.type = "button";
+      row.className = "digest-row";
+      row.append(
+        text("span", "", `${thread.pattern_type} · ${thread.location}`),
+        text("span", "brief-small", ` ${kinds.join(" and ")} · ${current(thread).steps.pattern.confidence} confidence · ${thread.status}${over_cap ? " · over today's flag limit" : ""}`),
+      );
+      row.onclick = () => {
+        selectedId = thread.id;
+        showingDigest = false;
+        renderSignals();
+      };
+      box.append(row);
+    }
+  }
+  return box;
 }
 
 // ---------- Front-line review card (Prompt 4) ----------
