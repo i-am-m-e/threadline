@@ -34,10 +34,18 @@ export function resolveModel(id) {
  * @param {(textSoFar: string) => void} [options.onProgress]
  *        Called repeatedly while the reply is being written, each time
  *        with all of the reply received so far.
+ * @param {object} [options.format]  A JSON Schema. When given, the model can only answer with
+ *        JSON matching it (Ollama's "structured outputs"). Used by Signals, via src/llm.js.
+ * @param {number} [options.temperature]  0 = most predictable, 1 = most varied. Leave out for the model's default.
  * @returns {Promise<string>} The AI's complete reply text.
  * @throws {Error} With a human-readable message if something goes wrong.
  */
-export async function getModelResponse(messages, { model = DEFAULT_MODEL, onProgress } = {}) {
+export async function getModelResponse(messages, { model = DEFAULT_MODEL, onProgress, format, temperature } = {}) {
+  // How much text (in "tokens", roughly ¾ of a word each) the model can
+  // read at once. Big enough for a long attached document plus the chat.
+  const options = { num_ctx: 16384 };
+  if (temperature !== undefined) options.temperature = temperature;
+
   let response;
   try {
     response = await fetch(OLLAMA_URL, {
@@ -47,9 +55,8 @@ export async function getModelResponse(messages, { model = DEFAULT_MODEL, onProg
         model: model,
         messages: messages,
         stream: true, // send the reply in small pieces as it's written
-        // How much text (in "tokens", roughly ¾ of a word each) the model can
-        // read at once. Big enough for a long attached document plus the chat.
-        options: { num_ctx: 16384 },
+        options,
+        ...(format ? { format } : {}),
       }),
     });
   } catch (err) {
