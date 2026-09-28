@@ -1,0 +1,10 @@
+{
+  "synthetic": true,
+  "source_id": "HC-INC-99102",
+  "source_type": "incident_report",
+  "domain": "Healthcare",
+  "location": "Synthetic UCC A",
+  "timestamp": "2026-09-20T15:30",
+  "title": "Synthetic incident report 99102",
+  "text": "Triage reported no available monitored bed when an EMS CTAS 2 chest pain patient arrived. Reporter role: triage RN."
+}

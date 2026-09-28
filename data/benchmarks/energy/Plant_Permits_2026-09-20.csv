@@ -1,0 +1,6 @@
+source_id,source_type,domain,location,timestamp,active_permits,inspectors_on_duty,mean_inspection_wait_minutes,synthetic
+EN-PERMIT-20260920-0700,permit_log,Energy,Synthetic Site B,2026-09-20T07:00,18,2,80,true
+EN-PERMIT-20260920-0800,permit_log,Energy,Synthetic Site B,2026-09-20T08:00,18,2,100,true
+EN-PERMIT-20260920-0900,permit_log,Energy,Synthetic Site B,2026-09-20T09:00,18,2,115,true
+EN-PERMIT-20260920-1000,permit_log,Energy,Synthetic Site B,2026-09-20T10:00,18,2,130,true
+EN-PERMIT-20260920-1100,permit_log,Energy,Synthetic Site B,2026-09-20T11:00,18,2,125,true

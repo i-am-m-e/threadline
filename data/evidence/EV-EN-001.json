@@ -1,0 +1,16 @@
+{
+  "evidence_id": "EV-EN-001",
+  "domain": "Energy",
+  "title": "PLACEHOLDER: Inspector coverage during high permit volume",
+  "source_type": "Expert consensus",
+  "strength": "Low",
+  "summary": "PLACEHOLDER. Replace with a two-to-four sentence curated summary of evidence about: inspector coverage during high permit volume. This placeholder states no findings.",
+  "applies_when": [
+    "inspector covering many permits",
+    "permit backlog",
+    "long inspection wait"
+  ],
+  "citation": "PLACEHOLDER: to be replaced by founder",
+  "added_by": "founder",
+  "synthetic_placeholder": true
+}

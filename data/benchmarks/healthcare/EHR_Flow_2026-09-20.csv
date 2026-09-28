@@ -1,0 +1,6 @@
+source_id,source_type,domain,location,timestamp,bed_occupancy,room_to_physician_minutes,waiting_room_count,synthetic
+HC-FLOW-20260920-1400,emr_flow,Healthcare,Synthetic UCC A,2026-09-20T14:00,0.88,58,9,true
+HC-FLOW-20260920-1500,emr_flow,Healthcare,Synthetic UCC A,2026-09-20T15:00,0.93,76,13,true
+HC-FLOW-20260920-1600,emr_flow,Healthcare,Synthetic UCC A,2026-09-20T16:00,0.96,90,18,true
+HC-FLOW-20260920-1700,emr_flow,Healthcare,Synthetic UCC A,2026-09-20T17:00,0.95,96,16,true
+HC-FLOW-20260920-1800,emr_flow,Healthcare,Synthetic UCC A,2026-09-20T18:00,0.92,90,12,true

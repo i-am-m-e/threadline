@@ -1,0 +1,15 @@
+{
+  "evidence_id": "EV-EN-002",
+  "domain": "Energy",
+  "title": "PLACEHOLDER: Zero-energy verification before work starts",
+  "source_type": "Guideline",
+  "strength": "Low",
+  "summary": "PLACEHOLDER. Replace with a two-to-four sentence curated summary of evidence about: zero-energy verification before work starts. This placeholder states no findings.",
+  "applies_when": [
+    "work started before zero-energy verification",
+    "LOTO verification delay"
+  ],
+  "citation": "PLACEHOLDER: to be replaced by founder",
+  "added_by": "founder",
+  "synthetic_placeholder": true
+}

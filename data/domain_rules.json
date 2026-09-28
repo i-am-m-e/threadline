@@ -1,0 +1,76 @@
+{
+  "Healthcare": {
+    "acronyms": {
+      "CTAS": "Canadian Triage and Acuity Scale",
+      "ED": "Emergency Department",
+      "EHR": "Electronic Health Record",
+      "UCC": "Urgent Care Centre",
+      "CAM": "Confusion Assessment Method"
+    },
+    "stpa_control_actions": ["Patient re-evaluation", "Room allocation", "Triage escalation"],
+    "pattern_types": ["Rooming during slow physician pace"],
+    "triggers": [
+      {
+        "pattern_type": "Rooming during slow physician pace",
+        "source_type": "emr_flow",
+        "all": [
+          { "metric": "bed_occupancy", "op": ">", "value": 0.9, "label": "Bed occupancy above 90%" },
+          { "metric": "room_to_physician_minutes", "op": ">", "value": 45, "label": "Room-to-physician time above 45 minutes" }
+        ]
+      }
+    ],
+    "safety_relevant_conditions": [
+      {
+        "id": "no_monitored_bed_acute",
+        "label": "No monitored bed for a CTAS 1 or 2 arrival",
+        "text_groups": [["monitored bed"], ["no available", "no monitored", "unavailable", "none available"], ["CTAS 1", "CTAS 2"]]
+      },
+      {
+        "id": "long_wait_after_rooming",
+        "label": "Waits after rooming over 60 minutes",
+        "metric": "room_to_physician_minutes", "op": ">", "value": 60
+      }
+    ],
+    "user_overrides": [
+      {
+        "pattern": "Resuscitation in progress overrides standard waiting room walk-through",
+        "action": "Classify as Systemic Capacity Conflict rather than Staff Non-Compliance",
+        "weight": 1.0
+      }
+    ]
+  },
+  "Energy": {
+    "acronyms": {
+      "LOTO": "Lock-Out / Tag-Out",
+      "SAGD": "Steam-Assisted Gravity Drainage",
+      "SOP": "Standard Operating Procedure"
+    },
+    "stpa_control_actions": ["Zero energy verification", "Control room sign-off", "Permit issuance"],
+    "pattern_types": ["Permit issuance during inspector backlog"],
+    "triggers": [
+      {
+        "pattern_type": "Permit issuance during inspector backlog",
+        "source_type": "permit_log",
+        "all": [
+          { "metric": "permits_per_inspector", "op": ">", "value": 6, "label": "Active permits per inspector above 6" },
+          { "metric": "mean_inspection_wait_minutes", "op": ">", "value": 60, "label": "Mean inspection wait above 60 minutes" }
+        ]
+      }
+    ],
+    "safety_relevant_conditions": [
+      {
+        "id": "work_before_zero_energy",
+        "label": "Work started before zero-energy verification",
+        "text_groups": [["began", "started", "commenced"], ["before"], ["zero-energy", "zero energy"]]
+      },
+      {
+        "id": "inspector_over_six_permits",
+        "label": "Inspector covering more than 6 permits",
+        "metric": "permits_per_inspector", "op": ">", "value": 6
+      }
+    ],
+    "user_overrides": [
+      { "pattern": "Radio handovers during severe weather", "action": "Flag as Weather-Induced SOP Bypass", "weight": 1.0 }
+    ]
+  }
+}

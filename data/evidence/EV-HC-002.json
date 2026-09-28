@@ -1,0 +1,16 @@
+{
+  "evidence_id": "EV-HC-002",
+  "domain": "Healthcare",
+  "title": "PLACEHOLDER: Protecting reserve monitored beds for acute arrivals",
+  "source_type": "Guideline",
+  "strength": "Low",
+  "summary": "PLACEHOLDER. Replace with a two-to-four sentence curated summary of evidence about: protecting reserve monitored beds for acute arrivals. This placeholder states no findings.",
+  "applies_when": [
+    "no monitored bed for acute arrival",
+    "high bed occupancy",
+    "CTAS 1 or 2 arrival"
+  ],
+  "citation": "PLACEHOLDER: to be replaced by founder",
+  "added_by": "founder",
+  "synthetic_placeholder": true
+}

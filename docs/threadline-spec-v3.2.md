@@ -5,6 +5,20 @@ on 2026-09-28. Guardrails (section 2 of the brief) are repeated at the end for r
 
 In short: **Threadline notices, drafts and routes. People decide.**
 
+> **History.** v3.2 replaces the v3.0 "Master Platform & Prompting Specification", a design
+> document that was never built. v3.0 generated "dynamic heuristics" (rooming and permit caps)
+> offered for one-click application, classified behaviour with a Just Culture taxonomy
+> (system trap / at-risk / reckless), and illustrated results with figures that read like real
+> outcomes. v3.2 deliberately reverses all three: recommend, never apply; describe systems, never
+> classify individuals; no invented results. The v3.0 document is intentionally not stored in
+> this repo so those elements can't be reused by accident.
+>
+> **Implementation notes.** Signals is built as a mode inside the existing Threadline app,
+> reusing its model layer, trust labels, domain rules and citation design. The Thread map lives in
+> `src/threadMap.js` rather than `src/lines.js` (which already draws the citation lines in chat).
+> Triggers in `domain_rules.json` use a machine-checkable form: `{ metric, op, value }` conditions
+> that must `all` hold.
+
 ---
 
 ## 5. Trust labels and visual encoding

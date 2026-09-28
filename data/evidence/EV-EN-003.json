@@ -1,0 +1,16 @@
+{
+  "evidence_id": "EV-EN-003",
+  "domain": "Energy",
+  "title": "PLACEHOLDER: Pacing permit issuance to inspection capacity",
+  "source_type": "Primary study",
+  "strength": "Low",
+  "summary": "PLACEHOLDER. Replace with a two-to-four sentence curated summary of evidence about: pacing permit issuance to inspection capacity. This placeholder states no findings.",
+  "applies_when": [
+    "permits issued faster than inspections",
+    "hot-work permit volume",
+    "permit issuance"
+  ],
+  "citation": "PLACEHOLDER: to be replaced by founder",
+  "added_by": "founder",
+  "synthetic_placeholder": true
+}

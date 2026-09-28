@@ -1,0 +1,16 @@
+{
+  "evidence_id": "EV-HC-003",
+  "domain": "Healthcare",
+  "title": "PLACEHOLDER: Matching rooming pace to clinician capacity",
+  "source_type": "Primary study",
+  "strength": "Low",
+  "summary": "PLACEHOLDER. Replace with a two-to-four sentence curated summary of evidence about: matching rooming pace to clinician capacity. This placeholder states no findings.",
+  "applies_when": [
+    "rooming continues while physician pace slows",
+    "bed occupancy above 90%",
+    "room allocation"
+  ],
+  "citation": "PLACEHOLDER: to be replaced by founder",
+  "added_by": "founder",
+  "synthetic_placeholder": true
+}

@@ -1,0 +1,15 @@
+{
+  "evidence_id": "EV-EN-004",
+  "domain": "Energy",
+  "title": "PLACEHOLDER: Pre-shift coordination between contractor crews and inspectors",
+  "source_type": "Internal outcome",
+  "strength": "Low",
+  "summary": "PLACEHOLDER. Replace with a two-to-four sentence curated summary of evidence about: pre-shift coordination between contractor crews and inspectors. This placeholder states no findings.",
+  "applies_when": [
+    "contractor crew waiting for verification",
+    "handover between crews"
+  ],
+  "citation": "PLACEHOLDER: to be replaced by founder",
+  "added_by": "founder",
+  "synthetic_placeholder": true
+}

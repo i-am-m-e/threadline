@@ -1,0 +1,16 @@
+{
+  "evidence_id": "EV-HC-001",
+  "domain": "Healthcare",
+  "title": "PLACEHOLDER: Escalation huddles triggered by wait-time thresholds",
+  "source_type": "Expert consensus",
+  "strength": "Low",
+  "summary": "PLACEHOLDER. Replace with a two-to-four sentence curated summary of evidence about: escalation huddles triggered by wait-time thresholds. This placeholder states no findings.",
+  "applies_when": [
+    "room-to-physician wait above threshold",
+    "slow physician pace",
+    "waiting room surge"
+  ],
+  "citation": "PLACEHOLDER: to be replaced by founder",
+  "added_by": "founder",
+  "synthetic_placeholder": true
+}
