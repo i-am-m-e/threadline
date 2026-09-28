@@ -10,6 +10,32 @@ The visual design follows the Claude Design handoff (round 5): one continuous co
 runs through the conversation, every message and document is a node on it, and citations draw
 lines back to their sources.
 
+## Signals (system-signals monitor, v3.2)
+
+**Threadline notices, drafts and routes. People decide.** Spec: [docs/threadline-spec-v3.2.md](docs/threadline-spec-v3.2.md).
+
+The **Signals** mode watches approved operational data for patterns in flows, queues and capacity
+(never individuals):
+
+1. Drop synthetic record files (CSV/JSON) into the app's `data/incoming/` folder ("Show incoming
+   folder"), or use "Run benchmark packs", then press **Check now**. (An automatic interval can be
+   set in `src/config.js`; it's off by default.)
+2. Triggers from `domain_rules.json` are checked in code. If one fires, four prompts run (pattern →
+   system analysis → options → review card), each constrained to a JSON Schema and checked in
+   code: sources must exist, no names or behaviour labels, confidence can't exceed the evidence.
+3. A **Thread** appears with a front-line review card, a manager brief and a Thread map. A matching
+   open Thread is updated instead of duplicated. If a step fails, the file stays in `incoming/`
+   and the next Check now retries it.
+4. People act by role: a manager sends it for front-line validation; a front-line lead confirms it,
+   adds context or says it doesn't match; only then can a manager record a decision (which applies
+   nothing) and later an outcome. Threadline itself can only mark Threads Inferred or Flagged.
+5. Flags (badge + local notification) only for Medium+ confidence with a safety-relevant
+   condition, capped per day; everything else goes to the digest.
+
+The evidence library in `data/evidence/` holds **placeholders** to be replaced with curated
+summaries; recommendations relying on them are tagged "Placeholder evidence". Test results:
+[docs/test-results/2026-09-28](docs/test-results/2026-09-28/README.md).
+
 ## Modes (switch at the top right)
 
 - **Standard:** past threads on the left, the thread in the middle, Sources on the right.
@@ -45,7 +71,18 @@ npm run build      # makes Threadline.app in src-tauri/target/release/bundle/mac
 | `src/extract.js` | Turns a file into plain text (PDF via pdf.js, Word via mammoth, Excel via SheetJS) |
 | `src/storage.js` | Saves/loads threads and documents as files |
 | `src/icons.js` | The Lucide icons and Threadline mark used in the UI |
-| `src/vendor/` | Copied in as-is: pdf.js, mammoth, SheetJS, marked (Markdown → HTML), DOMPurify (strips unsafe HTML), Geist fonts |
+| `src/signals-ui.js` | Signals mode screen: toolbar, Thread list, review card, manager brief, digest |
+| `src/prompts/`, `src/schemas/` | The four Signals prompts (shared rules first) and their JSON Schemas |
+| `src/llm.js` | Runs each Signals prompt: schema check, source guard, name/behaviour scan, one retry |
+| `src/pipeline.js` | Prompt 1 → 2 → evidence selection → 3 → 4, with code checks after each |
+| `src/records.js` | Reads record files, checks triggers, time windows, safety conditions |
+| `src/monitor.js` | Check now / timer: new files, triggers, de-duplication into open Threads |
+| `src/threads.js` | Thread lifecycle: status rules and the human actions (by role) |
+| `src/notify.js` | Flags, daily cap, digest, alert volume, local notifications |
+| `src/threadMap.js` | The Thread map (Cytoscape + dagre) |
+| `src/config.js` | Signals settings: model, temperatures, monitor interval, daily flag cap |
+| `data/` | Synthetic benchmark packs, placeholder evidence, domain rules (packaged with the app) |
+| `src/vendor/` | Copied in as-is: pdf.js, mammoth, SheetJS, marked (Markdown → HTML), DOMPurify (strips unsafe HTML), Cytoscape + dagre, Geist fonts |
 | `src-tauri/` | The native Mac window wrapper (Rust, rarely needs touching) |
 
 ## How citations work
@@ -150,7 +187,8 @@ Only `src/model.js` changes (including its `MODELS` list). Keep the same shape:
 `~/Library/Application Support/com.threadline.desktop/`
 
 - `conversations/<id>.json` — one readable JSON file per thread
-- `domain_rules.json` — house rules and terms per domain
+- `domain_rules.json` — house rules, terms, triggers and safety conditions per domain
+- `signals/threads/<id>.json` — Signals Threads; `data/incoming/` and `data/processed/` — record files
 - `documents/<id>/` — the original attached file plus `text.txt` (its extracted text; PDF pages are separated by a form-feed character)
 
 Delete that folder to start fresh.
