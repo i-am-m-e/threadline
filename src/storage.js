@@ -10,9 +10,12 @@
 // can't write to your disk, which is why this only works inside the app window).
 
 import { CURRENT_SPLIT_VERSION } from "./passages.js";
+import { parseRecordFile } from "./records.js";
 
 const fs = window.__TAURI__.fs;
 const inAppData = { baseDir: fs.BaseDirectory.AppData };
+// The repo's data/ folder is packaged with the app as a read-only "resource".
+const inResources = { baseDir: fs.BaseDirectory.Resource };
 
 /** Make a unique id like "2026-09-25T19-30-12-a1b2" (sorts by time, safe as a filename). */
 export function newId() {
@@ -25,6 +28,10 @@ export function newId() {
 export async function initStorage() {
   await fs.mkdir("conversations", { ...inAppData, recursive: true });
   await fs.mkdir("documents", { ...inAppData, recursive: true });
+  // Signals: Threads, plus the watched folder and where processed files go.
+  await fs.mkdir("signals/threads", { ...inAppData, recursive: true });
+  await fs.mkdir("data/incoming", { ...inAppData, recursive: true });
+  await fs.mkdir("data/processed", { ...inAppData, recursive: true });
 }
 
 // ---------- Conversations ----------
@@ -129,16 +136,121 @@ const STARTER_RULES = {
 
 /** Load the house rules, creating the file with starter examples the first time. */
 export async function loadDomainRules() {
+  let rules;
   try {
-    return JSON.parse(await fs.readTextFile("domain_rules.json", inAppData));
+    rules = JSON.parse(await fs.readTextFile("domain_rules.json", inAppData));
   } catch {
-    await saveDomainRules(STARTER_RULES);
-    return structuredClone(STARTER_RULES);
+    rules = structuredClone(STARTER_RULES);
   }
+  // Bring in anything new from the packaged data/domain_rules.json (triggers, safety
+  // conditions, pattern types, control actions, terms). Fields you've already got,
+  // like your house rules, are left exactly as they are.
+  let seed = {};
+  try {
+    seed = JSON.parse(await fs.readTextFile("data/domain_rules.json", inResources));
+  } catch {
+    // Packaged rules not found (shouldn't happen in the built app); keep what we have.
+  }
+  for (const [domain, pack] of Object.entries(seed)) {
+    rules[domain] ??= {};
+    for (const [field, value] of Object.entries(pack)) {
+      if (field === "acronyms") rules[domain].acronyms = { ...value, ...(rules[domain].acronyms ?? {}) };
+      else if (!(field in rules[domain])) rules[domain][field] = value;
+    }
+  }
+  await saveDomainRules(rules);
+  return rules;
 }
 
 export async function saveDomainRules(rules) {
   await fs.writeTextFile("domain_rules.json", JSON.stringify(rules, null, 2), inAppData);
+}
+
+// ---------- Signals: Threads, incoming records, packaged data ----------
+
+/** Every Signals Thread, newest first. */
+export async function listSignalThreads() {
+  const threads = [];
+  for (const entry of await fs.readDir("signals/threads", inAppData)) {
+    if (entry.isFile && entry.name.endsWith(".json")) {
+      threads.push(JSON.parse(await fs.readTextFile(`signals/threads/${entry.name}`, inAppData)));
+    }
+  }
+  return threads.sort((a, b) => b.updated_at.localeCompare(a.updated_at));
+}
+
+export async function saveSignalThread(thread) {
+  await fs.writeTextFile(`signals/threads/${thread.id}.json`, JSON.stringify(thread, null, 2), inAppData);
+}
+
+// Small Signals settings and counters (e.g. which flags were raised when).
+export async function loadSignalsState() {
+  try {
+    return JSON.parse(await fs.readTextFile("signals/state.json", inAppData));
+  } catch {
+    return {};
+  }
+}
+export async function saveSignalsState(state) {
+  await fs.writeTextFile("signals/state.json", JSON.stringify(state, null, 2), inAppData);
+}
+
+/**
+ * Folder access for the monitor (see monitor.js). New record files are dropped into
+ * data/incoming/; once read, they're moved to data/processed/ so each is handled once.
+ */
+export const monitorIO = {
+  async listIncoming() {
+    const entries = await fs.readDir("data/incoming", inAppData);
+    return entries.filter((e) => e.isFile && /\.(csv|json)$/i.test(e.name)).map((e) => e.name).sort();
+  },
+  readIncoming: (name) => fs.readTextFile(`data/incoming/${name}`, inAppData),
+  async archiveIncoming(name) {
+    await fs.rename(`data/incoming/${name}`, `data/processed/${name}`, { oldPathBaseDir: fs.BaseDirectory.AppData, newPathBaseDir: fs.BaseDirectory.AppData });
+  },
+  async loadProcessedRecords() {
+    const records = [];
+    for (const entry of await fs.readDir("data/processed", inAppData)) {
+      if (!entry.isFile || !/\.(csv|json)$/i.test(entry.name)) continue;
+      try {
+        records.push(...parseRecordFile(entry.name, await fs.readTextFile(`data/processed/${entry.name}`, inAppData)));
+      } catch {
+        // A file that can't be read is skipped (it was reported when it first arrived).
+      }
+    }
+    return records;
+  },
+  loadThreads: () => listSignalThreads(),
+  saveThread: (thread) => saveSignalThread(thread),
+};
+
+/** The full path of the incoming folder (to show it in Finder). */
+export async function incomingFolderPath() {
+  const { appDataDir, join } = window.__TAURI__.path;
+  return join(await appDataDir(), "data", "incoming");
+}
+
+/** A JSON or text file from the packaged data/ folder, e.g. "data/evidence/EV-HC-001.json". */
+export const readPackaged = (path) => fs.readTextFile(path, inResources);
+
+/** Every evidence item in the packaged evidence library (data/evidence/). */
+export async function loadEvidenceLibrary() {
+  const items = [];
+  for (const entry of await fs.readDir("data/evidence", inResources)) {
+    if (entry.isFile && entry.name.endsWith(".json")) items.push(JSON.parse(await readPackaged(`data/evidence/${entry.name}`)));
+  }
+  return items;
+}
+
+/** Copy a packaged folder's record files (a benchmark pack or the test file) into incoming. */
+export async function copyPackagedToIncoming(folder) {
+  const copied = [];
+  for (const entry of await fs.readDir(folder, inResources)) {
+    if (!entry.isFile || !/\.(csv|json)$/i.test(entry.name)) continue;
+    await fs.writeTextFile(`data/incoming/${entry.name}`, await readPackaged(`${folder}/${entry.name}`), inAppData);
+    copied.push(entry.name);
+  }
+  return copied;
 }
 
 /** Permanently delete one document's folder (the original file and its text). */
