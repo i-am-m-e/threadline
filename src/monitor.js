@@ -42,13 +42,15 @@ export async function checkForSignals({ io, rules, schemas, config, evidenceLibr
       const fresh = parseRecordFile(name, await io.readIncoming(name)).filter((r) => !knownIds.has(r.source_id));
       for (const r of fresh) filesByRecord.set(r.source_id, name);
       newRecords.push(...fresh);
-      await io.archiveIncoming(name);
       summary.files.push(name);
     } catch (err) {
       summary.errors.push(`${name}: ${err.message}`);
     }
   }
   const all = [...known, ...newRecords];
+  // Files whose analysis failed stay in the incoming folder, so the next check tries again.
+  const failedFiles = new Set();
+  const keepForRetry = (files) => files.forEach((f) => failedFiles.add(f));
   const byId = new Map(all.map((r) => [r.source_id, r]));
   const threads = await io.loadThreads();
   const filesOf = (records) => [...new Set(records.map((r) => filesByRecord.get(r.source_id)).filter(Boolean))];
@@ -88,7 +90,8 @@ export async function checkForSignals({ io, rules, schemas, config, evidenceLibr
         summary.created.push(thread.id);
       }
     } catch (err) {
-      summary.errors.push(`${pattern_type} at ${location}: ${err.message}`);
+      summary.errors.push(`${pattern_type} at ${location}: ${err.message} (the file stays in the incoming folder; Check now will try again)`);
+      keepForRetry([...files, ...filesOf(qualitativeFor(newWindows, newRecords))]);
     }
   }
 
@@ -103,9 +106,16 @@ export async function checkForSignals({ io, rules, schemas, config, evidenceLibr
       await io.saveThread(updateThread(thread, result, { windows, files: filesOf(nearby), qualifiesForFlag }));
       summary.updated.push(thread.id);
     } catch (err) {
-      summary.errors.push(`${thread.id}: ${err.message}`);
+      summary.errors.push(`${thread.id}: ${err.message} (the file stays in the incoming folder; Check now will try again)`);
+      keepForRetry(filesOf(nearby));
     }
   }
+
+  // Everything handled successfully is filed away; failed files wait for the next check.
+  for (const name of summary.files) {
+    if (!failedFiles.has(name)) await io.archiveIncoming(name);
+  }
+  summary.retrying = [...failedFiles];
   return summary;
 }
 

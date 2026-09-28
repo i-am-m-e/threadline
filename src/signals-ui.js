@@ -72,19 +72,27 @@ export async function initSignals({ domainRules, showToast, discuss }) {
     renderSignals();
   };
   $("signals-check").onclick = () => checkNow();
-  $("signals-show-incoming").onclick = async () => window.__TAURI__.opener.revealItemInDir(await storage.incomingFolderPath());
-  $("signals-benchmarks").onclick = async () => {
+  // Folder buttons. Any failure shows as a message instead of failing silently.
+  const safely = (action) => async () => {
+    try {
+      await action();
+    } catch (err) {
+      showProgress(`Couldn't do that: ${err?.message ?? err}`, true);
+    }
+  };
+  $("signals-show-incoming").onclick = safely(async () => window.__TAURI__.opener.revealItemInDir(await storage.incomingFolderPath()));
+  $("signals-benchmarks").onclick = safely(async () => {
     const files = [
       ...(await storage.copyPackagedToIncoming("data/benchmarks/healthcare")),
       ...(await storage.copyPackagedToIncoming("data/benchmarks/energy")),
     ];
     toast(`Copied ${files.length} benchmark files to the incoming folder`);
     checkNow();
-  };
-  $("signals-test-file").onclick = async () => {
+  });
+  $("signals-test-file").onclick = safely(async () => {
     const files = await storage.copyPackagedToIncoming("data/test_incoming");
-    toast(`Copied ${files.join(", ")} to the incoming folder`);
-  };
+    toast(files.length ? `Copied ${files.join(", ")} to the incoming folder. Press Check now.` : "No test file found in the app's data.");
+  });
   // Optional automatic checks (config.js; 0 = manual "Check now" only).
   startMonitorTimer(SIGNALS_CONFIG.monitorIntervalMinutes, () => checkNow({ quiet: true }));
   updateBadge();

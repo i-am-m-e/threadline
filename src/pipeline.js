@@ -118,7 +118,10 @@ export async function runPipeline({ windows, records, rules, evidenceLibrary, sc
     evidenceIds: new Set(evidence.map((e) => e.evidence_id)),
     sourceIds: allIds,
     checks: (o) => [
-      ...(o.options.some((x) => x.type === "Learn more") ? [] : ['Include at least one option of type "Learn more".']),
+      ...(o.options.some((x) => x.type === "Learn more") ? [] : [
+        'Include at least one option whose "type" is exactly "Learn more": for example, track this pattern for two weeks, ' +
+        "or bring it to an existing huddle, before changing anything. Keep your other options.",
+      ]),
       ...o.options.filter((x) => !x.possible_pressure_transfer.trim()).map((x) => `Option ${x.option_id} needs a possible_pressure_transfer.`),
       ...(o.options.some((x) => x.option_id === o.recommendation.leading_option_id) ? [] : ["leading_option_id must be one of the option_ids."]),
       ...individualMonitoringProblems(o),
