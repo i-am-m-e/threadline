@@ -21,6 +21,7 @@ import { drawLines, styleFor, swatch, colorOf } from "./lines.js";
 import { icons, logo } from "./icons.js";
 import { initTheme } from "./theme.js";
 import { threadToMarkdown } from "./export.js";
+import { initSignals, renderSignals, updateBadge as updateSignalsBadge } from "./signals-ui.js";
 import { marked } from "./vendor/marked.esm.js";
 import DOMPurify from "./vendor/purify.es.mjs";
 
@@ -92,6 +93,7 @@ async function start() {
 
   await storage.initStorage();
   domainRules = await storage.loadDomainRules();
+  await initSignals({ domainRules, showToast });
   renderDomainOptions();
   const saved = await storage.listConversations();
   await showConversation(saved[0] ?? makeNewThread());
@@ -1358,14 +1360,17 @@ function renderHeader() {
   el.sourcesPill.hidden = count === 0;
   el.sourcesPill.textContent = plural(count, "source");
 
-  // The Standard / Focus / Review switch (there's one in each header).
+  // The Standard / Focus / Review / Signals switch (there's one in each header).
   for (const container of document.querySelectorAll(".mode-switch")) {
     container.innerHTML = "";
-    for (const [id, name] of [["standard", "Standard"], ["focus", "Focus"], ["review", "Review"]]) {
+    for (const [id, name] of [["standard", "Standard"], ["focus", "Focus"], ["review", "Review"], ["signals", "Signals"]]) {
       const button = document.createElement("button");
       button.type = "button";
       button.className = "mode-option";
+      button.dataset.mode = id;
       button.textContent = name;
+      // Signals shows how many Threads are flagged and waiting (set by signals-ui.js).
+      if (id === "signals") button.insertAdjacentHTML("beforeend", '<span class="mode-badge" hidden></span>');
       button.setAttribute("role", "tab");
       button.setAttribute("aria-selected", String(mode === id));
       button.onclick = () => setMode(id);
@@ -1984,10 +1989,12 @@ function showToast(text) {
 function render({ keepScroll = false } = {}) {
   renderSidebar();
   renderHeader();
+  updateSignalsBadge();
   renderThread({ keepScroll });
   renderSources();
   renderReview();
   renderComposer();
+  if (mode === "signals") renderSignals();
   scheduleLines();
 }
 

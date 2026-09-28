@@ -1521,3 +1521,178 @@ body.is-dragging, body.is-dragging * { cursor: grabbing !important; user-select:
 .rules-add { display: flex; flex-direction: column; gap: 8px; }
 .rules-add label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--ink3); }
 .rules-add .gaps-button { align-self: flex-start; }
+
+/* ==========================================================================
+   Trust labels (spec v3.2, section 5): one colour per kind of source.
+   Shape = type, colour = trust label, dashed = unconfirmed.
+   ========================================================================== */
+:root {
+  --trust-authoritative: #2A9D8F; /* teal: approved policy, guideline, SOP */
+  --trust-observed: #B87333;      /* copper: telemetry, incidents, complaints */
+  --trust-historical: #4A5568;    /* slate: prior decisions and outcomes */
+  --trust-experiential: #D69E2E;  /* amber: context confirmed by a front-line role */
+  --trust-inferred: #E76F51;      /* coral, dashed: proposed by Threadline, unconfirmed */
+  --trust-suggested: #805AD5;     /* purple, dashed: needs a human decision */
+}
+/* The source-type pills in chat use the same colours */
+.trust-select[data-label="Authoritative"] { border-color: var(--trust-authoritative); color: var(--trust-authoritative); background: color-mix(in srgb, var(--trust-authoritative) 12%, transparent); }
+.trust-select[data-label="Observed"] { border-color: var(--trust-observed); color: var(--trust-observed); background: color-mix(in srgb, var(--trust-observed) 12%, transparent); }
+.trust-select[data-label="Experiential"] { border-color: var(--trust-experiential); color: var(--trust-experiential); background: color-mix(in srgb, var(--trust-experiential) 12%, transparent); }
+
+/* ==========================================================================
+   Signals mode
+   ========================================================================== */
+.signals { display: none; }
+body[data-mode="signals"] .sidebar,
+body[data-mode="signals"] .main,
+body[data-mode="signals"] .sources,
+body[data-mode="signals"] .review,
+body[data-mode="signals"] .thread-picker,
+body[data-mode="signals"] .export-button { display: none; }
+body[data-mode="signals"] .review-bar { display: flex; }
+body[data-mode="signals"] .review-bar .review-theme,
+body[data-mode="signals"] .review-bar .theme-button { margin-left: auto; }
+body[data-mode="signals"] .signals {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.mode-badge {
+  margin-left: 6px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--trust-inferred);
+  color: #fff;
+  font: 600 10.5px/1.6 var(--sans);
+}
+
+.signals-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 24px;
+  border-bottom: 1px solid var(--line);
+}
+.signals-heading { flex: 1; min-width: 0; }
+.signals-heading h1 { margin: 0; font: 600 17px var(--sans); letter-spacing: -0.01em; }
+.signals-heading p { margin: 2px 0 0; font-size: 12.5px; color: var(--ink3); }
+.signals-role { display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--ink2); }
+.signals-volume { background: var(--chip); color: var(--ink2); }
+.signals-volume:empty { display: none; }
+.signals-progress {
+  padding: 8px 24px;
+  border-bottom: 1px solid var(--line);
+  background: var(--accent-soft);
+  color: var(--accent-ink);
+  font: 400 12.5px var(--mono);
+}
+.signals-progress.is-error { background: color-mix(in srgb, var(--error) 12%, transparent); color: var(--error); }
+
+.signals-body { flex: 1; min-height: 0; display: flex; }
+.signals-list {
+  width: 300px;
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px;
+  border-right: 1px solid var(--line);
+  overflow-y: auto;
+}
+.signals-threads { display: flex; flex-direction: column; gap: 6px; }
+.signals-empty { color: var(--ink3); font-size: 13px; line-height: 1.5; }
+.signals-row {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--raised);
+  text-align: left;
+  color: var(--ink);
+}
+.signals-row:hover { border-color: color-mix(in srgb, var(--thread) 45%, var(--line)); }
+.signals-row.is-selected { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+.signals-row-title { font: 500 13.5px/1.3 var(--sans); }
+.signals-row-meta { font-size: 12px; color: var(--ink3); }
+.signals-row-facts { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 3px; font-size: 11.5px; color: var(--ink3); }
+.signals-tools { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; margin-top: auto; padding-top: 10px; border-top: 1px solid var(--line); }
+.signals-tuning { font-size: 12px; color: var(--ink3); }
+.signals-tuning-title { font-weight: 600; color: var(--ink2); margin-bottom: 4px; }
+
+.status-pill {
+  padding: 1px 8px;
+  border-radius: 999px;
+  font: 500 11.5px/1.6 var(--sans);
+  background: var(--chip);
+  color: var(--ink2);
+}
+.status-flagged { background: color-mix(in srgb, var(--trust-inferred) 16%, transparent); color: var(--trust-inferred); }
+.status-under-review { background: var(--accent-soft); color: var(--accent-ink); }
+.status-validated-pattern { background: color-mix(in srgb, var(--trust-authoritative) 16%, transparent); color: var(--trust-authoritative); }
+.status-outcome-review-due { background: color-mix(in srgb, var(--trust-suggested) 14%, transparent); color: var(--trust-suggested); }
+
+.signals-detail { flex: 1; min-width: 0; overflow-y: auto; padding: 20px 28px 40px; display: flex; flex-direction: column; gap: 18px; }
+.signals-detail-head h2 { margin: 2px 0 6px; font: 600 19px/1.25 var(--sans); letter-spacing: -0.01em; }
+.signals-id { font: 400 11.5px var(--mono); color: var(--ink3); }
+.signals-facts { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; font-size: 12.5px; color: var(--ink2); }
+.signals-due { color: var(--trust-suggested); font-weight: 500; }
+
+/* The front-line review card */
+.review-card {
+  max-width: 640px;
+  padding: 18px 22px;
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--trust-observed);
+  border-radius: 12px;
+  background: var(--raised);
+  box-shadow: var(--shadow-card);
+  font-size: 14.5px;
+  line-height: 1.55;
+}
+.review-card h3 { margin: 2px 0 8px; font: 600 16px/1.3 var(--sans); }
+.review-card p { margin: 0 0 8px; }
+.review-card ul { margin: 2px 0 10px; padding-left: 20px; }
+.card-kicker, .card-label { font: 500 11px var(--mono); letter-spacing: 0.05em; text-transform: uppercase; color: var(--ink3); }
+.card-label { margin-top: 8px; }
+.card-badge, .card-confidence { font-size: 12.5px; color: var(--ink2); }
+.card-question { margin-top: 10px !important; font-weight: 500; }
+.card-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+.card-why-disabled { margin: 6px 0 0 !important; font-size: 12px; color: var(--ink3); }
+.placeholder-tag {
+  display: inline-block;
+  margin: 6px 0 2px;
+  padding: 1px 9px;
+  border: 1px dashed var(--trust-inferred);
+  border-radius: 999px;
+  color: var(--trust-inferred);
+  font: 500 11.5px/1.6 var(--sans);
+}
+
+.signals-button {
+  padding: 6px 12px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: var(--bg);
+  color: var(--ink);
+  font: 500 13px var(--sans);
+}
+.signals-button:hover:not(:disabled) { border-color: var(--accent); }
+.signals-button.is-primary { border-color: var(--accent); background: var(--accent); color: var(--on-accent); }
+.signals-button:disabled { opacity: 0.45; cursor: default; }
+
+.inline-form { display: flex; flex-direction: column; gap: 6px; margin-top: 10px; font-size: 12.5px; color: var(--ink2); }
+.inline-form textarea { min-height: 64px; resize: vertical; }
+
+.context-notes { margin-top: 10px; display: flex; flex-direction: column; gap: 6px; }
+.context-note { padding: 7px 10px; border-left: 3px solid var(--trust-experiential); border-radius: 6px; background: color-mix(in srgb, var(--trust-experiential) 10%, transparent); font-size: 13px; }
+.context-meta { display: block; font-size: 11.5px; color: var(--ink3); }
+
+.signals-history { max-width: 900px; font-size: 12.5px; color: var(--ink2); }
+.signals-history summary { cursor: pointer; font-weight: 600; color: var(--ink); }
+.history-row { padding: 4px 0; border-bottom: 1px solid var(--line); }
+.history-when { display: block; font: 400 11px var(--mono); color: var(--ink3); }
+.history-log { font: 400 11.5px var(--mono); color: var(--ink3); }

@@ -140,6 +140,36 @@
           <article id="review-page" class="review-page"></article>
         </div>
       </section>
+
+      <!-- Signals mode: the system-signals monitor (spec: docs/threadline-spec-v3.2.md).
+           Threadline notices, drafts and routes. People decide. -->
+      <section id="signals" class="signals">
+        <div class="signals-toolbar">
+          <div class="signals-heading">
+            <h1>System signals</h1>
+            <p>Threadline notices operational patterns and drafts options. People decide; nothing is applied automatically.</p>
+          </div>
+          <label class="signals-role">Acting as
+            <select id="signals-role" class="model-select"></select>
+          </label>
+          <button id="signals-check" class="gaps-button" type="button">Check now</button>
+          <button id="signals-digest" class="text-button" type="button">Digest</button>
+          <span id="signals-volume" class="pill signals-volume"></span>
+        </div>
+        <div id="signals-progress" class="signals-progress" hidden></div>
+        <div class="signals-body">
+          <aside class="signals-list">
+            <div id="signals-threads" class="signals-threads"></div>
+            <div class="signals-tools">
+              <button id="signals-show-incoming" class="text-button" type="button">Show incoming folder</button>
+              <button id="signals-benchmarks" class="text-button" type="button">Run benchmark packs</button>
+              <button id="signals-test-file" class="text-button" type="button">Add test flow file</button>
+            </div>
+            <div id="signals-tuning" class="signals-tuning"></div>
+          </aside>
+          <div id="signals-detail" class="signals-detail"></div>
+        </div>
+      </section>
     </div>
   </div>
 
