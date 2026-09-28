@@ -1,0 +1,15 @@
+{
+  "$comment": "Prompt 4 (Front-line Review Card) output. See docs/threadline-spec-v3.2.md, section 6.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["card_title", "noticed", "why_it_may_matter", "possible_options", "evidence_badge", "confidence", "question"],
+  "properties": {
+    "card_title": { "type": "string" },
+    "noticed": { "type": "string" },
+    "why_it_may_matter": { "type": "string" },
+    "possible_options": { "type": "array", "items": { "type": "string" } },
+    "evidence_badge": { "type": "string" },
+    "confidence": { "type": "string", "enum": ["Low", "Medium", "High"] },
+    "question": { "type": "string", "enum": ["Does this match what you see on shift?"] }
+  }
+}

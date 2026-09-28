@@ -1,0 +1,60 @@
+{
+  "$comment": "Prompt 3 (Options and Recommendation) output. See docs/threadline-spec-v3.2.md, section 6.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["vignette_id", "options", "recommendation", "suggested_reviewers"],
+  "properties": {
+    "vignette_id": { "type": "string" },
+    "options": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 3,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["option_id", "title", "type", "description", "evidence_ids", "evidence_strength", "local_fit",
+                     "possible_pressure_transfer", "roles_to_involve", "how_we_would_know", "revisit_or_stop_if",
+                     "revisit_after_days", "trust_label"],
+        "properties": {
+          "option_id": { "type": "string" },
+          "title": { "type": "string" },
+          "type": { "type": "string", "enum": ["Learn more", "Process adjustment", "Policy review"] },
+          "description": { "type": "string" },
+          "evidence_ids": { "type": "array", "items": { "type": "string" } },
+          "evidence_strength": { "type": "string", "enum": ["High", "Moderate", "Low", "None"] },
+          "local_fit": { "type": "string" },
+          "possible_pressure_transfer": { "type": "string" },
+          "roles_to_involve": { "type": "array", "items": { "type": "string" } },
+          "how_we_would_know": { "type": "string" },
+          "revisit_or_stop_if": { "type": "string" },
+          "revisit_after_days": { "type": "integer", "minimum": 1, "maximum": 365 },
+          "trust_label": { "type": "string", "enum": ["Suggested"] }
+        }
+      }
+    },
+    "recommendation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["leading_option_id", "rationale", "would_change_if", "confidence", "trust_label"],
+      "properties": {
+        "leading_option_id": { "type": "string" },
+        "rationale": { "type": "string" },
+        "would_change_if": { "type": "string" },
+        "confidence": { "type": "string", "enum": ["Low", "Medium", "High"] },
+        "trust_label": { "type": "string", "enum": ["Suggested"] }
+      }
+    },
+    "suggested_reviewers": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["role", "why"],
+        "properties": {
+          "role": { "type": "string" },
+          "why": { "type": "string" }
+        }
+      }
+    }
+  }
+}

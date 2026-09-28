@@ -1,0 +1,41 @@
+{
+  "$comment": "Prompt 1 (Pattern and Vignette Drafter) output. See docs/threadline-spec-v3.2.md, section 6.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["vignette_id", "domain", "pattern_type", "location", "time_window", "pattern_statement",
+               "supporting_evidence", "possible_vignette", "evidence_that_does_not_fit", "confidence", "confidence_reason"],
+  "properties": {
+    "vignette_id": { "type": "string" },
+    "domain": { "type": "string", "enum": ["Healthcare", "Energy"] },
+    "pattern_type": { "type": "string" },
+    "location": { "type": "string" },
+    "time_window": { "type": "string" },
+    "pattern_statement": { "type": "string" },
+    "supporting_evidence": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["source_id", "trust_label", "finding"],
+        "properties": {
+          "source_id": { "type": "string" },
+          "trust_label": { "type": "string", "enum": ["Authoritative", "Observed", "Historical", "Experiential", "Inferred"] },
+          "finding": { "type": "string" }
+        }
+      }
+    },
+    "possible_vignette": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["situation", "what_appears_to_happen", "observed_effects"],
+      "properties": {
+        "situation": { "type": "string" },
+        "what_appears_to_happen": { "type": "string" },
+        "observed_effects": { "type": "string" }
+      }
+    },
+    "evidence_that_does_not_fit": { "type": "array", "items": { "type": "string" } },
+    "confidence": { "type": "string", "enum": ["Low", "Medium", "High"] },
+    "confidence_reason": { "type": "string" }
+  }
+}

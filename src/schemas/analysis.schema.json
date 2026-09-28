@@ -1,0 +1,91 @@
+{
+  "$comment": "Prompt 2 (System Analysis) output. See docs/threadline-spec-v3.2.md, section 6.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["vignette_id", "policy_practice_gap", "contributing_conditions", "compounding_factors",
+               "pressure_map", "alternative_explanations", "open_questions", "graph"],
+  "properties": {
+    "vignette_id": { "type": "string" },
+    "policy_practice_gap": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["policy_source_id", "what_policy_expects", "what_records_suggest", "confidence"],
+      "properties": {
+        "policy_source_id": { "type": "string" },
+        "what_policy_expects": { "type": "string" },
+        "what_records_suggest": { "type": "string" },
+        "confidence": { "type": "string", "enum": ["Low", "Medium", "High"] }
+      }
+    },
+    "contributing_conditions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["condition", "source_ids", "trust_label"],
+        "properties": {
+          "condition": { "type": "string" },
+          "source_ids": { "type": "array", "items": { "type": "string" } },
+          "trust_label": { "type": "string", "enum": ["Authoritative", "Observed", "Historical", "Experiential", "Inferred"] }
+        }
+      }
+    },
+    "compounding_factors": { "type": "array", "items": { "type": "string" } },
+    "pressure_map": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["role", "pressure_carried", "shifting_to", "source_ids", "trust_label"],
+        "properties": {
+          "role": { "type": "string" },
+          "pressure_carried": { "type": "string" },
+          "shifting_to": { "type": "string" },
+          "source_ids": { "type": "array", "items": { "type": "string" } },
+          "trust_label": { "type": "string", "enum": ["Authoritative", "Observed", "Historical", "Experiential", "Inferred"] }
+        }
+      }
+    },
+    "alternative_explanations": { "type": "array", "items": { "type": "string" } },
+    "open_questions": { "type": "array", "items": { "type": "string" } },
+    "graph": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["nodes", "edges"],
+      "properties": {
+        "nodes": {
+          "type": "array",
+          "minItems": 6,
+          "maxItems": 12,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id", "label", "node_type", "trust_label", "source_ids"],
+            "properties": {
+              "id": { "type": "string" },
+              "label": { "type": "string" },
+              "node_type": { "type": "string", "enum": ["evidence", "policy", "condition", "role", "effect"] },
+              "trust_label": { "type": "string", "enum": ["Authoritative", "Observed", "Historical", "Experiential", "Inferred"] },
+              "source_ids": { "type": "array", "items": { "type": "string" } }
+            }
+          }
+        },
+        "edges": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["source", "target", "relationship", "weight", "inferred"],
+            "properties": {
+              "source": { "type": "string" },
+              "target": { "type": "string" },
+              "relationship": { "type": "string", "enum": ["contributes to", "conflicts with", "supported by", "shifts pressure to"] },
+              "weight": { "type": "integer", "minimum": 1, "maximum": 5 },
+              "inferred": { "type": "boolean" }
+            }
+          }
+        }
+      }
+    }
+  }
+}
