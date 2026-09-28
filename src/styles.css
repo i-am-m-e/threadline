@@ -1757,3 +1757,20 @@ body[data-mode="signals"] .signals {
 .digest-row { display: block; width: 100%; padding: 6px 8px; border: 0; border-radius: 8px; background: none; text-align: left; color: var(--ink); font-size: 13.5px; }
 .digest-row:hover { background: var(--hover); }
 #signals-digest.is-active { background: var(--accent-soft); }
+
+/* ---------- Thread map ---------- */
+.map-section { max-width: 1000px; padding: 14px 18px; border: 1px solid var(--line); border-radius: 12px; background: var(--raised); box-shadow: var(--shadow-card); }
+.map-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+.map-toggle .mode-option { font-size: 12px; }
+.map-body { display: flex; gap: 12px; }
+.map-canvas { flex: 1; min-width: 0; height: 420px; border-radius: 10px; background: var(--bg); }
+.map-panel { width: 260px; flex: none; max-height: 420px; overflow-y: auto; padding: 8px 10px; border-left: 1px solid var(--line); font-size: 13px; }
+.map-panel-title { font-weight: 600; margin-bottom: 2px; }
+.map-panel p { margin: 4px 0; }
+.map-record { padding: 6px 0; border-bottom: 1px solid var(--line); font: 400 11.5px var(--mono); color: var(--ink2); }
+.map-record p { font: 400 12.5px/1.45 var(--sans); color: var(--ink); }
+.map-legend { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 10px; font-size: 11.5px; color: var(--ink2); }
+.legend-item { display: inline-flex; align-items: center; gap: 5px; }
+.legend-swatch { width: 11px; height: 11px; border-radius: 3px; }
+.legend-swatch.is-dashed { outline: 1.5px dashed var(--ink); outline-offset: 1px; opacity: 0.7; }
+.legend-shapes { flex-basis: 100%; color: var(--ink3); }

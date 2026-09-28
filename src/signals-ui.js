@@ -19,6 +19,8 @@ import {
 } from "./threads.js";
 import { SIGNALS_CONFIG } from "./config.js";
 import { routeAlerts, alertVolume, buildDigest, sendLocalNotification } from "./notify.js";
+import { renderThreadMap, withApproaches, TRUST_COLORS, SHAPES } from "./threadMap.js";
+import { SOURCE_TYPE_NAMES } from "./records.js";
 
 const $ = (id) => document.getElementById(id);
 let threads = [];          // all Signals Threads, newest first
@@ -28,6 +30,10 @@ let busy = false;          // a check is running
 let form = null;           // an inline form that's open: { threadId, kind }
 let showingDigest = false; // the digest panel is open
 let alertState = {};       // flags and digest items (signals/state.json)
+let mapDirection = readSetting("signalsMapDirection", "TB"); // "TB" top-to-bottom or "LR" left-to-right
+let cy = null;             // the map currently drawn (Cytoscape)
+let tappedNode = null;     // the map node whose sources are shown in the side panel
+let recordCache = null;    // processed records, by source_id (for the side panel)
 let rules, schemas, evidenceLibrary, toast, discussInThread;
 
 // ---------- Setup ----------
@@ -95,6 +101,7 @@ async function checkNow({ quiet = false } = {}) {
       io: storage.monitorIO, rules, schemas, config: SIGNALS_CONFIG, evidenceLibrary, onProgress: showProgress,
     });
     threads = await storage.listSignalThreads();
+    recordCache = null; // new records may have arrived
     const changed = [...summary.created, ...summary.updated];
     const changes = [
       ...summary.created.map((id) => ({ thread: threads.find((t) => t.id === id), kind: "new" })),
@@ -164,6 +171,7 @@ function renderList() {
     row.onclick = () => {
       selectedId = t.id;
       form = null;
+      tappedNode = null;
       renderSignals();
     };
     list.append(row);
@@ -211,8 +219,10 @@ function renderDetail() {
   );
   if (thread.outcome_review_due && thread.status === "Outcome review due") facts.append(text("span", "signals-due", `Outcome review due ${thread.outcome_review_due}`));
   head.append(facts);
-  detail.append(head, renderCard(thread), renderBrief(thread));
+  const map = renderMapSection(thread);
+  detail.append(head, renderCard(thread), map.section, renderBrief(thread));
   detail.append(renderHistory(thread));
+  drawMap(thread, map.canvas, map.panel);
 }
 
 // ---------- Digest (the default way Threads are shared) ----------
@@ -308,6 +318,114 @@ function renderCard(thread) {
     box.append(notes);
   }
   return box;
+}
+
+// ---------- Thread map ----------
+function renderMapSection(thread) {
+  const section = document.createElement("section");
+  section.className = "map-section";
+  const head = document.createElement("div");
+  head.className = "map-head";
+  head.append(text("div", "card-kicker", "Thread map"));
+  const toggle = document.createElement("div");
+  toggle.className = "mode-switch map-toggle";
+  for (const [dir, label] of [["TB", "Top to bottom"], ["LR", "Left to right"]]) {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "mode-option";
+    b.textContent = label;
+    b.setAttribute("aria-selected", String(mapDirection === dir));
+    b.onclick = () => {
+      mapDirection = dir;
+      saveSetting("signalsMapDirection", dir);
+      renderSignals();
+    };
+    toggle.append(b);
+  }
+  head.append(toggle);
+
+  const body = document.createElement("div");
+  body.className = "map-body";
+  const canvas = document.createElement("div");
+  canvas.className = "map-canvas";
+  const panel = document.createElement("aside");
+  panel.className = "map-panel";
+  body.append(canvas, panel);
+  section.append(head, body, legend());
+  return { section, canvas, panel };
+}
+
+// A small legend: colour = trust label, shape = node type, dashed = unconfirmed.
+function legend() {
+  const box = document.createElement("div");
+  box.className = "map-legend";
+  for (const [label, colour] of Object.entries(TRUST_COLORS)) {
+    const item = text("span", "legend-item", label);
+    const swatch = document.createElement("span");
+    swatch.className = "legend-swatch" + (label === "Inferred" || label === "Suggested" ? " is-dashed" : "");
+    swatch.style.background = colour;
+    item.prepend(swatch);
+    box.append(item);
+  }
+  const shapes = { evidence: "▢ evidence", policy: "■ policy", condition: "◆ condition", role: "● role", effect: "⬢ effect", approach: "⬟ approach (option)" };
+  box.append(text("span", "legend-shapes", Object.keys(SHAPES).map((k) => shapes[k]).join("  ·  ")));
+  box.append(text("span", "legend-shapes", "Dashed = unconfirmed · thicker line = more supporting records"));
+  return box;
+}
+
+async function drawMap(thread, canvas, panel) {
+  cy?.destroy();
+  cy = null;
+  const run = current(thread);
+  const graph = withApproaches(run.steps.analysis.graph, run.steps.options.options);
+  try {
+    cy = await renderThreadMap(canvas, graph, async (node) => {
+      tappedNode = node.id;
+      await fillPanel(panel, node, thread);
+    }, mapDirection);
+  } catch (err) {
+    canvas.append(text("p", "signals-empty", `The map couldn't be drawn: ${err.message}`));
+  }
+  const again = tappedNode && graph.nodes.find((n) => n.id === tappedNode);
+  if (again) fillPanel(panel, again, thread);
+  else panel.append(text("p", "signals-empty", "Tap a node to see the records or evidence behind it."));
+}
+
+// Side panel: the source records (or, for an option, its evidence items) behind a node.
+async function fillPanel(panel, node, thread) {
+  panel.innerHTML = "";
+  const head = text("div", "map-panel-title", node.label);
+  head.append(trustChip(node.trust_label));
+  panel.append(head, text("div", "brief-small", node.node_type === "approach" ? "Option (Suggested)" : `Node type: ${node.node_type}`));
+
+  if (node.node_type === "approach") {
+    const option = current(thread).steps.options.options.find((o) => o.option_id === node.option_id);
+    if (option) panel.append(text("p", "", option.description));
+    const evidence = current(thread).steps.evidence;
+    const items = (node.evidence_ids ?? []).map((id) => evidence.find((e) => e.evidence_id === id)).filter(Boolean);
+    if (items.length === 0) panel.append(text("p", "brief-small", "No library evidence."));
+    for (const e of items) {
+      const row = text("div", "map-record", `${e.evidence_id} · ${e.title}`);
+      row.append(text("span", "brief-small", ` ${e.source_type}, strength ${e.strength}. ${e.citation}`));
+      if (e.synthetic_placeholder) row.append(placeholderTag());
+      panel.append(row);
+    }
+    return;
+  }
+
+  if (!node.source_ids?.length) {
+    panel.append(text("p", "brief-small", "No source record: this is proposed by Threadline and unconfirmed."));
+    return;
+  }
+  recordCache ??= new Map((await storage.monitorIO.loadProcessedRecords()).map((r) => [r.source_id, r]));
+  for (const id of node.source_ids) {
+    const r = recordCache.get(id);
+    const row = text("div", "map-record", r ? `${id} · ${SOURCE_TYPE_NAMES[r.source_type] ?? r.source_type} · ${String(r.timestamp).replace("T", " ")}` : id);
+    if (!r) row.append(text("span", "brief-small", " (record not found in the processed folder)"));
+    else if (r.text) row.append(text("p", "", r.text));
+    else row.append(text("p", "brief-small", Object.entries(r).filter(([k]) => !["source_id", "source_type", "domain", "location", "timestamp", "file", "synthetic"].includes(k)).map(([k, v]) => `${k.replace(/_/g, " ")}: ${v}`).join(" · ")));
+    panel.append(row);
+  }
 }
 
 // ---------- Manager brief (assembled in code from the pipeline's outputs: no extra AI call) ----------
