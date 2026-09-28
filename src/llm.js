@@ -191,16 +191,16 @@ export function guardSources(output, { sourceIds, evidenceIds }) {
 // ---------------------------------------------------------------------------
 // Guardrail scan: no people's names, no labels for individual behaviour
 // ---------------------------------------------------------------------------
-// Names: a title or role abbreviation followed by a name ("Dr. Patel", "RN J. Miller"),
-// or an initial and surname ("J. Miller"). Role words after a title ("Nurse Practitioner",
-// "Charge Nurse") are fine.
-const TITLES = "Dr|Doctor|Nurse|RN|RPN|LPN|NP|PA|Mr|Mrs|Ms|Miss|Mx|Prof|Professor|Operator|Inspector|Supervisor";
-const ROLE_WORDS = new Set([
-  "Practitioner", "Practitioners", "Lead", "Leads", "Manager", "Managers", "Supervisor", "Station", "Team", "Staff",
-  "Coverage", "Shift", "Assistant", "Specialist", "Educator", "Coordinator", "Director", "On", "Call", "In", "Charge",
-]);
-const NAME_AFTER_TITLE = new RegExp(`\\b(?:${TITLES})\\.?\\s+(?:[A-Z]\\.\\s*)?([A-Z][a-z]{1,})`, "g");
-const INITIAL_SURNAME = /\b[A-Z]\.\s?[A-Z][a-z]{2,}\b/g;
+// Names, three patterns:
+//  • an honorific and a name: "Dr. Patel", "Ms Chen", "Professor Singh"
+//  • a credential, an initial and a surname: "RN J. Miller", "MD A. Okafor"
+//  • an initial and a surname on their own: "J. Miller"
+// Role words followed by a capitalised word ("Inspector Capacity", "Charge Nurse",
+// "Operator Workload") are NOT treated as names: they're normal in option titles.
+const HONORIFIC_NAME = /\b(?:Dr|Mr|Mrs|Ms|Miss|Mx|Prof|Professor|Doctor)\.?\s+(?:[A-Z]\.\s*)?[A-Z][a-z]{1,}/g;
+const CREDENTIAL_NAME = /\b(?:RN|RPN|LPN|NP|PA|MD)\s+[A-Z]\.\s?[A-Z][a-z]+/g;
+// (not after another initial, so abbreviations like "U.S. Standards" are fine)
+const INITIAL_SURNAME = /(?<![A-Za-z]\.)\b[A-Z]\.\s?[A-Z][a-z]{2,}\b/g;
 // Behaviour labels about individuals (the v3.2 spec forbids classifying behaviour).
 const BEHAVIOUR_LABELS = /\b(at[- ]risk behaviou?rs?|reckless(ness)?|careless(ness)?|negligen(t|ce)|disciplin(e|ed|ary)|non-?compliant (staff|nurses?|workers?|employees?|operators?|crews?|physicians?|contractors?))\b/i;
 
@@ -209,10 +209,8 @@ export function findGuardrailProblems(output) {
   const problems = [];
   const visit = (node, path) => {
     if (typeof node === "string") {
-      for (const m of node.matchAll(NAME_AFTER_TITLE)) {
-        if (!ROLE_WORDS.has(m[1])) problems.push(`${path}: looks like a person's name ("${m[0]}"). Use roles only.`);
-      }
-      for (const m of node.matchAll(INITIAL_SURNAME)) problems.push(`${path}: looks like a person's name ("${m[0]}"). Use roles only.`);
+      const names = new Set([...node.matchAll(HONORIFIC_NAME), ...node.matchAll(CREDENTIAL_NAME), ...node.matchAll(INITIAL_SURNAME)].map((m) => m[0]));
+      for (const name of names) problems.push(`${path}: looks like a person's name ("${name}"). Use roles only.`);
       const label = node.match(BEHAVIOUR_LABELS);
       if (label) problems.push(`${path}: labels individual behaviour ("${label[0]}"). Describe system conditions instead.`);
     } else if (Array.isArray(node)) {

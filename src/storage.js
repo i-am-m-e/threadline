@@ -224,6 +224,9 @@ export const monitorIO = {
   saveThread: (thread) => saveSignalThread(thread),
 };
 
+/** A processed record file's contents (for "Discuss in a thread"). */
+export const readProcessedFile = (name) => fs.readTextFile(`data/processed/${name}`, inAppData);
+
 /** The full path of the incoming folder (to show it in Finder). */
 export async function incomingFolderPath() {
   const { appDataDir, join } = window.__TAURI__.path;

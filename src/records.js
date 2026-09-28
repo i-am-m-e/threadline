@@ -88,6 +88,25 @@ function addDerivedMetrics(r) {
   }
 }
 
+/**
+ * A record file as readable text (for "Discuss in a thread"): one paragraph per record,
+ * naming each field, e.g. "Timestamp: 2026-09-20T15:00; Bed occupancy: 0.93; …".
+ * Returns the text and the trust label for the chat's source-type picker.
+ */
+export function recordFileAsText(fileName, raw) {
+  const records = parseRecordFile(fileName, raw);
+  const nice = (key) => key.replace(/_/g, " ").replace(/^./, (c) => c.toUpperCase());
+  const skip = new Set(["file", "synthetic", "text", "title"]);
+  const paragraphs = records.map((r) => {
+    const fields = Object.entries(r).filter(([k]) => !skip.has(k)).map(([k, v]) => `${nice(k)}: ${v}`).join("; ");
+    return [r.title, r.text, fields].filter(Boolean).join("\n");
+  });
+  return {
+    text: `Synthetic records from ${fileName}\n\n${paragraphs.join("\n\n")}`,
+    trustLabel: records.every(isPolicy) ? "Authoritative" : "Observed",
+  };
+}
+
 // ---------- Triggers ----------
 
 const compare = (a, op, b) => (op === ">" ? a > b : op === ">=" ? a >= b : op === "<" ? a < b : op === "<=" ? a <= b : a === b);

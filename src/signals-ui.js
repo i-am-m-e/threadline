@@ -13,8 +13,9 @@
 import * as storage from "./storage.js";
 import { checkForSignals, startMonitorTimer } from "./monitor.js";
 import {
-  current, ROLES, isOpen, rejectionCounts,
+  current, ROLES, isOpen, canMove, rejectionCounts,
   confirmPattern, addContext, doesNotMatch,
+  sendForValidation, notARealPattern, requestMoreInformation, recordDecision, closeWithOutcome,
 } from "./threads.js";
 import { SIGNALS_CONFIG } from "./config.js";
 
@@ -24,12 +25,13 @@ let selectedId = null;     // the Thread shown on the right
 let role = readSetting("signalsRole", "");
 let busy = false;          // a check is running
 let form = null;           // an inline form that's open: { threadId, kind }
-let rules, schemas, evidenceLibrary, toast;
+let rules, schemas, evidenceLibrary, toast, discussInThread;
 
 // ---------- Setup ----------
-export async function initSignals({ domainRules, showToast }) {
+export async function initSignals({ domainRules, showToast, discuss }) {
   rules = domainRules;
   toast = showToast;
+  discussInThread = discuss;
   schemas = Object.fromEntries(await Promise.all(
     ["pattern", "analysis", "options", "reviewCard"].map(async (n) => [n, await (await fetch(`schemas/${n}.schema.json`)).json()])
   ));
@@ -184,7 +186,7 @@ function renderDetail() {
   );
   if (thread.outcome_review_due && thread.status === "Outcome review due") facts.append(text("span", "signals-due", `Outcome review due ${thread.outcome_review_due}`));
   head.append(facts);
-  detail.append(head, renderCard(thread));
+  detail.append(head, renderCard(thread), renderBrief(thread));
   detail.append(renderHistory(thread));
 }
 
@@ -250,6 +252,249 @@ function renderCard(thread) {
     box.append(notes);
   }
   return box;
+}
+
+// ---------- Manager brief (assembled in code from the pipeline's outputs: no extra AI call) ----------
+function renderBrief(thread) {
+  const { pattern, analysis, evidence, options } = current(thread).steps;
+  const box = document.createElement("section");
+  box.className = "brief";
+  box.append(text("div", "card-kicker", "Manager brief"));
+
+  // What Threadline noticed
+  box.append(text("h4", "", "What Threadline noticed"), text("p", "", pattern.pattern_statement));
+  const vignette = document.createElement("dl");
+  vignette.className = "brief-vignette";
+  for (const [label, value] of [
+    ["Situation", pattern.possible_vignette.situation],
+    ["What appears to happen", pattern.possible_vignette.what_appears_to_happen],
+    ["Observed effects", pattern.possible_vignette.observed_effects],
+  ]) vignette.append(text("dt", "", label), text("dd", "", value));
+  box.append(vignette);
+  if (pattern.evidence_that_does_not_fit.filter(Boolean).length) {
+    box.append(text("div", "card-label", "Evidence that does not fit"), list(pattern.evidence_that_does_not_fit.filter(Boolean)));
+  }
+
+  // Possible contributing factors
+  box.append(text("h4", "", "Possible contributing factors"));
+  const factors = document.createElement("ul");
+  for (const c of analysis.contributing_conditions) {
+    const li = text("li", "", `${c.condition} `);
+    li.append(trustChip(c.trust_label), sourceIds(c.source_ids));
+    factors.append(li);
+  }
+  box.append(factors);
+  if (analysis.compounding_factors.length) box.append(text("div", "card-label", "Where small variations combine"), list(analysis.compounding_factors));
+  const gap = analysis.policy_practice_gap;
+  const gapBox = document.createElement("div");
+  gapBox.className = "brief-gap";
+  gapBox.append(
+    labelled("Policy expects", gap.what_policy_expects, "Authoritative"),
+    labelled("Records suggest", gap.what_records_suggest, "Observed"),
+  );
+  box.append(text("div", "card-label", "Policy and practice"), gapBox);
+  if (analysis.pressure_map.length) {
+    box.append(text("div", "card-label", "Pressure map"));
+    const pm = document.createElement("ul");
+    for (const p of analysis.pressure_map) {
+      const li = text("li", "", `${p.role}: ${p.pressure_carried}${p.shifting_to ? ` (appears to shift to ${p.shifting_to})` : ""} `);
+      li.append(trustChip(p.trust_label));
+      pm.append(li);
+    }
+    box.append(pm);
+  }
+  box.append(text("div", "card-label", "Other explanations to rule out"), list(analysis.alternative_explanations));
+  box.append(text("div", "card-label", "Questions a reviewer would need answered"), list(analysis.open_questions));
+
+  // Recommendation (Suggested)
+  const rec = options.recommendation;
+  const leading = options.options.find((o) => o.option_id === rec.leading_option_id);
+  const recBox = document.createElement("div");
+  recBox.className = "brief-recommendation";
+  const recHead = text("h4", "", "Recommendation ");
+  recHead.append(trustChip("Suggested"));
+  recBox.append(recHead, text("div", "brief-option-title", leading ? leading.title : rec.leading_option_id), text("p", "", rec.rationale));
+  recBox.append(text("p", "brief-small", `Evidence strength: ${leading?.evidence_strength ?? "None"} · Recommendation confidence: ${rec.confidence}`));
+  recBox.append(labelled("What would change it", rec.would_change_if));
+  if (leading) recBox.append(optionDetails(leading, evidence));
+  box.append(recBox);
+
+  // Other options
+  const others = options.options.filter((o) => o.option_id !== rec.leading_option_id);
+  if (others.length) {
+    box.append(text("h4", "", "Other options"));
+    for (const o of others) {
+      const item = document.createElement("div");
+      item.className = "brief-option";
+      item.append(text("div", "brief-option-title", `${o.title} · ${o.type}`), optionDetails(o, evidence));
+      box.append(item);
+    }
+  }
+
+  // Evidence list
+  const cited = [...new Set(options.options.flatMap((o) => o.evidence_ids))].map((id) => evidence.find((e) => e.evidence_id === id)).filter(Boolean);
+  box.append(text("h4", "", "Evidence"));
+  if (cited.length === 0) {
+    box.append(text("p", "brief-small", "No library evidence. Options rely on the records and local judgment."));
+  } else {
+    for (const e of cited) {
+      const row = text("div", "brief-evidence", `${e.evidence_id} · ${e.title} `);
+      row.append(text("span", "brief-small", `(${e.source_type}, strength ${e.strength}). ${e.citation}`));
+      if (e.synthetic_placeholder) row.append(placeholderTag());
+      box.append(row);
+    }
+  }
+
+  // Confidence and validation, reviewers
+  box.append(text("p", "brief-small", `Pattern confidence: ${pattern.confidence} (${pattern.confidence_reason}) · Front-line validation: ${validationStatus(thread)}`));
+  if (options.suggested_reviewers.length) {
+    box.append(text("div", "card-label", "Suggested reviewers (roles)"), list(options.suggested_reviewers.map((r) => `${r.role}: ${r.why}`)));
+  }
+  if (thread.information_requests.length) {
+    box.append(text("div", "card-label", "Information requested"), list(thread.information_requests.map((r) => `${r.text} (${r.role}, ${shortWhen(r.time)})`)));
+  }
+  if (thread.decision) {
+    box.append(text("div", "brief-decision", `Decision recorded: ${thread.decision.option_title}${thread.decision.was_recommended ? " (the recommendation)" : ""} · ${thread.decision.role} · ${thread.decision.date.slice(0, 10)}. Nothing is applied by Threadline; carrying it out is up to the team.`));
+  }
+  if (thread.outcome) {
+    box.append(text("div", "brief-decision", `Outcome: ${thread.outcome.helped}. ${thread.outcome.what_happened} (${thread.outcome.role}, ${thread.outcome.date.slice(0, 10)})`));
+  }
+
+  box.append(managerActions(thread));
+  return box;
+}
+
+// The manager's buttons, each active only where the spec allows.
+function managerActions(thread) {
+  const box = document.createElement("div");
+  const manager = role === "Manager";
+  const validated = thread.status === "Validated pattern";
+  const actions = document.createElement("div");
+  actions.className = "card-actions";
+  const opts = current(thread).steps.options;
+  actions.append(
+    button("Send for front-line validation", "primary", !(manager && canMove(thread, "Under review")),
+      () => act(thread, () => sendForValidation(thread, role), "Sent for front-line validation")),
+    button("Accept recommendation", "primary", !(manager && validated),
+      () => act(thread, () => recordDecision(thread, role, opts.recommendation.leading_option_id), "Decision recorded (nothing is applied automatically)")),
+    button("Choose another option", "", !(manager && validated), () => openForm(thread, "choose")),
+    button("Request more information", "", !(manager && isOpen(thread)), () => openForm(thread, "info")),
+    button("Not a real pattern", "", !(manager && canMove(thread, "Not confirmed")), () => openForm(thread, "notreal")),
+  );
+  box.append(actions);
+
+  const why = !manager
+    ? "Switch your role to Manager to act on the brief."
+    : !validated && ["Inferred", "Flagged", "Under review"].includes(thread.status)
+      ? "Accept and Choose another option unlock once a front-line lead confirms the pattern."
+      : "";
+  if (why) box.append(text("p", "card-why-disabled", why));
+
+  if (thread.status === "Outcome review due") {
+    box.append(text("p", "brief-small", `Outcome review due ${thread.outcome_review_due}. Revisit or stop if: ${thread.decision?.revisit_or_stop_if || "not stated"}`));
+    actions.append(button("Record outcome", "primary", !manager, () => openForm(thread, "outcome")));
+  }
+  if (discussInThread) {
+    const discuss = button("Discuss in a thread", "", false, () => discussSignal(thread));
+    discuss.title = "Open these records in a chat thread, with citations and Find gaps";
+    actions.append(discuss);
+  }
+
+  if (form?.threadId === thread.id && form.kind === "info") {
+    box.append(inlineForm({ label: "What information would help?", submit: "Add request",
+      onSubmit: (v) => act(thread, () => requestMoreInformation(thread, role, v), "Request added") }));
+  }
+  if (form?.threadId === thread.id && form.kind === "notreal") {
+    box.append(inlineForm({ label: "Why isn't this a real pattern? (Saved to help tune the trigger.)", submit: "Mark not confirmed",
+      onSubmit: (v) => act(thread, () => notARealPattern(thread, role, v), "Marked as not a real pattern") }));
+  }
+  if (form?.threadId === thread.id && form.kind === "choose") box.append(chooseOptionForm(thread));
+  if (form?.threadId === thread.id && form.kind === "outcome") box.append(outcomeForm(thread));
+  return box;
+}
+
+function chooseOptionForm(thread) {
+  const { options, recommendation } = current(thread).steps.options;
+  const box = document.createElement("div");
+  box.className = "inline-form";
+  box.append(text("label", "", "Which option? (This records a decision only; nothing is applied.)"));
+  let chosen = null;
+  const choices = [...options.filter((o) => o.option_id !== recommendation.leading_option_id), { option_id: "none", title: "None of these for now" }];
+  for (const o of choices) {
+    const row = document.createElement("label");
+    row.className = "inline-choice";
+    const radio = document.createElement("input");
+    radio.type = "radio";
+    radio.name = "signals-option";
+    radio.onchange = () => {
+      chosen = o.option_id;
+      record.disabled = false;
+    };
+    row.append(radio, ` ${o.title}`);
+    box.append(row);
+  }
+  const record = button("Record decision", "primary", true, () => act(thread, () => recordDecision(thread, role, chosen), "Decision recorded (nothing is applied automatically)"));
+  const row = document.createElement("div");
+  row.className = "card-actions";
+  row.append(record, button("Cancel", "", false, () => { form = null; renderSignals(); }));
+  box.append(row);
+  return box;
+}
+
+function outcomeForm(thread) {
+  const box = document.createElement("div");
+  box.className = "inline-form";
+  box.append(text("label", "", "What happened, and did it help?"));
+  const input = document.createElement("textarea");
+  input.className = "rules-input";
+  const helped = document.createElement("select");
+  helped.className = "model-select";
+  for (const h of ["Yes", "Partly", "No", "Too early to tell"]) helped.add(new Option(h, h));
+  const close = button("Close Thread", "primary", true, () => act(thread, () => closeWithOutcome(thread, role, { whatHappened: input.value, helped: helped.value }), "Thread closed"));
+  input.oninput = () => (close.disabled = !input.value.trim());
+  const row = document.createElement("div");
+  row.className = "card-actions";
+  row.append(helped, close, button("Cancel", "", false, () => { form = null; renderSignals(); }));
+  box.append(input, row);
+  return box;
+}
+
+// Details for one option: trade-off, pressure transfer, roles, how we'd know, when to revisit.
+function optionDetails(o, evidence) {
+  const d = document.createElement("div");
+  d.className = "brief-option-details";
+  d.append(
+    labelled("Local fit / trade-off", o.local_fit),
+    labelled("Possible pressure transfer", o.possible_pressure_transfer),
+    labelled("Roles to involve", o.roles_to_involve.join(", ") || "—"),
+    labelled("How we would know", o.how_we_would_know),
+    labelled("Revisit or stop if", `${o.revisit_or_stop_if} (review after ${o.revisit_after_days} days)`),
+  );
+  const ev = o.evidence_ids.map((id) => evidence.find((e) => e.evidence_id === id)).filter(Boolean);
+  d.append(text("p", "brief-small", `Evidence: ${ev.length ? ev.map((e) => e.evidence_id).join(", ") : "No library evidence"} (strength ${o.evidence_strength})`));
+  if (ev.some((e) => e.synthetic_placeholder)) d.append(placeholderTag());
+  return d;
+}
+
+function validationStatus(thread) {
+  if (thread.status === "Validated pattern" || thread.decision) return "confirmed by a front-line lead";
+  if (thread.status === "Under review") return "waiting for a front-line lead";
+  if (thread.status === "Not confirmed") return "not confirmed";
+  return "not yet sent";
+}
+
+// "Discuss in a thread": the records behind this Thread, opened in a chat thread.
+async function discussSignal(thread) {
+  try {
+    const files = [];
+    for (const name of thread.files) {
+      const raw = await storage.readProcessedFile(name);
+      files.push({ name, raw });
+    }
+    await discussInThread({ title: `Signal: ${thread.pattern_type} (${thread.location})`, domain: thread.domain, files });
+  } catch (err) {
+    toast(`Couldn't open the records: ${err.message}`);
+  }
 }
 
 // ---------- History ----------
@@ -345,6 +590,29 @@ function button(label, kind, disabled, onClick) {
 
 function statusPill(status) {
   return text("span", `status-pill status-${status.toLowerCase().replace(/[^a-z]+/g, "-")}`, status);
+}
+
+function list(items) {
+  const ul = document.createElement("ul");
+  for (const item of items) ul.append(text("li", "", item));
+  return ul;
+}
+
+// A small coloured label for a trust label (dashed for Inferred and Suggested).
+function trustChip(label) {
+  return text("span", `trust-chip trust-${String(label).toLowerCase()}`, label);
+}
+
+function sourceIds(ids) {
+  return text("span", "brief-sources", ids.length ? ` ${ids.join(", ")}` : " no source (unconfirmed)");
+}
+
+function labelled(label, value, trust) {
+  const p = document.createElement("p");
+  p.className = "brief-labelled";
+  p.append(text("strong", "", `${label}: `), value ?? "");
+  if (trust) p.append(" ", trustChip(trust));
+  return p;
 }
 
 function placeholderTag() {

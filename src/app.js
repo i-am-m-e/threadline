@@ -22,6 +22,7 @@ import { icons, logo } from "./icons.js";
 import { initTheme } from "./theme.js";
 import { threadToMarkdown } from "./export.js";
 import { initSignals, renderSignals, updateBadge as updateSignalsBadge } from "./signals-ui.js";
+import { recordFileAsText } from "./records.js";
 import { marked } from "./vendor/marked.esm.js";
 import DOMPurify from "./vendor/purify.es.mjs";
 
@@ -93,7 +94,7 @@ async function start() {
 
   await storage.initStorage();
   domainRules = await storage.loadDomainRules();
-  await initSignals({ domainRules, showToast });
+  await initSignals({ domainRules, showToast, discuss: discussSignal });
   renderDomainOptions();
   const saved = await storage.listConversations();
   await showConversation(saved[0] ?? makeNewThread());
@@ -1996,6 +1997,30 @@ function render({ keepScroll = false } = {}) {
   renderComposer();
   if (mode === "signals") renderSignals();
   scheduleLines();
+}
+
+// ---------- "Discuss in a thread" (from Signals) ----------
+// Opens a chat thread holding a Signal's records, labelled Observed (logs, flow data) or
+// Authoritative (policies), in the Signal's domain, so you can ask cited questions and use
+// Find gaps. It doesn't run the automatic overview; ask whatever you like.
+async function discussSignal({ title, domain, files }) {
+  if (isWaiting) return showToast("Wait for the current answer to finish first.");
+  const conv = makeNewThread();
+  conv.title = title.slice(0, 60);
+  conv.domain = domainRules[domain] ? domain : null;
+  const attachments = [];
+  for (const { name, raw } of files) {
+    const { text, trustLabel } = recordFileAsText(name, raw);
+    const extracted = { text, type: name.split(".").pop().toUpperCase(), pages: null };
+    const ref = await storage.saveDocument(new File([text], name.replace(/\.(csv|json)$/i, ".txt")), extracted);
+    ref.trustLabel = trustLabel;
+    docs[ref.id] = { text, passages: splitIntoPassages(text) };
+    attachments.push(ref);
+  }
+  conv.messages.push({ role: "event", time: new Date().toISOString(), attachments });
+  await storage.saveConversation(conv);
+  setMode("standard");
+  await showConversation(conv);
 }
 
 // ---------- Small helpers ----------
