@@ -19,5 +19,8 @@ The four follow-ups listed in the step 1 spec, each with a test written first
    "Outcome review due" (the date alone never moves a Thread: nothing goes past Flagged
    without a button press), then **Record outcome** closes it as before.
 
-Still open from that list: Signals schemas allow only Healthcare and Energy, while House rules
-allow new domains.
+The last item on that list (Signals schemas allowed only Healthcare and Energy, while House rules
+allow new domains) was done separately, on the `any-domain` branch: the domain is free text in
+Prompt 1's schema and prompt (code sets it from the trigger anyway), and flow records of a new
+kind are recognised by their shape (no text, not a policy, incident, complaint or near-miss).
+Tested with a made-up "Aviation" domain in `tests/monitor.test.js`.

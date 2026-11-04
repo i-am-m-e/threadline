@@ -6,7 +6,7 @@
                "supporting_evidence", "possible_vignette", "evidence_that_does_not_fit", "confidence", "confidence_reason"],
   "properties": {
     "vignette_id": { "type": "string" },
-    "domain": { "type": "string", "enum": ["Healthcare", "Energy"] },
+    "domain": { "type": "string" },
     "pattern_type": { "type": "string" },
     "location": { "type": "string" },
     "time_window": { "type": "string" },

@@ -37,7 +37,7 @@ INSTRUCTIONS
 OUTPUT SCHEMA
 {
   "vignette_id": "VIG-[DATE]-[N]",
-  "domain": "Healthcare" | "Energy",
+  "domain": "",
   "pattern_type": "",
   "location": "",
   "time_window": "[start] to [end]",

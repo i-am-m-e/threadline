@@ -13,9 +13,13 @@ const QUALITATIVE_TYPES = new Set(["incident_report", "complaint", "near_miss"])
 const TWO_HOURS = 2 * 60 * 60 * 1000;
 const ONE_HOUR = 60 * 60 * 1000;
 
-export const isFlow = (r) => FLOW_TYPES.has(r.source_type);
 export const isQualitative = (r) => QUALITATIVE_TYPES.has(r.source_type);
 export const isPolicy = (r) => r.source_type === "policy";
+// Flow records are rows of numbers: the two known kinds, or (for a domain added later, with
+// its own kind of log) any record that isn't a policy, incident, complaint or near-miss and
+// has no text. Text records in every domain use incident_report, complaint or near_miss.
+export const isFlow = (r) =>
+  FLOW_TYPES.has(r.source_type) || (!isPolicy(r) && !isQualitative(r) && typeof r.text !== "string");
 
 // Plain-language names for source types (for cards and badges).
 export const SOURCE_TYPE_NAMES = {

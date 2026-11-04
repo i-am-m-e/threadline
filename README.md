@@ -40,6 +40,12 @@ The **Signals** mode watches approved operational data for patterns in flows, qu
    70+ occasions move up the list, and reaching 10 occasions flags a Thread for review even at
    Low confidence (the daily cap still applies). Recurrence never changes the confidence label.
    Bands and the flag point are `recurrenceBands` and `recurrenceFlagAt` in `src/config.js`.
+7. **Other domains** work too. A domain added in House rules ("Add domain") gets terms and rules for
+   chat straight away; for Signals it also needs `triggers` (and optionally
+   `safety_relevant_conditions`) in `domain_rules.json`, in the same form as Healthcare and Energy.
+   Its flow records can be any kind of log (`source_type`, e.g. `turnaround_log`): a record that
+   isn't a policy, incident, complaint or near-miss and has no text counts as a flow row. Text
+   records use `incident_report`, `complaint` or `near_miss`, and policies `policy`.
 
 The evidence library in `data/evidence/` holds **placeholders** to be replaced with curated
 summaries; recommendations relying on them are tagged "Placeholder evidence". Test results:

@@ -59,3 +59,12 @@ test("no prompt in a full healthcare run contains eval_role", async () => {
   assert.equal(replay.prompts.length, 4);
   for (const p of replay.prompts) assert.ok(!p.includes("eval_role"));
 });
+
+test("rows of numbers from a new domain count as flow records; text records and policies don't", async () => {
+  const { isFlow } = await import("../src/records.js");
+  assert.equal(isFlow({ source_type: "turnaround_log", turnaround_minutes: 62 }), true);
+  assert.equal(isFlow({ source_type: "emr_flow", bed_occupancy: 0.9 }), true);
+  assert.equal(isFlow({ source_type: "near_miss", text: "Crew began work before sign-off." }), false);
+  assert.equal(isFlow({ source_type: "policy", text: "No work may begin…" }), false);
+  assert.equal(isFlow({ source_type: "shift_note", text: "Busy afternoon." }), false, "a record with text isn't a row of numbers");
+});

@@ -219,3 +219,8 @@ test("a claim citing no records becomes Inferred", async () => {
   const { result } = await run({ answers: (s) => [s.pattern, noSources(s), s.options, s.card] });
   assert.equal(result.steps.analysis.contributing_conditions[0].trust_label, "Inferred");
 });
+
+test("Prompt 1 doesn't limit the domain to Healthcare or Energy", async () => {
+  const { replay } = await run();
+  assert.doesNotMatch(replay.prompts[0], /"Healthcare" \| "Energy"/);
+});

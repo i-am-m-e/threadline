@@ -72,3 +72,32 @@ test("a Thread reaching 10 occasions is flagged for review even at Low confidenc
   assert.match(thread.history.at(-1).note, /^Recurring: seen on 10 occasions \(10\+\)/);
   assert.equal(thread.runs.at(-1).steps.card.evidence_badge, "Based on 0 records", "no record survived the checks: no dangling list");
 });
+
+// ---------- A domain added in House rules (not Healthcare or Energy) ----------
+
+test("a new domain with its own kind of flow records goes through Signals like the others", async () => {
+  // Defined in this test only: an "Aviation" domain whose trigger watches "turnaround_log" rows.
+  const rules = {
+    ...loadRules(),
+    Aviation: {
+      acronyms: {}, user_overrides: [],
+      triggers: [{ pattern_type: "Turnarounds during ramp crew shortfall", source_type: "turnaround_log",
+        all: [{ metric: "turnaround_minutes", op: ">", value: 50, label: "Turnaround above 50 minutes" }] }],
+      safety_relevant_conditions: [],
+    },
+  };
+  const csv = ["source_id,source_type,domain,location,timestamp,turnaround_minutes,synthetic",
+    "AV-TURN-0900,turnaround_log,Aviation,Synthetic Airfield D,2026-09-20T09:00,62,true",
+    "AV-TURN-1000,turnaround_log,Aviation,Synthetic Airfield D,2026-09-20T10:00,65,true"].join("\n");
+  const s = fixtureSteps("rooming");
+  const answers = [{ ...s.pattern, domain: "Aviation", pattern_type: "Turnarounds during ramp crew shortfall", location: "Synthetic Airfield D" }, s.analysis, s.options, s.card];
+
+  const mem = memoryIo();
+  mem.put([{ name: "Turnarounds_2026-09-20.csv", text: csv }]);
+  const summary = await checkForSignals({ ...base, rules, io: mem.io, ask: replayAsk(answers).ask });
+  assert.deepEqual(summary.errors, []);
+  const [thread] = mem.threads();
+  assert.equal(thread.domain, "Aviation");
+  assert.equal(thread.pattern_type, "Turnarounds during ramp crew shortfall");
+  assert.equal(thread.windows.length, 1);
+});

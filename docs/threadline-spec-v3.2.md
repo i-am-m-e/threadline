@@ -46,6 +46,9 @@ number of supporting records.
 > them. Prompt 2: `policy_practice_gap` also has `"policy_quote"` (exact words from the cited
 > policy). The prompt text below is as originally specified; the live prompts are in
 > `src/prompts/`. Details: `docs/specs/2026-11-04-step2-verify-findings.md`.
+>
+> **Change, 2026-11-04.** Prompt 1's `"domain"` is no longer limited to `"Healthcare" | "Energy"`
+> (code sets it from the trigger that fired), so domains added in House rules work in Signals.
 
 ### Shared rules (prepend to every prompt)
 
