@@ -13,6 +13,10 @@
 //   • recommendation confidence ≤ pattern confidence, and Low when there's no evidence
 //   • the card begins "Threadline noticed", stays within 80 words, and shows the real
 //     record count and pattern confidence
+//   • every supporting finding is checked against the record it cites (a quote from its
+//     text, or its field values, and the numbers in the finding's wording), and the
+//     policy-practice gap's quote against the policy (src/verify.js). What still can't be
+//     verified after the retry is removed and logged; a tally goes in meta.verification.
 //
 // Nothing here changes a Thread's status or applies anything: it only drafts.
 
@@ -23,6 +27,7 @@ import { buildOptionsPrompt } from "./prompts/options.js";
 import { buildReviewCardPrompt } from "./prompts/reviewCard.js";
 import { qualitativeNear, policiesFor, safetyConditionsIn, maxConfidence, lowerOf, CONFIDENCE_ORDER, SOURCE_TYPE_NAMES } from "./records.js";
 import { words } from "./passages.js";
+import { evidenceProblems, policyQuoteProblem, thresholdsOf } from "./verify.js";
 
 /**
  * @param {object} run
@@ -60,19 +65,48 @@ export async function runPipeline({ windows, records, rules, evidenceLibrary, sc
   const recordIds = new Set([...flowRecords, ...qualitativeRecords].map((r) => r.source_id));
   const allIds = new Set(inputRecords.map((r) => r.source_id));
 
+  // Checking findings against their records (src/verify.js). The tally ends up in meta.
+  const thresholds = thresholdsOf(pack);
+  const verification = { findings_checked: 0, findings_verified: 0, findings_removed: [], fixed_on_retry: 0, policy_quote: "none cited" };
+  const flaggedBeforeLast = new Set(); // findings that failed on an earlier answer
+  let flaggedLast = new Set();
+  const verifyFindings = (o) => {
+    for (const key of flaggedLast) flaggedBeforeLast.add(key);
+    flaggedLast = new Set();
+    return o.supporting_evidence.flatMap((e) => {
+      const record = byId.get(e.source_id);
+      const problems = record ? evidenceProblems(e, record, thresholds) : [];
+      if (problems.length === 0) return [];
+      flaggedLast.add(e.source_id);
+      const problem = problems.join(" ");
+      return [{
+        problem,
+        remove: () => {
+          o.supporting_evidence.splice(o.supporting_evidence.indexOf(e), 1);
+          verification.findings_removed.push({ source_id: e.source_id, finding: e.finding, problem });
+          return `${e.source_id}: unverified, removed`;
+        },
+      }];
+    });
+  };
+
   // ---- Prompt 1: pattern and vignette ----
   onStep("pattern");
-  const thresholds = {
+  const promptThresholds = {
     pattern_type,
     trigger_conditions: trigger.all.map((c) => `${c.label} (${c.metric} ${c.op} ${c.value})`),
     safety_relevant_conditions: (pack.safety_relevant_conditions ?? []).map((c) => c.label),
   };
   const pattern = await step({
     name: "pattern", schema: schemas.pattern, temperature: config.temperatures.pattern,
-    prompt: buildPatternPrompt({ thresholds, flowRecords: forModel(flowRecords), qualitativeRecords: forModel(qualitativeRecords) }),
+    prompt: buildPatternPrompt({ thresholds: promptThresholds, flowRecords: forModel(flowRecords), qualitativeRecords: forModel(qualitativeRecords) }),
     sourceIds: recordIds,
     checks: (o) => (/^Records suggest\b/.test(o.pattern_statement.trim()) ? [] : ['pattern_statement must begin with "Records suggest".']),
+    verify: verifyFindings,
   });
+  verification.findings_verified = pattern.supporting_evidence.length;
+  verification.findings_checked = verification.findings_verified + verification.findings_removed.length;
+  verification.fixed_on_retry = new Set(pattern.supporting_evidence.map((e) => e.source_id).filter((id) => flaggedBeforeLast.has(id))).size;
 
   // Facts the code knows better than the model.
   for (const [field, value] of [["domain", domain], ["pattern_type", pattern_type], ["location", location]]) {
@@ -97,6 +131,22 @@ export async function runPipeline({ windows, records, rules, evidenceLibrary, sc
     name: "analysis", schema: schemas.analysis, temperature: config.temperatures.analysis,
     prompt: buildAnalysisPrompt({ policies: forModel(policies), vignette: pattern }),
     sourceIds: allIds,
+    verify: (o) => {
+      const gap = o.policy_practice_gap;
+      const policy = gap.policy_source_id && byId.get(gap.policy_source_id);
+      const problem = policy && policyQuoteProblem(gap, policy);
+      if (!problem) return [];
+      return [{
+        problem,
+        remove: () => {
+          const id = gap.policy_source_id;
+          gap.policy_source_id = "";
+          gap.policy_quote = "";
+          verification.policy_quote = "removed";
+          return `policy_practice_gap: ${id}: unverified, removed (policy id and quote blanked)`;
+        },
+      }];
+    },
     checks: (o) => [
       ...(o.alternative_explanations.length ? [] : ["Give at least one alternative explanation."]),
       ...(o.open_questions.length ? [] : ["Give at least one open question for reviewers."]),
@@ -104,6 +154,7 @@ export async function runPipeline({ windows, records, rules, evidenceLibrary, sc
     ],
   });
   tidyGraph(analysis.graph, (detail) => note("analysis", detail));
+  if (verification.policy_quote !== "removed" && analysis.policy_practice_gap.policy_source_id) verification.policy_quote = "verified";
 
   // ---- Evidence selection (code, not a prompt) ----
   onStep("evidence");
@@ -157,6 +208,7 @@ export async function runPipeline({ windows, records, rules, evidenceLibrary, sc
       domain, pattern_type, location,
       windows: windows.map((w) => ({ start: w.start, end: w.end })),
       source_ids: [...allIds],
+      verification,
       safety_conditions: safetyConditionsIn([...flowRecords, ...qualitativeRecords], pack),
       placeholder_evidence: evidence.some((e) => e.synthetic_placeholder) &&
         options.options.some((o) => o.evidence_ids.some((id) => evidence.find((e) => e.evidence_id === id)?.synthetic_placeholder)),

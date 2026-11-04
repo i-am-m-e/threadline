@@ -22,6 +22,17 @@ INSTRUCTIONS
           one time window.
    Medium = two source types agree in one window.
    Low = one source type, or a single short window.
+6. For every supporting_evidence item, show where the finding comes from
+   in the record it cites:
+   - Incident, complaint and near-miss records: in "quote", at least 4
+     words copied exactly from that record's text, as one continuous
+     stretch (no "..."). Leave "record_values" empty.
+   - Flow records: in "record_values", each field the finding relies on
+     and its value, exactly as in the record, for example
+     { "field": "room_to_physician_minutes", "value": 90 }.
+     Leave "quote" empty.
+   Only use numbers in "finding" that appear in the record it cites or
+   in DOMAIN_THRESHOLDS.
 
 OUTPUT SCHEMA
 {
@@ -32,7 +43,13 @@ OUTPUT SCHEMA
   "time_window": "[start] to [end]",
   "pattern_statement": "One sentence beginning with 'Records suggest'",
   "supporting_evidence": [
-    { "source_id": "", "trust_label": "Observed", "finding": "" }
+    {
+      "source_id": "",
+      "trust_label": "Observed",
+      "finding": "",
+      "quote": "",
+      "record_values": [ { "field": "", "value": 0 } ]
+    }
   ],
   "possible_vignette": {
     "situation": "",

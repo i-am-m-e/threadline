@@ -21,6 +21,11 @@ LENSES
   conditions. Do NOT classify any behaviour as at-risk or reckless.
   That judgment belongs to people with full context, not to Threadline.
 
+POLICY QUOTE
+In policy_quote, give at least 4 words copied exactly from the text of
+the policy you cite in policy_source_id, as one continuous stretch (no
+"..."). It shows which words of the policy the gap is about.
+
 PRESSURE MAP
 For each role affected, describe what pressure it appears to carry and
 whether that pressure seems to be moving from one role to another.
@@ -38,6 +43,7 @@ OUTPUT SCHEMA
   "vignette_id": "",
   "policy_practice_gap": {
     "policy_source_id": "",
+    "policy_quote": "",
     "what_policy_expects": "",
     "what_records_suggest": "",
     "confidence": "Low" | "Medium" | "High"

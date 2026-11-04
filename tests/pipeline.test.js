@@ -1,5 +1,6 @@
 // The rules runPipeline enforces in code, rather than trusting the model.
-// Each test replays the answers recorded on 2026-09-28, with one thing changed.
+// Each test replays the answers recorded on 2026-09-28 (with the step 2 fields added:
+// tests/fixtures/step2/), with one thing changed.
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { parseRecordFile, findTriggeredWindows } from "../src/records.js";
@@ -86,4 +87,90 @@ test("the card's evidence badge and confidence come from code", async () => {
   assert.match(result.steps.card.evidence_badge, /^Based on \d+ records: /);
   assert.notEqual(result.steps.card.evidence_badge, "Based on 99 records");
   assert.equal(result.steps.card.confidence, result.steps.pattern.confidence);
+});
+
+// ---------- Step 2: every finding is checked against the record it cites ----------
+
+const withEvidence = (pattern, sourceId, change) => ({
+  ...pattern,
+  supporting_evidence: pattern.supporting_evidence.map((e) => (e.source_id === sourceId ? { ...e, ...change } : e)),
+});
+const withGap = (analysis, change) => ({ ...analysis, policy_practice_gap: { ...analysis.policy_practice_gap, ...change } });
+const removals = (result, step) => result.log.filter((l) => l.step === step && l.type === "unverified_removed");
+
+test("findings that match their records pass, and the tally says so", async () => {
+  const { result, replay } = await run();
+  assert.equal(replay.calls.length, 4, "no retry needed");
+  assert.deepEqual(result.meta.verification, {
+    findings_checked: 6, findings_verified: 6, findings_removed: [], fixed_on_retry: 0, policy_quote: "verified",
+  });
+});
+
+test("a real record id with an invented number is caught and named in the retry", async () => {
+  const wrong = (s) => withEvidence(s.pattern, "HC-CMP-4471", { finding: "Patient waited 95 minutes after rooming." });
+  const { result, replay } = await run({ answers: (s) => [wrong(s), s.pattern, s.analysis, s.options, s.card] });
+  assert.match(lastMessage(replay, 1), /HC-CMP-4471: the finding mentions 95/);
+  assert.equal(result.meta.verification.findings_verified, 6);
+  assert.equal(result.meta.verification.fixed_on_retry, 1);
+});
+
+test("a flow finding with the wrong value is caught and named in the retry", async () => {
+  const wrong = (s) => withEvidence(s.pattern, "HC-FLOW-20260920-1600", { record_values: [{ field: "room_to_physician_minutes", value: 120 }] });
+  const { replay } = await run({ answers: (s) => [wrong(s), s.pattern, s.analysis, s.options, s.card] });
+  assert.match(lastMessage(replay, 1), /room_to_physician_minutes is 90 in that record, not 120/);
+});
+
+test("a finding still unverified after the retry is removed and logged, and the run carries on", async () => {
+  const wrong = (s) => withEvidence(s.pattern, "HC-CMP-4471", { quote: "waited two hours in the exam room" });
+  const { result } = await run({ answers: (s) => [wrong(s), wrong(s), s.analysis, s.options, s.card] });
+  const cited = result.steps.pattern.supporting_evidence.map((e) => e.source_id);
+  assert.ok(!cited.includes("HC-CMP-4471"));
+  assert.equal(removals(result, "pattern").length, 1);
+  assert.match(removals(result, "pattern")[0].detail, /HC-CMP-4471: unverified, removed/);
+  const v = result.meta.verification;
+  assert.equal(v.findings_checked, 6);
+  assert.equal(v.findings_verified, 5);
+  assert.equal(v.findings_removed.length, 1);
+  assert.equal(v.findings_removed[0].source_id, "HC-CMP-4471");
+  assert.match(v.findings_removed[0].problem, /isn't in that record/);
+});
+
+test("confidence is worked out from the findings that are left after removals", async () => {
+  const wrong = (s) => withEvidence(withEvidence(s.pattern, "HC-CMP-4471", { quote: "waited two hours in the exam room" }), "HC-INC-99102", { quote: "no beds anywhere in the whole department" });
+  const { result } = await run({ answers: (s) => [wrong(s), wrong(s), s.analysis, s.options, s.card] });
+  assert.equal(result.meta.verification.findings_removed.length, 2);
+  assert.equal(result.steps.pattern.confidence, "Low", "only flow records are left: one source type");
+});
+
+test("an invented policy quote is caught in the retry, then blanked with its policy id", async () => {
+  const wrong = (s) => withGap(s.analysis, { policy_quote: "must be seen by a physician within 30 minutes" });
+  const first = await run({ answers: (s) => [s.pattern, wrong(s), s.analysis, s.options, s.card] });
+  assert.match(lastMessage(first.replay, 2), /policy_practice_gap: HC-POL-CTAS-ESC: the quote .* isn't in that record/);
+  assert.equal(first.result.meta.verification.policy_quote, "verified");
+
+  const { result } = await run({ answers: (s) => [s.pattern, wrong(s), wrong(s), s.options, s.card] });
+  assert.equal(result.steps.analysis.policy_practice_gap.policy_source_id, "");
+  assert.equal(result.steps.analysis.policy_practice_gap.policy_quote, "");
+  assert.equal(removals(result, "analysis").length, 1);
+  assert.equal(result.meta.verification.policy_quote, "removed");
+});
+
+test("the energy pack's findings verify too, including permits per inspector (worked out by code)", async () => {
+  const energyRecords = loadEvalPack("energy", loadAnswerKey()).files.flatMap((f) => parseRecordFile(f.name, f.text));
+  const s = fixtureSteps("energy");
+  const replay = replayAsk([s.pattern, s.analysis, s.options, s.card]);
+  const result = await runPipeline({ windows: findTriggeredWindows(energyRecords, rules), records: energyRecords, rules,
+    evidenceLibrary: loadEvidenceLibrary(), schemas: loadSchemas(), config: SIGNALS_CONFIG, ask: replay.ask });
+  assert.equal(replay.calls.length, 4);
+  assert.equal(result.meta.verification.findings_verified, 12);
+  assert.equal(result.meta.verification.policy_quote, "verified");
+});
+
+test("Prompt 1 asks for a quote or record values; Prompt 2 asks for a policy quote", async () => {
+  const { replay } = await run();
+  assert.match(replay.prompts[0], /"quote": ""/);
+  assert.match(replay.prompts[0], /"record_values": \[/);
+  assert.match(replay.prompts[0], /copied exactly/);
+  assert.match(replay.prompts[1], /"policy_quote": ""/);
+  assert.match(replay.prompts[1], /copied exactly/);
 });
