@@ -5,12 +5,12 @@ import { checkForSignals } from "../src/monitor.js";
 import { SIGNALS_CONFIG } from "../src/config.js";
 import { loadAnswerKey, loadEvalPack, loadRules, loadEvidenceLibrary, loadSchemas } from "../scripts/eval/packs.js";
 import { memoryIo } from "../scripts/eval/memoryIo.js";
-import { recordedSteps, replayAsk } from "./helpers.js";
+import { fixtureSteps, replayAsk } from "./helpers.js";
 
 const key = loadAnswerKey();
 const base = { rules: loadRules(), schemas: loadSchemas(), config: SIGNALS_CONFIG, evidenceLibrary: loadEvidenceLibrary() };
 const fourAnswers = (run) => {
-  const s = recordedSteps("rooming", run);
+  const s = fixtureSteps("rooming", run);
   return [s.pattern, s.analysis, s.options, s.card];
 };
 

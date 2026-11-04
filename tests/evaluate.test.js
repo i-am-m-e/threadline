@@ -5,10 +5,10 @@ import { mkdtempSync, readFileSync, existsSync, readdirSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { runEvaluation, OLLAMA_MESSAGE } from "../scripts/evaluate.js";
-import { recordedSteps, replayAsk } from "./helpers.js";
+import { fixtureSteps, replayAsk } from "./helpers.js";
 
 const four = (run) => {
-  const s = recordedSteps("rooming", run);
+  const s = fixtureSteps("rooming", run);
   return [s.pattern, s.analysis, s.options, s.card];
 };
 const healthcareRun = () => [...four(0), ...four(1)]; // the pack, then the update file

@@ -10,10 +10,14 @@ export const readJson = (relPath) => JSON.parse(readFileSync(join(ROOT, relPath)
 
 export const clone = (x) => structuredClone(x);
 
-/** The four steps' JSON from a run recorded on 2026-09-28 (docs/test-results). */
-export function recordedSteps(name, run = 0) {
-  const { pattern, analysis, options, card } = readJson(`docs/test-results/2026-09-28/${name}-thread.json`).runs[run].steps;
-  return clone({ pattern, analysis, options, card });
+/**
+ * The four steps' JSON from a run recorded on 2026-09-28, with the step 2 fields added
+ * (a quote or record values per finding, and the policy quote): tests/fixtures/step2/.
+ * The original recordings in docs/test-results/2026-09-28/ are left unchanged.
+ * @param {"rooming" | "energy"} name
+ */
+export function fixtureSteps(name, run = 0) {
+  return clone(readJson(`tests/fixtures/step2/${name}-steps.json`).runs[run]);
 }
 
 // The schemas are loaded the same way the scorecard loads them.

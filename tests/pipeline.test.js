@@ -6,7 +6,7 @@ import { parseRecordFile, findTriggeredWindows } from "../src/records.js";
 import { runPipeline } from "../src/pipeline.js";
 import { SIGNALS_CONFIG } from "../src/config.js";
 import { loadAnswerKey, loadEvalPack, loadRules, loadEvidenceLibrary, loadSchemas } from "../scripts/eval/packs.js";
-import { recordedSteps, replayAsk } from "./helpers.js";
+import { fixtureSteps, replayAsk } from "./helpers.js";
 
 const rules = loadRules();
 const records = loadEvalPack("healthcare", loadAnswerKey()).files.flatMap((f) => parseRecordFile(f.name, f.text));
@@ -14,7 +14,7 @@ const windows = findTriggeredWindows(records, rules);
 
 /** Run the pipeline with the given answers (default: the recorded four). */
 async function run({ answers, evidenceLibrary = loadEvidenceLibrary() } = {}) {
-  const s = recordedSteps("rooming");
+  const s = fixtureSteps("rooming");
   const replay = replayAsk(answers ? answers(s) : [s.pattern, s.analysis, s.options, s.card]);
   const result = await runPipeline({ windows, records, rules, evidenceLibrary, schemas: loadSchemas(), config: SIGNALS_CONFIG, ask: replay.ask });
   return { result, replay };

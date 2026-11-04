@@ -5,7 +5,7 @@ import assert from "node:assert/strict";
 import { parseRecordFile, findTriggeredWindows, qualitativeNear, policiesFor, safetyConditionsIn } from "../src/records.js";
 import { runPipeline } from "../src/pipeline.js";
 import { loadAnswerKey, loadEvalPack, loadRules, loadEvidenceLibrary, loadSchemas } from "../scripts/eval/packs.js";
-import { recordedSteps, replayAsk } from "./helpers.js";
+import { fixtureSteps, replayAsk } from "./helpers.js";
 import { SIGNALS_CONFIG } from "../src/config.js";
 
 const key = loadAnswerKey();
@@ -53,7 +53,7 @@ for (const name of ["healthcare", "energy", "healthcare_update"]) {
 test("no prompt in a full healthcare run contains eval_role", async () => {
   const records = recordsOf("healthcare");
   const windows = findTriggeredWindows(records, rules);
-  const s = recordedSteps("rooming");
+  const s = fixtureSteps("rooming");
   const replay = replayAsk([s.pattern, s.analysis, s.options, s.card]);
   await runPipeline({ windows, records, rules, evidenceLibrary: loadEvidenceLibrary(), schemas: loadSchemas(), config: SIGNALS_CONFIG, ask: replay.ask });
   assert.equal(replay.prompts.length, 4);

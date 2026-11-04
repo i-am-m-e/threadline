@@ -2,10 +2,10 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { validateAgainstSchema, guardSources, findGuardrailProblems, runStep, StepError } from "../src/llm.js";
-import { recordedSteps, replayAsk, loadSchemas, clone } from "./helpers.js";
+import { fixtureSteps, replayAsk, loadSchemas, clone } from "./helpers.js";
 
 const schemas = loadSchemas();
-const pattern = () => clone(recordedSteps("rooming").pattern);
+const pattern = () => clone(fixtureSteps("rooming").pattern);
 
 test("schema check: a recorded pattern answer is valid", () => {
   assert.deepEqual(validateAgainstSchema(pattern(), schemas.pattern), []);
@@ -161,7 +161,7 @@ test("runStep verify: other problems on the second answer still fail the step", 
 
 test("runStep verify: checks run after the source guard has removed invented ids", async () => {
   const p = pattern();
-  p.supporting_evidence[0] = { source_id: "HC-FAKE-1", trust_label: "Observed", finding: "MADE UP finding" };
+  p.supporting_evidence[0] = { source_id: "HC-FAKE-1", trust_label: "Observed", finding: "MADE UP finding", quote: "", record_values: [] };
   const seen = [];
   const replay = replayAsk([p]);
   await runStep({ ...stepArgs(replay.ask), verify: (o) => { seen.push(...o.supporting_evidence.map((e) => e.source_id)); return []; } });
