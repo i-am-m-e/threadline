@@ -1,6 +1,6 @@
 # Step 2: Check every finding against its source record
 
-Status: **design approved 2026-11-04**
+Status: **design approved 2026-11-04; built 2026-11-04 (needs a scorecard run on the founder's Mac)**
 
 ## Why
 

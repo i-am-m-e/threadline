@@ -23,6 +23,10 @@ The **Signals** mode watches approved operational data for patterns in flows, qu
 2. Triggers from `domain_rules.json` are checked in code. If one fires, four prompts run (pattern →
    system analysis → options → review card), each constrained to a JSON Schema and checked in
    code: sources must exist, no names or behaviour labels, confidence can't exceed the evidence.
+   Each supporting finding must also show where it comes from (an exact quote from an incident,
+   complaint or near-miss, or the field values of a flow row), and code checks that the record
+   really says it; the policy-practice gap must quote the policy. See "Checking findings against
+   their records" below.
 3. A **Thread** appears with a front-line review card, a manager brief and a Thread map. A matching
    open Thread is updated instead of duplicated. If a step fails, the file stays in `incoming/`
    and the next Check now retries it.
@@ -57,13 +61,37 @@ npm run dev        # opens the app window; edits to src/ reload it
 npm run build      # makes Threadline.app in src-tauri/target/release/bundle/macos/
 ```
 
+## Checking findings against their records
+
+The source guard removes record ids that don't exist. That alone would let a real id with an
+invented finding through, so `src/verify.js` also checks what each finding says:
+
+- **Incident, complaint and near-miss records:** the model gives a quote of at least 4 words,
+  copied as one continuous stretch from the record's text. Capitals, spacing, curly quotes and
+  dash types don't matter; other punctuation does; "..." joining pieces is refused.
+- **Flow records (CSV rows):** the model names each field and value it relies on
+  (`room_to_physician_minutes = 90`), and they must match the row.
+- **Numbers in the finding's wording** must be in the cited record. 0.93 may be written as 93%
+  (or rounded to a whole percent); hours and minutes may be converted, but only for a number the
+  record itself labels as hours or minutes ("2-hour wait" allows 120 minutes); the domain's own
+  thresholds (e.g. "above 45 minutes") are allowed. Numbers written as words aren't checked, and
+  units aren't compared.
+- **The policy-practice gap** quotes the policy it cites.
+
+A problem goes into the step's one retry, naming exactly what was wrong. If a finding still
+can't be verified, it is removed and logged as "unverified, removed" (the policy gap's id and
+quote are blanked instead), and confidence is worked out from what's left. Nothing unverified is
+kept silently. The quotes and values are saved in each Thread's file (not shown in the app yet).
+Contributing conditions, the pressure map, the graph and the options aren't checked this way
+yet. Design: `docs/specs/2026-11-04-step2-verify-findings.md`.
+
 ## Testing and the scorecard
 
 Two commands check the Signals engine. Neither touches the app's own data.
 
 **`npm test`** runs the saved tests in `tests/` in a few seconds, without Ollama. They check every
 rule Signals enforces in code: answers must match their schema, made-up record ids are removed,
-names and blame language are caught, confidence can't exceed what the evidence supports, only a
+findings must match the records they cite, names and blame language are caught, confidence can't exceed what the evidence supports, only a
 person can move a Thread past Flagged, the daily flag cap, and that a second file updates the
 same Thread. A test marked TODO is a known issue that hasn't been fixed yet.
 
@@ -79,7 +107,8 @@ npm run eval -- --model qwen3:8b    # try another model
 ```
 
 Results go to `docs/eval/<date>/` (a second run on the same day goes to `<date>-2/`, and so on): read `scorecard.md` (pass rates, decoys cited, how much repeated
-runs agree, retries, time per run, and every failed check); `runs/` has each run's full output.
+runs agree, retries, time per run, findings verified against their records and any removed as
+unverified, and every failed check); `runs/` has each run's full output.
 
 The answer key and decoy records hold the founder's clinical and operational judgement. Change
 them only with his approval. The design is in `docs/specs/2026-11-04-step1-tests-and-scorecard.md`.
@@ -100,7 +129,8 @@ them only with his approval. The design is in `docs/specs/2026-11-04-step1-tests
 | `src/icons.js` | The Lucide icons and Threadline mark used in the UI |
 | `src/signals-ui.js` | Signals mode screen: toolbar, Thread list, review card, manager brief, digest |
 | `src/prompts/`, `src/schemas/` | The four Signals prompts (shared rules first) and their JSON Schemas |
-| `src/llm.js` | Runs each Signals prompt: schema check, source guard, name/behaviour scan, one retry |
+| `src/llm.js` | Runs each Signals prompt: schema check, source guard, name/behaviour scan, checks against the records, one retry |
+| `src/verify.js` | Checks that each finding is really in the record it cites (quotes, field values, numbers) |
 | `src/pipeline.js` | Prompt 1 → 2 → evidence selection → 3 → 4, with code checks after each |
 | `src/records.js` | Reads record files, checks triggers, time windows, safety conditions |
 | `src/monitor.js` | Check now / timer: new files, triggers, de-duplication into open Threads |
