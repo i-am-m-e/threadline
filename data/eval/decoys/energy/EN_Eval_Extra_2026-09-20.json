@@ -1,0 +1,57 @@
+[
+  {
+    "synthetic": true,
+    "eval_role": "decoy_unrelated",
+    "source_id": "EN-NM-20260920-02",
+    "source_type": "near_miss",
+    "domain": "Energy",
+    "location": "Synthetic Site B",
+    "timestamp": "2026-09-20T10:15",
+    "title": "Synthetic near-miss report 02",
+    "text": "Forklift reversing alarm found inoperative in the laydown yard; unit tagged out and repaired. No contact with people or equipment."
+  },
+  {
+    "synthetic": true,
+    "eval_role": "decoy_unrelated",
+    "source_id": "EN-INC-20260920-05",
+    "source_type": "incident_report",
+    "domain": "Energy",
+    "location": "Synthetic Site B",
+    "timestamp": "2026-09-20T08:20",
+    "title": "Synthetic incident report 05",
+    "text": "Eyewash station flow test at Unit 3 was below the required rate; maintenance ticket raised and station signed out of service."
+  },
+  {
+    "synthetic": true,
+    "eval_role": "counter_evidence",
+    "source_id": "EN-INC-20260920-06",
+    "source_type": "incident_report",
+    "domain": "Energy",
+    "location": "Synthetic Site B",
+    "timestamp": "2026-09-20T10:40",
+    "title": "Synthetic good catch report 06",
+    "text": "Good catch report: crew on Line A waited 90 minutes for zero-energy verification and did not begin work until sign-off was complete."
+  },
+  {
+    "synthetic": true,
+    "eval_role": "excluded_outside_window",
+    "source_id": "EN-NM-20260920-04",
+    "source_type": "near_miss",
+    "domain": "Energy",
+    "location": "Synthetic Site B",
+    "timestamp": "2026-09-20T14:30",
+    "title": "Synthetic near-miss report 04",
+    "text": "Crew started valve work on Line C before zero-energy sign-off while waiting for an available inspector."
+  },
+  {
+    "synthetic": true,
+    "eval_role": "excluded_other_location",
+    "source_id": "EN-NM-20260920-07",
+    "source_type": "near_miss",
+    "domain": "Energy",
+    "location": "Synthetic Site C",
+    "timestamp": "2026-09-20T09:30",
+    "title": "Synthetic near-miss report 07",
+    "text": "Work began on a transfer pump before zero-energy verification was signed off."
+  }
+]
