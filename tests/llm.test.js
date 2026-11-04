@@ -107,3 +107,63 @@ test("runStep: an answer that isn't JSON is retried", async () => {
   await runStep(stepArgs(replay.ask));
   assert.match(replay.calls[1].at(-1).content, /The answer was not valid JSON\./);
 });
+
+// ---------- Step 2: verification problems join the retry, then unverified items are removed ----------
+
+// A stand-in for the real checks: any evidence item whose finding says "MADE UP" is unverified.
+const toyVerify = (removed = []) => (output) =>
+  output.supporting_evidence
+    .filter((e) => e.finding.includes("MADE UP"))
+    .map((e) => ({
+      problem: `${e.source_id}: the finding isn't in that record.`,
+      remove: () => {
+        output.supporting_evidence.splice(output.supporting_evidence.indexOf(e), 1);
+        removed.push(e.source_id);
+        return `${e.source_id}: unverified, removed`;
+      },
+    }));
+const withMadeUp = () => {
+  const p = pattern();
+  p.supporting_evidence[0].finding = "MADE UP finding";
+  return p;
+};
+
+test("runStep verify: an unverified item is named in the one retry; a fixed answer is kept whole", async () => {
+  const removed = [];
+  const replay = replayAsk([withMadeUp(), pattern()]);
+  const { output, log } = await runStep({ ...stepArgs(replay.ask), verify: toyVerify(removed) });
+  assert.equal(replay.calls.length, 2);
+  assert.match(replay.calls[1].at(-1).content, /the finding isn't in that record/);
+  assert.equal(output.supporting_evidence.length, pattern().supporting_evidence.length);
+  assert.deepEqual(removed, []);
+  assert.equal(log.filter((l) => l.type === "unverified_removed").length, 0);
+});
+
+test("runStep verify: still unverified after the retry → removed and logged, not a step failure", async () => {
+  const removed = [];
+  const replay = replayAsk([withMadeUp(), withMadeUp()]);
+  const { output, log } = await runStep({ ...stepArgs(replay.ask), verify: toyVerify(removed) });
+  assert.equal(replay.calls.length, 2, "no extra model call");
+  assert.equal(output.supporting_evidence.length, pattern().supporting_evidence.length - 1);
+  assert.deepEqual(removed, [pattern().supporting_evidence[0].source_id]);
+  const removals = log.filter((l) => l.type === "unverified_removed");
+  assert.equal(removals.length, 1);
+  assert.match(removals[0].detail, /unverified, removed/);
+  assert.equal(log.filter((l) => l.type === "problems").length, 1, "the retry is counted once, as before");
+});
+
+test("runStep verify: other problems on the second answer still fail the step", async () => {
+  const bad = withMadeUp();
+  bad.confidence = "Very high";
+  const replay = replayAsk([withMadeUp(), bad]);
+  await assert.rejects(runStep({ ...stepArgs(replay.ask), verify: toyVerify() }), (err) => err instanceof StepError);
+});
+
+test("runStep verify: checks run after the source guard has removed invented ids", async () => {
+  const p = pattern();
+  p.supporting_evidence[0] = { source_id: "HC-FAKE-1", trust_label: "Observed", finding: "MADE UP finding" };
+  const seen = [];
+  const replay = replayAsk([p]);
+  await runStep({ ...stepArgs(replay.ask), verify: (o) => { seen.push(...o.supporting_evidence.map((e) => e.source_id)); return []; } });
+  assert.ok(!seen.includes("HC-FAKE-1"));
+});
