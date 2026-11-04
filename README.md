@@ -57,13 +57,40 @@ npm run dev        # opens the app window; edits to src/ reload it
 npm run build      # makes Threadline.app in src-tauri/target/release/bundle/macos/
 ```
 
+## Testing and the scorecard
+
+Two commands check the Signals engine. Neither touches the app's own data.
+
+**`npm test`** runs the saved tests in `tests/` in a few seconds, without Ollama. They check every
+rule Signals enforces in code: answers must match their schema, made-up record ids are removed,
+names and blame language are caught, confidence can't exceed what the evidence supports, only a
+person can move a Thread past Flagged, the daily flag cap, and that a second file updates the
+same Thread. A test marked TODO is a known issue that hasn't been fixed yet.
+
+**`npm run eval`** is the scorecard. It runs the real pipeline, on your local Ollama, on the
+evaluation packs in `data/eval/` (the benchmark files plus decoy records that should not be
+cited), several times, and scores each run against `data/eval/answer-key.json`.
+
+```bash
+npm run eval                        # both packs, 3 runs each (about 40 to 50 minutes with Command R)
+npm run eval -- --runs 1            # a quick check (about 15 minutes)
+npm run eval -- --pack healthcare   # one pack: healthcare, energy or all
+npm run eval -- --model qwen3:8b    # try another model
+```
+
+Results go to `docs/eval/<date>/`: read `scorecard.md` (pass rates, decoys cited, how much repeated
+runs agree, retries, time per run, and every failed check); `runs/` has each run's full output.
+
+The answer key and decoy records hold the founder's clinical and operational judgement. Change
+them only with his approval. The design is in `docs/specs/2026-11-04-step1-tests-and-scorecard.md`.
+
 ## How it's organized
 
 | File | Job |
 | --- | --- |
 | `src/index.html`, `src/styles.css` | Layout and look (design tokens, light/dark, animations) |
 | `src/app.js` | Interface logic: thread, sidebar, Sources panel, message box |
-| `src/model.js` | **The only file that talks to the AI.** `getModelResponse(messages, { model, onProgress })`, plus the list of models |
+| `src/model.js` | **The only file that talks to the AI.** `getModelResponse(messages, { model, onProgress, format, temperature })`, plus the list of models |
 | `src/passages.js` | Splits documents into numbered passages, builds the "cite like [3]" instructions, finds citations in replies |
 | `src/lines.js` | Draws the lines: citation traces (one color + dash pattern per source), your links, the drag line |
 | `src/theme.js` | The Auto / Light / Dark switch |
@@ -166,11 +193,15 @@ handled comparisons best. Long document questions take Command R roughly 40 seco
 
 ## Switching to a cloud AI later
 
-Only `src/model.js` changes (including its `MODELS` list). Keep the same shape:
+Mostly `src/model.js` changes (including its `MODELS` list), but not only that: Signals relies
+on Ollama's schema-constrained `format`, which forces the model to answer with JSON of the right
+shape. A cloud provider needs its own equivalent (for example structured output or tool use), and
+`SIGNALS_CONFIG.model` in `src/config.js` names the Signals model separately. Keep the same shape:
 
 - **In:** a list like `[{ role: "system" | "user" | "assistant", content: "..." }]`.
   When a thread has documents, the first message is a `system` message with the numbered passages.
-- **Options:** `{ model, onProgress }` — which model to use, and an optional progress callback
+- **Options:** `{ model, onProgress, format, temperature }`: which model to use, an optional progress
+  callback, an optional JSON Schema the answer must match (Signals), and an optional temperature
 - **Out:** the reply as a string (or throw an `Error` with a readable message)
 - Call `onProgress(textSoFar)` as the reply streams in; `app.js` shows it sentence by sentence
 
