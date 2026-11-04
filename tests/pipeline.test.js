@@ -14,10 +14,10 @@ const records = loadEvalPack("healthcare", loadAnswerKey()).files.flatMap((f) =>
 const windows = findTriggeredWindows(records, rules);
 
 /** Run the pipeline with the given answers (default: the recorded four). */
-async function run({ answers, evidenceLibrary = loadEvidenceLibrary() } = {}) {
+async function run({ answers, evidenceLibrary = loadEvidenceLibrary(), config = SIGNALS_CONFIG } = {}) {
   const s = fixtureSteps("rooming");
   const replay = replayAsk(answers ? answers(s) : [s.pattern, s.analysis, s.options, s.card]);
-  const result = await runPipeline({ windows, records, rules, evidenceLibrary, schemas: loadSchemas(), config: SIGNALS_CONFIG, ask: replay.ask });
+  const result = await runPipeline({ windows, records, rules, evidenceLibrary, schemas: loadSchemas(), config, ask: replay.ask });
   return { result, replay };
 }
 const logText = (result, step) => result.log.filter((l) => l.step === step).map((l) => l.detail).join("\n");
@@ -109,6 +109,7 @@ test("findings that match their records pass, and the tally says so", async () =
     wording: { checked: 7, replaced: [], removed: [] },
     windows: { total: 1, cited: 1, uncited: [] },
     rationale: "ok",
+    learn_more: "not checked",
   });
 });
 
@@ -457,4 +458,57 @@ test("'fixed or dropped on retry' counts findings, not record ids", async () => 
   const { result } = await run({ answers: (s) => [twice(s), s.pattern, s.analysis, s.options, s.card] });
   assert.equal(result.meta.verification.fixed_on_retry, 1);
   assert.equal(result.meta.verification.findings_removed.length, 0);
+});
+
+// ---------- "Learn more" options must be about gathering information (switch, off by default) ----------
+
+const learnOn = { ...SIGNALS_CONFIG, learnMoreCheck: true };
+const typed = (s, i, change) => ({ ...s.options, options: s.options.options.map((o, j) => (j === i ? { ...o, ...change } : o)) });
+
+test("the Learn more check is a setting, off by default, with its list of information-gathering words", () => {
+  assert.equal(SIGNALS_CONFIG.learnMoreCheck, false);
+  for (const w of ["track", "review", "observe", "ask", "huddle", "collect", "measure"]) assert.ok(SIGNALS_CONFIG.learnMoreWords.includes(w), w);
+  assert.ok(!SIGNALS_CONFIG.learnMoreWords.includes("monitor"), "ambiguous: left off on purpose");
+});
+
+test("Learn more check off: a 'Learn more' option that's really a change is left as it is", async () => {
+  const gamed = (s) => typed(s, 1, { type: "Learn more", description: "Implement reserve monitored beds for acute arrivals." });
+  const { replay, result } = await run({ answers: (s) => [s.pattern, s.analysis, gamed(s), s.card] });
+  assert.equal(replay.calls.length, 4);
+  assert.equal(result.steps.options.options[1].type, "Learn more");
+});
+
+test("Learn more check on: a genuine one passes (\"Collect data on…\")", async () => {
+  const { replay, result } = await run({ config: learnOn });
+  assert.equal(replay.calls.length, 4);
+  assert.equal(result.meta.verification.learn_more, "ok");
+});
+
+test("Learn more check on: a 'Learn more' option that's really a change gets the retry, then is relabelled", async () => {
+  const gamed = (s) => typed(s, 1, { type: "Learn more", description: "Implement reserve monitored beds for acute arrivals." });
+  const first = await run({ config: learnOn, answers: (s) => [s.pattern, s.analysis, gamed(s), s.options, s.card] });
+  assert.match(lastMessage(first.replay, 3), /O2 is typed "Learn more" but its description doesn't gather information/);
+
+  const { result } = await run({ config: learnOn, answers: (s) => [s.pattern, s.analysis, gamed(s), gamed(s), s.card] });
+  assert.equal(result.steps.options.options[1].type, "Process adjustment");
+  assert.equal(result.meta.verification.learn_more, "relabelled");
+  assert.match(logText(result, "options"), /O2: type "Learn more" → "Process adjustment"/);
+});
+
+test("Learn more check on: if no genuine Learn more option is left, that's noted, not a failure", async () => {
+  const allGamed = (s) => typed(s, 0, { description: "Implement a new escalation process for high occupancy." });
+  const { result } = await run({ config: learnOn, answers: (s) => [s.pattern, s.analysis, allGamed(s), allGamed(s), s.card] });
+  assert.ok(!result.steps.options.options.some((o) => o.type === "Learn more"));
+  assert.match(logText(result, "options"), /no genuine "Learn more" option is left/);
+});
+
+test("Learn more check on, recorded energy run: 'Enhance pre-shift coordination' (an 'Implement…' change typed Learn more) is caught", async () => {
+  const energyRecords = loadEvalPack("energy", loadAnswerKey()).files.flatMap((f) => parseRecordFile(f.name, f.text));
+  const ask = askByStep(fixtureSteps("energy"));
+  const result = await runPipeline({ windows: findTriggeredWindows(energyRecords, rules), records: energyRecords, rules,
+    evidenceLibrary: loadEvidenceLibrary(), schemas: loadSchemas(), config: learnOn, ask });
+  const o2 = result.steps.options.options.find((o) => o.option_id === "O2");
+  assert.equal(o2.title, "Enhance pre-shift coordination");
+  assert.equal(o2.type, "Process adjustment");
+  assert.match(logText(result, "options"), /no genuine "Learn more" option is left/);
 });

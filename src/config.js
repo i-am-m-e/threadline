@@ -29,4 +29,16 @@ export const SIGNALS_CONFIG = {
   // (the daily cap still applies). Recurrence never changes confidence.
   recurrenceEvery: 10,
   recurrenceFlagAt: 10,
+
+  // "Learn more" options must be about gathering information (src/pipeline.js). OFF until the
+  // founder approves the word list: an option typed "Learn more" counts as genuine when its
+  // description uses one of these words (any ending: "tracking", "reviewed"…). When on, one that
+  // doesn't gets the retry, then is relabelled "Process adjustment". "monitor" is left out on
+  // purpose: it's ambiguous, and monitoring individuals is refused by another check anyway.
+  learnMoreCheck: false,
+  learnMoreWords: [
+    "track", "review", "observe", "watch", "ask", "huddle", "debrief", "gather", "collect", "measure",
+    "count", "map", "walk through", "shadow", "survey", "interview", "listen", "check in", "look into",
+    "explore", "learn", "understand",
+  ],
 };

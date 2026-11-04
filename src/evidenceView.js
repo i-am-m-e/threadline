@@ -52,6 +52,7 @@ export function verificationSummary(v) {
     parts.push(`${n} of ${v.windows.total} time windows ${n === 1 ? "has" : "have"} no cited record (${listed})`);
   }
   if (v.rationale === "shortened") parts.push("recommendation shortened to two sentences");
+  if (v.learn_more === "relabelled") parts.push('a "Learn more" option that changed something was relabelled');
   return parts.join("; ") + ".";
 }
 

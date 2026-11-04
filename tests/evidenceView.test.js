@@ -117,3 +117,8 @@ test("many uncited time windows are shortened in the summary", () => {
   assert.match(verificationSummary({ ...okVerification, windows: { total: 12, cited: 0, uncited } }),
     /12 of 12 time windows have no cited record \(2026-08-01 15:00 to 15:00; 2026-08-02 15:00 to 15:00; 2026-08-03 15:00 to 15:00 and 9 more\)/);
 });
+
+test("the summary says when a 'Learn more' option was relabelled", () => {
+  assert.match(verificationSummary({ ...okVerification, learn_more: "relabelled" }), /; a "Learn more" option that changed something was relabelled\.$/);
+  assert.doesNotMatch(verificationSummary({ ...okVerification, learn_more: "ok" }), /Learn more/);
+});

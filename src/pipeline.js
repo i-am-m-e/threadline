@@ -76,7 +76,26 @@ export async function runPipeline({ windows, records, rules, evidenceLibrary, sc
     wording: { checked: 0, replaced: [], removed: [] },
     windows: { total: windows.length, cited: 0, uncited: [] },
     rationale: "ok",
+    learn_more: config.learnMoreCheck ? "ok" : "not checked",
   };
+
+  // "Learn more" options must gather information (only when config.learnMoreCheck is on): the
+  // description must use one of config.learnMoreWords. After the retry, one that doesn't is
+  // relabelled "Process adjustment", its honest type.
+  const gathers = (text) => (config.learnMoreWords ?? []).some((w) =>
+    new RegExp(`\\b${w.replace(/\s+/g, "\\s+")}`, "i").test(text));
+  const verifyLearnMore = (o) => !config.learnMoreCheck ? [] : o.options
+    .filter((x) => x.type === "Learn more" && !gathers(x.description))
+    .map((x) => ({
+      problem: `Option ${x.option_id} is typed "Learn more" but its description doesn't gather information ` +
+        "(for example: track, review, observe, ask, huddle, collect, measure). Make it gather information first, " +
+        'or give it its real type and add a genuine "Learn more" option.',
+      remove: () => {
+        x.type = "Process adjustment";
+        verification.learn_more = "relabelled";
+        return `${x.option_id}: type "Learn more" → "Process adjustment" (its description doesn't gather information)`;
+      },
+    }));
 
   // Update runs under-used new evidence (2026-09-28 results): every time window must have at
   // least one cited record. After the retry, an uncited window is accepted and noted (confidence
@@ -341,7 +360,7 @@ export async function runPipeline({ windows, records, rules, evidenceLibrary, sc
     prompt: buildOptionsPrompt({ patternConfidence: pattern.confidence, analysis, evidence: evidence.map(forEvidencePrompt) }),
     evidenceIds: new Set(evidence.map((e) => e.evidence_id)),
     sourceIds: allIds,
-    verify: verifyRationale,
+    verify: (o) => [...verifyRationale(o), ...verifyLearnMore(o)],
     checks: (o) => [
       ...(o.options.some((x) => x.type === "Learn more") ? [] : [
         'Include at least one option whose "type" is exactly "Learn more": for example, track this pattern for two weeks, ' +
@@ -352,6 +371,9 @@ export async function runPipeline({ windows, records, rules, evidenceLibrary, sc
       ...individualMonitoringProblems(o),
     ],
   });
+  if (verification.learn_more === "relabelled" && !options.options.some((x) => x.type === "Learn more")) {
+    note("options", 'no genuine "Learn more" option is left after relabelling; reviewers should know every option changes something');
+  }
   enforceEvidenceRules(options, evidence, pattern.confidence, (detail) => note("options", detail));
 
   // The badge shown to people comes from the records the analysis cites, not the model's wording.
