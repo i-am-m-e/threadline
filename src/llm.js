@@ -213,7 +213,8 @@ export function guardSources(output, { sourceIds, evidenceIds }) {
 //  • an initial and a surname on their own: "J. Miller"
 // Role words followed by a capitalised word ("Inspector Capacity", "Charge Nurse",
 // "Operator Workload") are NOT treated as names: they're normal in option titles.
-const HONORIFIC_NAME = /\b(?:Dr|Mr|Mrs|Ms|Miss|Mx|Prof|Professor|Doctor)\.?\s+(?:[A-Z]\.\s*)?[A-Z][a-z]{1,}/g;
+// ("Miss" right after "near" is the safety term "near miss", not a title: "Near Miss Report".)
+const HONORIFIC_NAME = /\b(?<![Nn]ear[\s-]+)(?:Dr|Mr|Mrs|Ms|Miss|Mx|Prof|Professor|Doctor)\.?\s+(?:[A-Z]\.\s*)?[A-Z][a-z]{1,}/g;
 const CREDENTIAL_NAME = /\b(?:RN|RPN|LPN|NP|PA|MD)\s+[A-Z]\.\s?[A-Z][a-z]+/g;
 // (not after another initial, so abbreviations like "U.S. Standards" are fine)
 const INITIAL_SURNAME = /(?<![A-Za-z]\.)\b[A-Z]\.\s?[A-Z][a-z]{2,}\b/g;

@@ -46,7 +46,7 @@ npm install
 npm test
 ```
 
-**Expected:** `# pass 239`, `# fail 0`, `# todo 0`. Report the three numbers. If anything fails,
+**Expected:** `# pass 247`, `# fail 0`, `# todo 0`. Report the three numbers. If anything fails,
 copy the failing test names and their error lines.
 
 ## 2. Check Ollama is ready
@@ -81,6 +81,9 @@ report, in plain language:
    the complaint says 85, so that finding was removed").
 
 If the quick run had step errors, stop here and report; don't run step 4.
+
+*(Already ran step 3 before the "near miss" fix of 2026-11-04? Then just re-run the energy part,
+about 10 minutes, and report it the same way: `npm run eval -- --runs 1 --pack energy`.)*
 
 ## 3b. The same quick scorecard with numbers by reference (another 15–25 minutes)
 

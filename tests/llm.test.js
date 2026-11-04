@@ -167,3 +167,17 @@ test("runStep verify: checks run after the source guard has removed invented ids
   await runStep({ ...stepArgs(replay.ask), verify: (o) => { seen.push(...o.supporting_evidence.map((e) => e.source_id)); return []; } });
   assert.ok(!seen.includes("HC-FAKE-1"));
 });
+
+// Found on the founder's Mac (2026-11-04): an energy map label "Near Miss Report" was refused as a
+// person's name ("Miss Report"). "Near miss" is a domain term, not a title.
+for (const text of ["Near Miss Report", "near miss report", "Near-Miss Report", "near-miss Review", "EHS Near Miss Event"]) {
+  test(`name scan allows "${text}"`, () => {
+    assert.deepEqual(findGuardrailProblems({ label: text }), []);
+  });
+}
+
+for (const text of ["Miss Smith", "Miss J. Smith", "reported by Miss Chen near the gate"]) {
+  test(`name scan still catches "${text}"`, () => {
+    assert.ok(findGuardrailProblems({ label: text }).length > 0);
+  });
+}
