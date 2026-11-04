@@ -23,9 +23,10 @@ export const SIGNALS_CONFIG = {
   dailyFlagCap: 3,
 
   // Recurrence (src/recurrence.js): how many occasions (triggered time windows) a Thread has
-  // been seen on is always shown beside its confidence. These bands raise a Thread's place
-  // in the list; reaching recurrenceFlagAt occasions can flag it for review even at Low
-  // confidence (the daily cap still applies). Recurrence never changes confidence.
-  recurrenceBands: [10, 50, 70],
+  // been seen on is always shown beside its confidence. Bands come every `recurrenceEvery`
+  // occasions (10 → 10+, 20+, 30+…; 5 → 5+, 10+, 15+…) and raise a Thread's place in the
+  // list; reaching recurrenceFlagAt occasions can flag it for review even at Low confidence
+  // (the daily cap still applies). Recurrence never changes confidence.
+  recurrenceEvery: 10,
   recurrenceFlagAt: 10,
 };

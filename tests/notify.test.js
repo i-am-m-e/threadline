@@ -43,11 +43,11 @@ const flaggedThread = (note, occasions, confidence) => ({
 });
 
 test("a safety flag's notification gives confidence, occasions and 'safety-relevant'", () => {
-  const body = notificationBody(flaggedThread("Medium or higher confidence with a safety-relevant condition", 1, "Medium"), [10, 50, 70]);
+  const body = notificationBody(flaggedThread("Medium or higher confidence with a safety-relevant condition", 1, "Medium"), 10);
   assert.equal(body, "Rooming during slow physician pace at Synthetic UCC A (Medium confidence, seen on 1 occasion; safety-relevant). Review it in Signals.");
 });
 
 test("a recurrence flag's notification says it keeps recurring, with the confidence unchanged", () => {
-  const body = notificationBody(flaggedThread("Recurring: seen on 12 occasions (10+). Confidence is unchanged…", 12, "Low"), [10, 50, 70]);
+  const body = notificationBody(flaggedThread("Recurring: seen on 12 occasions (10+). Confidence is unchanged…", 12, "Low"), 10);
   assert.equal(body, "Rooming during slow physician pace at Synthetic UCC A (Low confidence, seen on 12 occasions (10+); recurring). Review it in Signals.");
 });

@@ -36,10 +36,11 @@ The **Signals** mode watches approved operational data for patterns in flows, qu
 5. Flags (badge + local notification) only for Medium+ confidence with a safety-relevant
    condition, capped per day; everything else goes to the digest.
 6. **Recurrence** is shown beside confidence from the first occasion (one occasion = one
-   triggered time window): "Medium confidence, seen on 2 occasions". Threads seen on 10+, 50+ or
-   70+ occasions move up the list, and reaching 10 occasions flags a Thread for review even at
-   Low confidence (the daily cap still applies). Recurrence never changes the confidence label.
-   Bands and the flag point are `recurrenceBands` and `recurrenceFlagAt` in `src/config.js`.
+   triggered time window): "Medium confidence, seen on 2 occasions". Bands come every 10 occasions
+   (10+, 20+, 30+…) and move a Thread up the list, and reaching 10 occasions flags a Thread for
+   review even at Low confidence (the daily cap still applies). Recurrence never changes the
+   confidence label. The interval and the flag point are `recurrenceEvery` (e.g. 5 or 10) and
+   `recurrenceFlagAt` in `src/config.js`.
 7. **Other domains** work too. A domain added in House rules ("Add domain") gets terms and rules for
    chat straight away; for Signals it also needs `triggers` (and optionally
    `safety_relevant_conditions`) in `domain_rules.json`, in the same form as Healthcare and Energy.

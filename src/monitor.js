@@ -64,7 +64,7 @@ export async function checkForSignals({ io, rules, schemas, config, evidenceLibr
     // (recurrence.js). Recurrence never changes the confidence itself.
     const reason = decideFlag(
       { confidence: result.steps.pattern.confidence, safetyConditions: result.meta.safety_conditions.length, occasions: windows.length },
-      { bands: config.recurrenceBands ?? [], flagAt: config.recurrenceFlagAt },
+      { every: config.recurrenceEvery, flagAt: config.recurrenceFlagAt },
     );
     return { result, flagReason: reason };
   };

@@ -120,7 +120,7 @@ async function checkNow({ quiet = false } = {}) {
     const toNotify = routeAlerts(changes, alertState, SIGNALS_CONFIG.dailyFlagCap);
     for (const c of changes) await storage.saveSignalThread(c.thread); // records flag/digest on the Thread
     await storage.saveSignalsState(alertState);
-    for (const t of toNotify) await sendLocalNotification(t, SIGNALS_CONFIG.recurrenceBands);
+    for (const t of toNotify) await sendLocalNotification(t, SIGNALS_CONFIG.recurrenceEvery);
     if (changed.length) selectedId = changed[0];
     const parts = [];
     if (summary.files.length === 0 && summary.errors.length === 0) parts.push("No new files in the incoming folder");
@@ -166,7 +166,7 @@ function renderList() {
     return;
   }
   // Threads seen on more occasions (10+, 50+, 70+) come first; otherwise newest first.
-  for (const t of byPriority(threads, SIGNALS_CONFIG.recurrenceBands)) {
+  for (const t of byPriority(threads, SIGNALS_CONFIG.recurrenceEvery)) {
     const row = document.createElement("button");
     row.type = "button";
     row.className = "signals-row" + (t.id === selectedId ? " is-selected" : "");
@@ -176,7 +176,7 @@ function renderList() {
     );
     const facts = document.createElement("span");
     facts.className = "signals-row-facts";
-    facts.append(statusPill(t.status), text("span", "signals-conf", confidenceText(t, SIGNALS_CONFIG.recurrenceBands)), text("span", "signals-when", `updated ${shortWhen(t.updated_at)}`));
+    facts.append(statusPill(t.status), text("span", "signals-conf", confidenceText(t, SIGNALS_CONFIG.recurrenceEvery)), text("span", "signals-when", `updated ${shortWhen(t.updated_at)}`));
     row.append(facts);
     row.onclick = () => {
       selectedId = t.id;
@@ -224,7 +224,7 @@ function renderDetail() {
   facts.className = "signals-facts";
   facts.append(
     statusPill(thread.status),
-    text("span", "", `Pattern confidence: ${confidenceText(thread, SIGNALS_CONFIG.recurrenceBands)}`),
+    text("span", "", `Pattern confidence: ${confidenceText(thread, SIGNALS_CONFIG.recurrenceEvery)}`),
     windowsSpan(thread.windows),
   );
   if (thread.outcome_review_due && ["Decision recorded", "Outcome review due"].includes(thread.status)) facts.append(text("span", "signals-due", `Outcome review due ${thread.outcome_review_due}`));
@@ -253,7 +253,7 @@ function renderDigest() {
       row.className = "digest-row";
       row.append(
         text("span", "", `${thread.pattern_type} · ${thread.location}`),
-        text("span", "brief-small", ` ${kinds.join(" and ")} · ${confidenceText(thread, SIGNALS_CONFIG.recurrenceBands)} · ${thread.status}${over_cap ? " · over today's flag limit" : ""}`),
+        text("span", "brief-small", ` ${kinds.join(" and ")} · ${confidenceText(thread, SIGNALS_CONFIG.recurrenceEvery)} · ${thread.status}${over_cap ? " · over today's flag limit" : ""}`),
       );
       row.onclick = () => {
         selectedId = thread.id;
@@ -279,7 +279,7 @@ function renderCard(thread) {
   const ul = document.createElement("ul");
   for (const o of card.possible_options) ul.append(text("li", "", o));
   box.append(ul);
-  box.append(text("div", "card-badge", card.evidence_badge), text("div", "card-confidence", `Confidence: ${confidenceText(thread, SIGNALS_CONFIG.recurrenceBands)}`));
+  box.append(text("div", "card-badge", card.evidence_badge), text("div", "card-confidence", `Confidence: ${confidenceText(thread, SIGNALS_CONFIG.recurrenceEvery)}`));
   if (run.meta.placeholder_evidence) box.append(placeholderTag());
   box.append(text("p", "card-question", card.question));
 

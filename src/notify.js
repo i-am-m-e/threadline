@@ -86,14 +86,14 @@ export function buildDigest(threads, state, now = new Date()) {
  * The notification text: pattern, location, confidence with recurrence, and why it was
  * flagged (safety-relevant, or recurring). No people, no record details.
  */
-export function notificationBody(thread, bands) {
+export function notificationBody(thread, every) {
   const flag = thread.history.findLast((h) => h.status === "Flagged" && h.by === "Threadline");
   const why = flag?.note?.startsWith("Recurring") ? "recurring" : "safety-relevant";
-  return `${thread.pattern_type} at ${thread.location} (${confidenceText(thread, bands)}; ${why}). Review it in Signals.`;
+  return `${thread.pattern_type} at ${thread.location} (${confidenceText(thread, every)}; ${why}). Review it in Signals.`;
 }
 
 /** Show one local macOS notification (asks for permission the first time). */
-export async function sendLocalNotification(thread, bands) {
+export async function sendLocalNotification(thread, every) {
   const api = window.__TAURI__?.notification;
   if (!api) return false;
   let allowed = await api.isPermissionGranted();
@@ -101,7 +101,7 @@ export async function sendLocalNotification(thread, bands) {
   if (!allowed) return false;
   api.sendNotification({
     title: "Threadline: possible operational pattern",
-    body: notificationBody(thread, bands),
+    body: notificationBody(thread, every),
   });
   return true;
 }
