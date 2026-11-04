@@ -35,6 +35,11 @@ The **Signals** mode watches approved operational data for patterns in flows, qu
    nothing), later press **Start outcome review**, and record the outcome. Threadline itself can only mark Threads Inferred or Flagged.
 5. Flags (badge + local notification) only for Medium+ confidence with a safety-relevant
    condition, capped per day; everything else goes to the digest.
+6. **Recurrence** is shown beside confidence from the first occasion (one occasion = one
+   triggered time window): "Medium confidence, seen on 2 occasions". Threads seen on 10+, 50+ or
+   70+ occasions move up the list, and reaching 10 occasions flags a Thread for review even at
+   Low confidence (the daily cap still applies). Recurrence never changes the confidence label.
+   Bands and the flag point are `recurrenceBands` and `recurrenceFlagAt` in `src/config.js`.
 
 The evidence library in `data/evidence/` holds **placeholders** to be replaced with curated
 summaries; recommendations relying on them are tagged "Placeholder evidence". Test results:
@@ -136,6 +141,7 @@ them only with his approval. The design is in `docs/specs/2026-11-04-step1-tests
 | `src/monitor.js` | Check now / timer: new files, triggers, de-duplication into open Threads |
 | `src/threads.js` | Thread lifecycle: status rules and the human actions (by role) |
 | `src/notify.js` | Flags, daily cap, digest, alert volume, local notifications |
+| `src/recurrence.js` | Recurrence: occasions seen, bands (10+, 50+, 70+), list priority, recurrence flags |
 | `src/threadMap.js` | The Thread map (Cytoscape + dagre) |
 | `src/config.js` | Signals settings: model, temperatures, monitor interval, daily flag cap |
 | `data/` | Synthetic benchmark packs, placeholder evidence, domain rules (packaged with the app) |

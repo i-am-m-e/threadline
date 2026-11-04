@@ -1,8 +1,8 @@
 // notify.js — how Signals tells people about Threads (spec section 11).
 //
-//  • FLAG: an in-app badge plus one local macOS notification, only when a Thread's
-//    pattern confidence is Medium or higher AND it involves a safety-relevant condition
-//    (i.e. the pipeline set its status to "Flagged"), and only for its first flag.
+//  • FLAG: an in-app badge plus one local macOS notification, only when the pipeline set a
+//    Thread's status to "Flagged" (Medium+ confidence with a safety-relevant condition, or
+//    seen on enough occasions: recurrence.js), and only for its first flag.
 //  • DAILY CAP: at most `dailyFlagCap` flags per day (config.js). Anything beyond the cap
 //    goes to the digest instead.
 //  • DIGEST (the default): everything else, shown on demand in the app, grouped by domain.
@@ -10,6 +10,8 @@
 //
 // The notification text names the pattern and location only: no people, no record details.
 // Notifications are local to this Mac (Tauri's notification plugin); nothing is sent anywhere.
+
+import { confidenceText } from "./recurrence.js";
 
 const DAY = 24 * 60 * 60 * 1000;
 
@@ -80,8 +82,18 @@ export function buildDigest(threads, state, now = new Date()) {
   return [...groups].map(([domain, items]) => ({ domain, items }));
 }
 
+/**
+ * The notification text: pattern, location, confidence with recurrence, and why it was
+ * flagged (safety-relevant, or recurring). No people, no record details.
+ */
+export function notificationBody(thread, bands) {
+  const flag = thread.history.findLast((h) => h.status === "Flagged" && h.by === "Threadline");
+  const why = flag?.note?.startsWith("Recurring") ? "recurring" : "safety-relevant";
+  return `${thread.pattern_type} at ${thread.location} (${confidenceText(thread, bands)}; ${why}). Review it in Signals.`;
+}
+
 /** Show one local macOS notification (asks for permission the first time). */
-export async function sendLocalNotification(thread, confidence) {
+export async function sendLocalNotification(thread, bands) {
   const api = window.__TAURI__?.notification;
   if (!api) return false;
   let allowed = await api.isPermissionGranted();
@@ -89,7 +101,7 @@ export async function sendLocalNotification(thread, confidence) {
   if (!allowed) return false;
   api.sendNotification({
     title: "Threadline: possible operational pattern",
-    body: `${thread.pattern_type} at ${thread.location} (${confidence} confidence, safety-relevant). Review it in Signals.`,
+    body: notificationBody(thread, bands),
   });
   return true;
 }

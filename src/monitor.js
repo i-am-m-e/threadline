@@ -12,6 +12,7 @@
 // Where files live is up to `io` (the app passes one that uses its data folder; tests pass
 // their own), so this logic can be tested without the app.
 
+import { flagReason as decideFlag } from "./recurrence.js";
 import { parseRecordFile, findTriggeredWindows, isQualitative, isFlow, time } from "./records.js";
 import { runPipeline } from "./pipeline.js";
 import { createThread, updateThread, isOpen } from "./threads.js";
@@ -59,8 +60,13 @@ export async function checkForSignals({ io, rules, schemas, config, evidenceLibr
     onProgress(`Analysing "${windows[0].pattern_type}" at ${windows[0].location}…`);
     const result = await runPipeline({ windows, records: all, rules, evidenceLibrary, schemas, config, ask,
       onStep: (step) => onProgress(`Analysing "${windows[0].pattern_type}": ${STEP_NAMES[step] ?? step}…`) });
-    const confident = ["Medium", "High"].includes(result.steps.pattern.confidence);
-    return { result, qualifiesForFlag: confident && result.meta.safety_conditions.length > 0 };
+    // Flag: Medium+ confidence with a safety-relevant condition, or seen on enough occasions
+    // (recurrence.js). Recurrence never changes the confidence itself.
+    const reason = decideFlag(
+      { confidence: result.steps.pattern.confidence, safetyConditions: result.meta.safety_conditions.length, occasions: windows.length },
+      { bands: config.recurrenceBands ?? [], flagAt: config.recurrenceFlagAt },
+    );
+    return { result, flagReason: reason };
   };
 
   // 2–3. Triggered windows from the new flow records, grouped by pattern type + location.
@@ -76,14 +82,14 @@ export async function checkForSignals({ io, rules, schemas, config, evidenceLibr
     try {
       if (match) {
         const windows = [...rebuildWindows(match, byId), ...newWindows];
-        const { result, qualifiesForFlag } = await run(windows);
-        await io.saveThread(updateThread(match, result, { windows, files: [...files, ...filesOf(qualitativeFor(windows, newRecords))], qualifiesForFlag }));
+        const { result, flagReason } = await run(windows);
+        await io.saveThread(updateThread(match, result, { windows, files: [...files, ...filesOf(qualitativeFor(windows, newRecords))], flagReason }));
         summary.updated.push(match.id);
       } else {
-        const { result, qualifiesForFlag } = await run(newWindows);
+        const { result, flagReason } = await run(newWindows);
         const thread = createThread(result, {
           windows: newWindows, files: [...files, ...filesOf(qualitativeFor(newWindows, newRecords))],
-          existingIds: threads.map((t) => t.id), qualifiesForFlag,
+          existingIds: threads.map((t) => t.id), flagReason,
         });
         threads.push(thread);
         await io.saveThread(thread);
@@ -102,8 +108,8 @@ export async function checkForSignals({ io, rules, schemas, config, evidenceLibr
     const nearby = qualitativeFor(windows, newRecords);
     if (nearby.length === 0) continue;
     try {
-      const { result, qualifiesForFlag } = await run(windows);
-      await io.saveThread(updateThread(thread, result, { windows, files: filesOf(nearby), qualifiesForFlag }));
+      const { result, flagReason } = await run(windows);
+      await io.saveThread(updateThread(thread, result, { windows, files: filesOf(nearby), flagReason }));
       summary.updated.push(thread.id);
     } catch (err) {
       summary.errors.push(`${thread.id}: ${err.message} (the file stays in the incoming folder; Check now will try again)`);

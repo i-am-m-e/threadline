@@ -19,6 +19,7 @@ import {
 } from "./threads.js";
 import { SIGNALS_CONFIG } from "./config.js";
 import { routeAlerts, alertVolume, buildDigest, sendLocalNotification } from "./notify.js";
+import { confidenceText, byPriority } from "./recurrence.js";
 import { renderThreadMap, withApproaches, TRUST_COLORS, SHAPES } from "./threadMap.js";
 import { SOURCE_TYPE_NAMES } from "./records.js";
 
@@ -118,7 +119,7 @@ async function checkNow({ quiet = false } = {}) {
     const toNotify = routeAlerts(changes, alertState, SIGNALS_CONFIG.dailyFlagCap);
     for (const c of changes) await storage.saveSignalThread(c.thread); // records flag/digest on the Thread
     await storage.saveSignalsState(alertState);
-    for (const t of toNotify) await sendLocalNotification(t, current(t).steps.pattern.confidence);
+    for (const t of toNotify) await sendLocalNotification(t, SIGNALS_CONFIG.recurrenceBands);
     if (changed.length) selectedId = changed[0];
     const parts = [];
     if (summary.files.length === 0 && summary.errors.length === 0) parts.push("No new files in the incoming folder");
@@ -163,8 +164,8 @@ function renderList() {
       "No Threads yet. Add record files to the incoming folder and press Check now, or run the benchmark packs."));
     return;
   }
-  for (const t of threads) {
-    const run = current(t);
+  // Threads seen on more occasions (10+, 50+, 70+) come first; otherwise newest first.
+  for (const t of byPriority(threads, SIGNALS_CONFIG.recurrenceBands)) {
     const row = document.createElement("button");
     row.type = "button";
     row.className = "signals-row" + (t.id === selectedId ? " is-selected" : "");
@@ -174,7 +175,7 @@ function renderList() {
     );
     const facts = document.createElement("span");
     facts.className = "signals-row-facts";
-    facts.append(statusPill(t.status), text("span", "signals-conf", `${run.steps.pattern.confidence} confidence`), text("span", "signals-when", `updated ${shortWhen(t.updated_at)}`));
+    facts.append(statusPill(t.status), text("span", "signals-conf", confidenceText(t, SIGNALS_CONFIG.recurrenceBands)), text("span", "signals-when", `updated ${shortWhen(t.updated_at)}`));
     row.append(facts);
     row.onclick = () => {
       selectedId = t.id;
@@ -222,7 +223,7 @@ function renderDetail() {
   facts.className = "signals-facts";
   facts.append(
     statusPill(thread.status),
-    text("span", "", `Pattern confidence: ${run.steps.pattern.confidence}`),
+    text("span", "", `Pattern confidence: ${confidenceText(thread, SIGNALS_CONFIG.recurrenceBands)}`),
     text("span", "", `Time window${thread.windows.length === 1 ? "" : "s"}: ${run.steps.pattern.time_window}`),
   );
   if (thread.outcome_review_due && ["Decision recorded", "Outcome review due"].includes(thread.status)) facts.append(text("span", "signals-due", `Outcome review due ${thread.outcome_review_due}`));
@@ -251,7 +252,7 @@ function renderDigest() {
       row.className = "digest-row";
       row.append(
         text("span", "", `${thread.pattern_type} · ${thread.location}`),
-        text("span", "brief-small", ` ${kinds.join(" and ")} · ${current(thread).steps.pattern.confidence} confidence · ${thread.status}${over_cap ? " · over today's flag limit" : ""}`),
+        text("span", "brief-small", ` ${kinds.join(" and ")} · ${confidenceText(thread, SIGNALS_CONFIG.recurrenceBands)} · ${thread.status}${over_cap ? " · over today's flag limit" : ""}`),
       );
       row.onclick = () => {
         selectedId = thread.id;
@@ -277,8 +278,7 @@ function renderCard(thread) {
   const ul = document.createElement("ul");
   for (const o of card.possible_options) ul.append(text("li", "", o));
   box.append(ul);
-  const windows = thread.windows.length === 1 ? "single time window" : `${thread.windows.length} time windows`;
-  box.append(text("div", "card-badge", card.evidence_badge), text("div", "card-confidence", `Confidence: ${card.confidence} (${windows})`));
+  box.append(text("div", "card-badge", card.evidence_badge), text("div", "card-confidence", `Confidence: ${confidenceText(thread, SIGNALS_CONFIG.recurrenceBands)}`));
   if (run.meta.placeholder_evidence) box.append(placeholderTag());
   box.append(text("p", "card-question", card.question));
 
