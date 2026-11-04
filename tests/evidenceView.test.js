@@ -1,0 +1,60 @@
+// What the manager brief shows about checked evidence (goal D, visible reasoning).
+// The screen itself is drawn in signals-ui.js; these are the words it shows.
+import { test } from "node:test";
+import assert from "node:assert/strict";
+import { evidenceLines, verificationSummary, removedLines, policyWording } from "../src/evidenceView.js";
+import { fixtureSteps, readJson } from "./helpers.js";
+
+const okVerification = {
+  findings_checked: 6, findings_verified: 6, findings_removed: [], fixed_on_retry: 0, policy_quote: "verified",
+  analysis: { claims_checked: 4, claims_verified: 4, claims_removed: [], labels_corrected: 0 },
+};
+
+test("each finding shows its quote, in quotation marks, with the record it came from", () => {
+  const lines = evidenceLines(fixtureSteps("rooming").pattern);
+  const complaint = lines.find((l) => l.source_id === "HC-CMP-4471");
+  assert.equal(complaint.proof, "“waiting 85 minutes after being placed in an exam room before seeing a physician”");
+  assert.equal(complaint.finding, "Patient waited 85 minutes after rooming before seeing a physician.");
+});
+
+test("a flow finding shows the field values it relies on, as in the record", () => {
+  const flow = evidenceLines(fixtureSteps("rooming").pattern).find((l) => l.source_id === "HC-FLOW-20260920-1600");
+  assert.equal(flow.proof, "Bed occupancy: 0.96 · Room to physician minutes: 90");
+});
+
+test("a finding recorded before step 2 shows no proof (rather than inventing one)", () => {
+  const old = readJson("docs/test-results/2026-09-28/rooming-thread.json").runs[0].steps.pattern;
+  assert.ok(evidenceLines(old).every((l) => l.proof === null));
+});
+
+test("the summary says what was checked", () => {
+  assert.equal(verificationSummary(okVerification),
+    "Checked against their records: 6 of 6 findings and 4 of 4 analysis claims verified; policy wording verified.");
+});
+
+test("the summary mentions removals, retries and corrected labels", () => {
+  const v = { ...okVerification, findings_verified: 5, findings_removed: [{ source_id: "HC-CMP-4471", problem: "x" }], fixed_on_retry: 1, policy_quote: "removed",
+    analysis: { claims_checked: 4, claims_verified: 3, claims_removed: [{ list: "pressure_map", text: "y", problem: "z" }], labels_corrected: 2 } };
+  assert.equal(verificationSummary(v),
+    "Checked against their records: 5 of 6 findings and 3 of 4 analysis claims verified; 2 removed as unverified; 1 fixed on retry; 2 trust labels corrected; policy wording couldn't be verified and was removed.");
+});
+
+test("a run from before the checks says so", () => {
+  assert.equal(verificationSummary(undefined), "Recorded before findings were checked against their records.");
+});
+
+test("removed items are listed with the reason", () => {
+  const v = { ...okVerification, findings_removed: [{ source_id: "HC-CMP-4471", finding: "Waited 95 minutes.", problem: "HC-CMP-4471: the finding mentions 95, which isn't in that record." }],
+    analysis: { ...okVerification.analysis, claims_removed: [{ list: "pressure_map", text: "Escalating 12 times an hour", problem: "pressure_map: \"Escalating 12 times an hour\" mentions 12, which isn't in the records it cites (HC-POL-CTAS-ESC)." }] } };
+  assert.deepEqual(removedLines(v), [
+    "Finding “Waited 95 minutes.” (HC-CMP-4471): the finding mentions 95, which isn't in that record.",
+    "Pressure map “Escalating 12 times an hour”: mentions 12, which isn't in the records it cites (HC-POL-CTAS-ESC).",
+  ]);
+  assert.deepEqual(removedLines(undefined), []);
+});
+
+test("the policy gap shows the policy's own words when there are some", () => {
+  assert.equal(policyWording(fixtureSteps("rooming").analysis.policy_practice_gap),
+    "Policy wording (HC-POL-CTAS-ESC): “require immediate access to a monitored bed on arrival”");
+  assert.equal(policyWording({ policy_source_id: "", policy_quote: "" }), null);
+});

@@ -20,6 +20,7 @@ import {
 import { SIGNALS_CONFIG } from "./config.js";
 import { routeAlerts, alertVolume, buildDigest, sendLocalNotification } from "./notify.js";
 import { confidenceText, byPriority } from "./recurrence.js";
+import { evidenceLines, verificationSummary, removedLines, policyWording } from "./evidenceView.js";
 import { renderThreadMap, withApproaches, TRUST_COLORS, SHAPES } from "./threadMap.js";
 import { SOURCE_TYPE_NAMES } from "./records.js";
 
@@ -457,6 +458,21 @@ function renderBrief(thread) {
     box.append(text("div", "card-label", "Evidence that does not fit"), list(pattern.evidence_that_does_not_fit.filter(Boolean)));
   }
 
+  // What the records say: each finding with its proof (checked in code, src/verify.js)
+  const verification = current(thread).meta?.verification;
+  box.append(text("h4", "", "What the records say"));
+  const said = document.createElement("ul");
+  said.className = "brief-evidence";
+  for (const e of evidenceLines(pattern)) {
+    const li = text("li", "", `${e.finding} `);
+    li.append(trustChip(e.trust_label), sourceIds([e.source_id]));
+    if (e.proof) li.append(text("div", "brief-proof", e.proof));
+    said.append(li);
+  }
+  box.append(said, text("p", "brief-small", verificationSummary(verification)));
+  const removed = removedLines(verification);
+  if (removed.length) box.append(text("div", "card-label", "Removed as unverified"), list(removed));
+
   // Possible contributing factors
   box.append(text("h4", "", "Possible contributing factors"));
   const factors = document.createElement("ul");
@@ -474,6 +490,8 @@ function renderBrief(thread) {
     labelled("Policy expects", gap.what_policy_expects, "Authoritative"),
     labelled("Records suggest", gap.what_records_suggest, "Observed"),
   );
+  const wording = policyWording(gap);
+  if (wording) gapBox.append(text("p", "brief-proof", wording));
   box.append(text("div", "card-label", "Policy and practice"), gapBox);
   if (analysis.pressure_map.length) {
     box.append(text("div", "card-label", "Pressure map"));

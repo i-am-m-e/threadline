@@ -86,7 +86,10 @@ invented finding through, so `src/verify.js` also checks what each finding says:
 A problem goes into the step's one retry, naming exactly what was wrong. If a finding still
 can't be verified, it is removed and logged as "unverified, removed" (the policy gap's id and
 quote are blanked instead), and confidence is worked out from what's left. Nothing unverified is
-kept silently. The quotes and values are saved in each Thread's file (not shown in the app yet).
+kept silently. The manager brief shows them under **What the records say**: each finding with the exact quote
+or the flow row's field values it was checked against, a one-line summary of the checks (how many
+findings and analysis claims were verified, removed, fixed on retry or relabelled), what was
+removed and why, and the policy's own wording beside the policy-practice gap.
 **Analysis claims** (contributing conditions and pressure-map entries) get two checks: any number
 in them must be in the records they cite (retry, then removed as unverified, as above), and their
 trust label must fit what they cite. That label is corrected in code and logged: no sources →
