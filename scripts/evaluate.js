@@ -12,7 +12,7 @@
 //
 // Results go to docs/eval/<date>/: scorecard.md (read this), settings.json, and runs/ with
 // every run's full output.
-import { mkdirSync, writeFileSync } from "node:fs";
+import { mkdirSync, writeFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
 import { execSync } from "node:child_process";
 import { pathToFileURL } from "node:url";
@@ -36,6 +36,13 @@ function currentCommit() {
   catch { return "unknown"; }
 }
 
+// docs/eval/<date>, or <date>-2, <date>-3… so an earlier scorecard is never overwritten.
+function freshFolder(baseDir, date) {
+  let dir = join(baseDir, date);
+  for (let n = 2; existsSync(dir); n++) dir = join(baseDir, `${date}-${n}`);
+  return dir;
+}
+
 const localDate = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 
 /**
@@ -45,7 +52,8 @@ const localDate = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart
  * @param {number} [args.runs]
  * @param {string} [args.model]     Ollama model id (default: SIGNALS_CONFIG.model)
  * @param {Function} [args.ask]     Stand-in for the model (tests); default is the real model
- * @param {string} [args.outDir]    Default docs/eval/<date>
+ * @param {string} [args.outDir]    Exact folder to write to (tests). Default: a new folder in baseDir
+ * @param {string} [args.baseDir]   Default docs/eval. Results go to <date>/, or <date>-2/, -3/… if that exists
  * @param {Date} [args.now]
  * @param {Function} [args.checkOllama]
  * @param {string} [args.gitCommit]
@@ -53,7 +61,7 @@ const localDate = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart
  * @returns {Promise<{ summary: object, scorecardPath: string }>}
  */
 export async function runEvaluation({
-  packs = ["all"], runs = 3, model, ask, outDir, now = new Date(),
+  packs = ["all"], runs = 3, model, ask, outDir, baseDir = join(ROOT, "docs/eval"), now = new Date(),
   checkOllama = defaultCheckOllama, gitCommit = currentCommit(), onProgress = () => {},
 } = {}) {
   try { await checkOllama(); } catch { throw new Error(OLLAMA_MESSAGE); }
@@ -64,7 +72,7 @@ export async function runEvaluation({
   const packNames = packs.includes("all") ? Object.keys(STAGES) : packs;
   for (const p of packNames) if (!STAGES[p]) throw new Error(`Unknown pack "${p}". Use healthcare, energy or all.`);
   const date = localDate(now);
-  const dir = outDir ?? join(ROOT, "docs/eval", date);
+  const dir = outDir ?? freshFolder(baseDir, date);
   mkdirSync(join(dir, "runs"), { recursive: true });
 
   const stages = {};

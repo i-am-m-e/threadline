@@ -51,3 +51,12 @@ test("stops before any run when Ollama can't be reached", async () => {
   assert.equal(replay.calls.length, 0);
   assert.deepEqual(readdirSync(dir), []);
 });
+
+test("a second scorecard on the same day gets its own folder instead of overwriting the first", async () => {
+  const baseDir = outDir();
+  const run = (ask) => runEvaluation({ ...options(ask, undefined), runs: 1, baseDir });
+  const first = await run(replayAsk(healthcareRun()).ask);
+  const second = await run(replayAsk(healthcareRun()).ask);
+  assert.match(first.scorecardPath, /2026-11-04\/scorecard\.md$/);
+  assert.match(second.scorecardPath, /2026-11-04-2\/scorecard\.md$/);
+});

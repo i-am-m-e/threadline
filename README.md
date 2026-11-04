@@ -78,7 +78,7 @@ npm run eval -- --pack healthcare   # one pack: healthcare, energy or all
 npm run eval -- --model qwen3:8b    # try another model
 ```
 
-Results go to `docs/eval/<date>/`: read `scorecard.md` (pass rates, decoys cited, how much repeated
+Results go to `docs/eval/<date>/` (a second run on the same day goes to `<date>-2/`, and so on): read `scorecard.md` (pass rates, decoys cited, how much repeated
 runs agree, retries, time per run, and every failed check); `runs/` has each run's full output.
 
 The answer key and decoy records hold the founder's clinical and operational judgement. Change
