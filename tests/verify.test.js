@@ -305,3 +305,51 @@ test("numbers: 'CTAS 2' counts only when a cited record's text says it, not beca
   assert.equal(claimNumberProblems("No monitored bed for CTAS 2", flowOnly, none).length, 1);
   assert.deepEqual(claimNumberProblems("No monitored bed for CTAS 2", [incident], none), []);
 });
+
+// ---------- Numbers by reference (config.numbersByReference) ----------
+import { resolveReferences } from "../src/verify.js";
+
+const byRef = { byReference: true };
+
+test("by reference: a reference to the cited flow record's field passes; the same figure typed doesn't", () => {
+  assert.deepEqual(numberProblems("Room time reached {HC-FLOW-20260920-1600.room_to_physician_minutes} minutes.", flow1600, none, byRef), []);
+  const [typed] = numberProblems("Room time reached 90 minutes.", flow1600, none, byRef);
+  assert.match(typed, /mentions 90/);
+  assert.match(typed, /\{HC-FLOW-20260920-1600\.room_to_physician_minutes\}/, "the message shows how to write it");
+});
+
+test("by reference: a reference to a field the record doesn't have, or to a record it can't cite, fails", () => {
+  assert.match(numberProblems("{HC-FLOW-20260920-1600.nurse_ratio} nurses", flow1600, none, byRef)[0], /has no number field "nurse_ratio"/);
+  assert.match(numberProblems("{HC-FLOW-20260920-1700.bed_occupancy%} full", flow1600, none, byRef)[0], /HC-FLOW-20260920-1700 isn't a record this can cite/);
+});
+
+test("by reference: figures in an incident or complaint's own text, and thresholds, may still be typed", () => {
+  assert.deepEqual(numberProblems("Patient waited 85 minutes.", complaint, none, byRef), []);
+  assert.deepEqual(numberProblems("Room time above 45 minutes.", flow1600, [45], byRef), []);
+});
+
+test("by reference: times and dates must be references too", () => {
+  assert.deepEqual(numberProblems("At {HC-INC-99102.time} on {HC-INC-99102.date}, no monitored bed for CTAS 2.", incident, none, byRef), []);
+  assert.match(numberProblems("At 15:30, no monitored bed for CTAS 2.", incident, none, byRef)[0], /mentions 15, 30/);
+});
+
+test("by reference: claims check references against the records they cite", () => {
+  assert.deepEqual(claimNumberProblems("Occupancy reached {HC-FLOW-20260920-1600.bed_occupancy%}", [flow1600], none, byRef), []);
+  assert.equal(claimNumberProblems("Occupancy reached 96%", [flow1600], none, byRef).length, 1);
+});
+
+test("resolving references fills in the record's real values, formatted for people", () => {
+  const byId = new Map([[flow1600.source_id, flow1600], [incident.source_id, incident]]);
+  const out = resolveReferences({
+    finding: "Room time {HC-FLOW-20260920-1600.room_to_physician_minutes} min, occupancy {HC-FLOW-20260920-1600.bed_occupancy%} ({HC-FLOW-20260920-1600.bed_occupancy}).",
+    note: "Reported at {HC-INC-99102.time} on {HC-INC-99102.date}.",
+    quote: "left {HC-FLOW-20260920-1600.bed_occupancy} as it is",
+    bad: "{HC-FAKE-1.bed_occupancy} beds",
+  }, byId);
+  assert.equal(out.value.finding, "Room time 90 min, occupancy 96% (0.96).");
+  assert.equal(out.value.note, "Reported at 15:30 on Sep 20.");
+  assert.equal(out.value.quote, "left {HC-FLOW-20260920-1600.bed_occupancy} as it is", "quotes are never changed");
+  assert.equal(out.value.bad, "[figure not found] beds");
+  assert.equal(out.resolved, 5);
+  assert.equal(out.unresolved, 1);
+});

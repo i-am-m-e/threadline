@@ -28,7 +28,7 @@ import { buildReviewCardPrompt } from "./prompts/reviewCard.js";
 import { qualitativeNear, policiesFor, safetyConditionsIn, maxConfidence, lowerOf, CONFIDENCE_ORDER, SOURCE_TYPE_NAMES, isPolicy } from "./records.js";
 import { words } from "./passages.js";
 import { windowLabel } from "./recurrence.js";
-import { evidenceProblems, policyQuoteProblem, thresholdsOf, claimNumberProblems, fittingTrustLabel } from "./verify.js";
+import { evidenceProblems, policyQuoteProblem, thresholdsOf, claimNumberProblems, fittingTrustLabel, resolveReferences } from "./verify.js";
 
 /**
  * @param {object} run
@@ -68,6 +68,7 @@ export async function runPipeline({ windows, records, rules, evidenceLibrary, sc
 
   // Checking findings against their records (src/verify.js). The tally ends up in meta.
   const thresholds = thresholdsOf(pack);
+  const byReference = Boolean(config.numbersByReference); // see src/verify.js
   const verification = {
     findings_checked: 0, findings_verified: 0, findings_removed: [], fixed_on_retry: 0, findings_labels_corrected: 0, policy_quote: "none cited",
     analysis: { claims_checked: 0, claims_verified: 0, claims_removed: [], labels_corrected: 0 },
@@ -136,7 +137,7 @@ export async function runPipeline({ windows, records, rules, evidenceLibrary, sc
   const wording = verification.wording;
   const PLAIN = "The drafted wording mentioned figures that aren't in the records, so the wording was removed.";
   const fieldIssues = (field, holder, key, records, fallback) => {
-    const problems = claimNumberProblems(holder[key] ?? "", records, thresholds, { where: "this Thread's records" });
+    const problems = claimNumberProblems(holder[key] ?? "", records, thresholds, { where: "this Thread's records", byReference });
     if (problems.length === 0) return [];
     const problem = `${field}: ${problems.join(" ")}`;
     return [{
@@ -149,7 +150,7 @@ export async function runPipeline({ windows, records, rules, evidenceLibrary, sc
     }];
   };
   const itemIssues = (list, holder, records) => holder[list].flatMap((text) => {
-    const problems = claimNumberProblems(text, records, thresholds, { where: "this Thread's records" });
+    const problems = claimNumberProblems(text, records, thresholds, { where: "this Thread's records", byReference });
     if (problems.length === 0) return [];
     const problem = `${list}: ${problems.join(" ")}`;
     return [{
@@ -173,7 +174,7 @@ export async function runPipeline({ windows, records, rules, evidenceLibrary, sc
     failingPerAnswer.push(0);
     return o.supporting_evidence.flatMap((e) => {
       const record = byId.get(e.source_id);
-      const problems = record ? evidenceProblems(e, record, thresholds) : [];
+      const problems = record ? evidenceProblems(e, record, thresholds, { byReference }) : [];
       if (problems.length === 0) return [];
       failingPerAnswer[failingPerAnswer.length - 1] += 1;
       const problem = problems.join(" ");
@@ -197,7 +198,7 @@ export async function runPipeline({ windows, records, rules, evidenceLibrary, sc
   };
   const pattern = await step({
     name: "pattern", schema: schemas.pattern, temperature: config.temperatures.pattern,
-    prompt: buildPatternPrompt({ thresholds: promptThresholds, flowRecords: forModel(flowRecords), qualitativeRecords: forModel(qualitativeRecords) }),
+    prompt: buildPatternPrompt({ thresholds: promptThresholds, flowRecords: forModel(flowRecords), qualitativeRecords: forModel(qualitativeRecords), byReference }),
     sourceIds: recordIds,
     checks: (o) => (/^Records suggest\b/.test(o.pattern_statement.trim()) ? [] : ['pattern_statement must begin with "Records suggest".']),
     verify: (o) => [
@@ -250,13 +251,13 @@ export async function runPipeline({ windows, records, rules, evidenceLibrary, sc
   onStep("analysis");
   const analysis = await step({
     name: "analysis", schema: schemas.analysis, temperature: config.temperatures.analysis,
-    prompt: buildAnalysisPrompt({ policies: forModel(policies), vignette: pattern }),
+    prompt: buildAnalysisPrompt({ policies: forModel(policies), vignette: pattern, byReference }),
     sourceIds: allIds,
     verify: (o) => {
       // Numbers in each claim must be in the records it cites (any input record if it cites none).
       const claimIssues = CLAIM_LISTS.flatMap(([list, textsOf]) => o[list].flatMap((claim) => {
         const records = claim.source_ids.length ? citedBy(claim) : inputRecords;
-        const problems = textsOf(claim).filter(Boolean).flatMap((t) => claimNumberProblems(t, records, thresholds));
+        const problems = textsOf(claim).filter(Boolean).flatMap((t) => claimNumberProblems(t, records, thresholds, { byReference }));
         if (problems.length === 0) return [];
         const problem = `${list}: ${problems.join(" ")}`;
         return [{
@@ -271,7 +272,7 @@ export async function runPipeline({ windows, records, rules, evidenceLibrary, sc
       // The Thread map's nodes: numbers in a label must be in the node's records too.
       const nodeIssues = o.graph.nodes.flatMap((node) => {
         const records = node.source_ids.length ? citedBy(node) : inputRecords;
-        const problems = claimNumberProblems(node.label, records, thresholds);
+        const problems = claimNumberProblems(node.label, records, thresholds, { byReference });
         if (problems.length === 0) return [];
         const problem = `graph.nodes: ${problems.join(" ")}`;
         return [{
@@ -403,7 +404,7 @@ export async function runPipeline({ windows, records, rules, evidenceLibrary, sc
   const cardCounts = [...thresholds, citedRecords.length, unique(citedRecords.map((r) => r.source_type)).length, windows.length];
   verification.card = "verified";
   const verifyCard = (o) => Object.keys(CARD_FALLBACK).flatMap((field) => {
-    const problems = claimNumberProblems(o[field], cardRecords, cardCounts);
+    const problems = claimNumberProblems(o[field], cardRecords, cardCounts, { byReference });
     if (problems.length === 0) return [];
     return [{
       problem: `card.${field}: ${problems.join(" ")}`,
@@ -417,7 +418,7 @@ export async function runPipeline({ windows, records, rules, evidenceLibrary, sc
   onStep("reviewCard");
   const card = await step({
     name: "reviewCard", schema: schemas.reviewCard, temperature: config.temperatures.reviewCard,
-    prompt: buildReviewCardPrompt({ vignette: pattern, analysis, options }),
+    prompt: buildReviewCardPrompt({ vignette: pattern, analysis, options, byReference }),
     verify: verifyCard,
     checks: (o) => [
       ...(/^Threadline noticed\b/.test(o.noticed.trim()) ? [] : ['"noticed" must begin with "Threadline noticed".']),
@@ -434,8 +435,18 @@ export async function runPipeline({ windows, records, rules, evidenceLibrary, sc
     note("reviewCard", `the card is ${cardWordCount(card)} words after the replacement (limit 80)`);
   }
 
+  // Numbers by reference: every check above ran on the references; now fill them in with the
+  // records' real values, so people read "90 minutes", "96%", "15:30".
+  let steps = { pattern, analysis, evidence, options, card };
+  if (byReference) {
+    const { value, resolved, unresolved } = resolveReferences({ pattern, analysis, options, card }, byId);
+    steps = { ...value, evidence };
+    verification.references = { resolved, unresolved };
+    if (unresolved) note("references", `${unresolved} reference(s) couldn't be filled in and show as "[figure not found]"`);
+  }
+
   return {
-    steps: { pattern, analysis, evidence, options, card },
+    steps,
     log,
     meta: {
       domain, pattern_type, location,

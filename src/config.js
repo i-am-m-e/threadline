@@ -36,6 +36,12 @@ export const SIGNALS_CONFIG = {
   // doesn't gets the retry, then is relabelled "Process adjustment". "monitor" is left out on
   // purpose: it's ambiguous, and monitoring individuals is refused by another check anyway.
   learnMoreCheck: false,
+
+  // Numbers by reference (src/verify.js): instead of typing figures from flow rows, and times
+  // and dates, the model writes references like {HC-FLOW-20260920-1600.room_to_physician_minutes}
+  // that code checks and then fills in. OFF by default, to compare on the scorecard first
+  // (npm run eval -- --by-reference).
+  numbersByReference: false,
   learnMoreWords: [
     "track", "review", "observe", "watch", "ask", "huddle", "debrief", "gather", "collect", "measure",
     "count", "map", "walk through", "shadow", "survey", "interview", "listen", "check in", "look into",

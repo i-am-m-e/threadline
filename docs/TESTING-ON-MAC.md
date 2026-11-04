@@ -46,7 +46,7 @@ npm install
 npm test
 ```
 
-**Expected:** `# pass 225`, `# fail 0`, `# todo 0`. Report the three numbers. If anything fails,
+**Expected:** `# pass 239`, `# fail 0`, `# todo 0`. Report the three numbers. If anything fails,
 copy the failing test names and their error lines.
 
 ## 2. Check Ollama is ready
@@ -81,6 +81,27 @@ report, in plain language:
    the complaint says 85, so that finding was removed").
 
 If the quick run had step errors, stop here and report; don't run step 4.
+
+## 3b. The same quick scorecard with numbers by reference (another 15–25 minutes)
+
+This tries the new approach: the model writes figures from flow rows, and times and dates, as
+references like `{HC-FLOW-20260920-1600.room_to_physician_minutes}`, and code fills in the real
+values. It's off by default; this flag turns it on for this run only (nothing is saved to the
+settings):
+
+```bash
+npm run eval -- --runs 1 --by-reference
+```
+
+It writes a second folder (`docs/eval/<date>-2/`). Its scorecard says **"Numbers by reference:
+on"** and has a **"References filled in"** line. Compare it with step 3's, side by side:
+
+- Did the model use references at all? ("References filled in": 0 means it ignored them.)
+- Were **more or fewer** findings, claims or passages removed or replaced as unverified?
+- More or fewer **retries**? Any **step errors**?
+- Hard pass rate and seconds per run.
+
+Say plainly which approach looks better on this model, or "not sure" if it's mixed.
 
 ## 4. The baseline scorecard (3 runs, about 45–75 minutes)
 
@@ -143,6 +164,7 @@ Write one summary, in plain language, that the founder can paste into the cloud 
 
 - `npm test`: pass / fail / todo numbers
 - quick scorecard: the seven items from step 3
+- the numbers-by-reference comparison from step 3b
 - baseline scorecard: the same, plus agreement (or "not run" and why)
 - the app: what happened at each of steps 5.1–5.6
 - anything surprising, and anything you weren't sure how to read

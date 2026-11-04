@@ -120,6 +120,15 @@ are labels, not quantities: their digits only count when the text uses them as a
 ("HC-CMP-4471", "15:30" or "3:30 PM", "Sept 20"), so "15 patients" doesn't pass because a record is
 timestamped 15:00.
 
+**Numbers by reference** (off by default; `numbersByReference` in `src/config.js`, or
+`npm run eval -- --by-reference` for one scorecard): instead of typing figures from flow rows and
+any time or date, the model writes references like
+`{HC-FLOW-20260920-1600.room_to_physician_minutes}`, `{…bed_occupancy%}`, `{…time}` or `{…date}`.
+Code checks each one points to a real field of a record it may cite, then fills in the value after
+all the checks, so a misstated figure is impossible by construction. A typed flow figure, time or
+date is then a problem (one retry, then removed or replaced). Figures from an incident,
+complaint or near-miss's own text, and thresholds, may still be typed.
+
 Two more checks, for weaknesses Command R showed in the 2026-09-28 test runs: **every time window
 must have at least one cited record** (update runs used to describe only the first window), and
 **the recommendation's reasoning is two sentences or fewer** (Prompt 3, rule 4). Each gets the one
@@ -146,6 +155,7 @@ npm run eval                        # both packs, 3 runs each (about 40 to 50 mi
 npm run eval -- --runs 1            # a quick check (about 15 minutes)
 npm run eval -- --pack healthcare   # one pack: healthcare, energy or all
 npm run eval -- --model qwen3:8b    # try another model
+npm run eval -- --by-reference      # numbers by reference on, for this run only
 ```
 
 Results go to `docs/eval/<date>/` (a second run on the same day goes to `<date>-2/`, and so on): read `scorecard.md` (pass rates, decoys cited, how much repeated

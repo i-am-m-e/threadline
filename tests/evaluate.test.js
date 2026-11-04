@@ -95,3 +95,20 @@ test("run numbers for uncited windows count failed runs too", async () => {
   const card = readFileSync(join(dir, "scorecard.md"), "utf8");
   assert.match(card, /## Healthcare update[\s\S]*\| Time windows with a cited record \| 1 of 2 \(uncited: 2026-09-22 14:00 to 16:00 in run 2\) \|/);
 });
+
+test("the scorecard can be run with numbers by reference, and says so", async () => {
+  const dir = outDir();
+  await runEvaluation({ ...options(replayAsk(healthcareRun()).ask, dir), runs: 1, byReference: true });
+  const card = readFileSync(join(dir, "scorecard.md"), "utf8");
+  assert.match(card, /- Numbers by reference: on/);
+  assert.match(card, /\| References filled in \| \d+ \(0 not found\) \|/);
+  assert.equal(JSON.parse(readFileSync(join(dir, "settings.json"), "utf8")).numbers_by_reference, true);
+});
+
+test("without the option the scorecard says numbers by reference is off", async () => {
+  const dir = outDir();
+  await runEvaluation({ ...options(replayAsk(healthcareRun()).ask, dir), runs: 1 });
+  const card = readFileSync(join(dir, "scorecard.md"), "utf8");
+  assert.match(card, /- Numbers by reference: off/);
+  assert.doesNotMatch(card, /References filled in/);
+});

@@ -76,11 +76,11 @@ const escapeRe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
  * mistaken for quantities. Times may be written on a 24- or 12-hour clock ("15:30", "3:30 PM",
  * "3 PM"); dates as "2026-09-20", "Sept 20", "September 20th" or "20 September".
  */
-function withoutOwnReferences(text, records) {
+function withoutOwnReferences(text, records, { timesAndDates = true } = {}) {
   let out = String(text ?? "");
   for (const r of records) {
     if (r.source_id) out = out.replace(new RegExp(escapeRe(r.source_id), "g"), " ");
-    const m = typeof r.timestamp === "string" && r.timestamp.match(/^(\d{4})-(\d{2})-(\d{2})(?:T(\d{2}):(\d{2}))?/);
+    const m = timesAndDates && typeof r.timestamp === "string" && r.timestamp.match(/^(\d{4})-(\d{2})-(\d{2})(?:T(\d{2}):(\d{2}))?/);
     if (!m) continue;
     const [, year, month, day, hh, mm] = m;
     const d = Number(day);
@@ -105,12 +105,13 @@ function withoutOwnReferences(text, records) {
  * hours/minutes conversions for numbers the record itself labels as hours or minutes.
  * Plus the domain's thresholds.
  */
-function allowedNumbers(record, thresholds) {
+function allowedNumbers(record, thresholds, { byReference = false } = {}) {
   const base = [...thresholds];
   const converted = [];
   for (const [field, value] of Object.entries(record)) {
     if (SKIP_FIELDS.has(field) || LABEL_FIELDS.has(field)) continue;
     if (typeof value === "number") {
+      if (byReference && isFlow(record)) continue; // by reference, a flow row's figures are written {ID.field}
       base.push(value);
       if (field.endsWith("_minutes")) converted.push(...asHours(value));
     } else if (typeof value === "string") {
@@ -130,11 +131,17 @@ function allowedNumbers(record, thresholds) {
  * @param {number[]} thresholds  The domain's own thresholds (see thresholdsOf).
  * @returns {string[]} Problems (at most one per record), empty if all is well.
  */
-export function numberProblems(finding, record, thresholds) {
-  const allowed = allowedNumbers(record, thresholds);
-  const missing = [...new Set(numbersIn(withoutOwnReferences(finding, [record])))].filter((n) => !allowed.some((a) => same(a, n)));
-  if (missing.length === 0) return [];
-  return [`${record.source_id}: the finding mentions ${missing.join(", ")}, which ${missing.length === 1 ? "isn't" : "aren't"} in that record. Use the record's own numbers.`];
+export function numberProblems(finding, record, thresholds, { byReference = false } = {}) {
+  const { stripped, problems } = byReference ? checkReferences(finding, [record]) : { stripped: finding, problems: [] };
+  const allowed = allowedNumbers(record, thresholds, { byReference });
+  const missing = [...new Set(numbersIn(withoutOwnReferences(stripped, [record], { timesAndDates: !byReference })))]
+    .filter((n) => !allowed.some((a) => same(a, n)));
+  const out = problems.map((p) => `${record.source_id}: ${p}`);
+  if (missing.length) {
+    out.push(`${record.source_id}: the finding mentions ${missing.join(", ")}, which ${missing.length === 1 ? "isn't" : "aren't"} in that record. ` +
+      (byReference ? referenceHint(missing, [record]) : "Use the record's own numbers."));
+  }
+  return out;
 }
 
 /** The numbers in a domain's trigger and safety thresholds, e.g. 0.9, 45, 60. */
@@ -173,7 +180,7 @@ export function recordValueProblems(recordValues, record) {
  *  - either way, every number in the finding's wording is in the record.
  * @returns {string[]} Problems, empty if the item is verified.
  */
-export function evidenceProblems(item, record, thresholds) {
+export function evidenceProblems(item, record, thresholds, { byReference = false } = {}) {
   const id = record.source_id;
   const values = item.record_values ?? [];
   const problems = [];
@@ -186,7 +193,7 @@ export function evidenceProblems(item, record, thresholds) {
     if (quote) problems.push(quote);
     if (values.length > 0) problems.push(`${id}: this kind of record has no fields to check; leave record_values empty and quote its text.`);
   }
-  problems.push(...numberProblems(item.finding ?? "", record, thresholds));
+  problems.push(...numberProblems(item.finding ?? "", record, thresholds, { byReference }));
   return problems;
 }
 
@@ -211,14 +218,18 @@ export function policyQuoteProblem(gap, policy) {
  * @param {{where?: string}} [options]  How to name those records in the message.
  * @returns {string[]}
  */
-export function claimNumberProblems(text, records, thresholds, { where = "the records it cites" } = {}) {
-  const allowed = [...thresholds, ...records.flatMap((r) => allowedNumbers(r, []))];
+export function claimNumberProblems(text, records, thresholds, { where = "the records it cites", byReference = false } = {}) {
+  const { stripped, problems } = byReference ? checkReferences(text, records) : { stripped: text, problems: [] };
+  const refProblems = problems.map((p) => `"${text}": ${p}`);
+  const allowed = [...thresholds, ...records.flatMap((r) => allowedNumbers(r, [], { byReference }))];
   const withPercents = [...allowed, ...thresholds.flatMap(asPercent)];
-  const missing = [...new Set(numbersIn(withoutOwnReferences(text, records)))].filter((n) => !withPercents.some((a) => same(a, n)));
-  if (missing.length === 0) return [];
+  const missing = [...new Set(numbersIn(withoutOwnReferences(stripped, records, { timesAndDates: !byReference })))]
+    .filter((n) => !withPercents.some((a) => same(a, n)));
+  if (missing.length === 0) return refProblems;
   const all = records.map((r) => r.source_id);
   const ids = all.length > 3 ? `${all.slice(0, 3).join(", ")} and ${all.length - 3} more` : all.join(", ");
-  return [`"${text}" mentions ${missing.join(", ")}, which ${missing.length === 1 ? "isn't" : "aren't"} in ${where} (${ids}).`];
+  return [...refProblems, `"${text}" mentions ${missing.join(", ")}, which ${missing.length === 1 ? "isn't" : "aren't"} in ${where} (${ids}).` +
+    (byReference ? ` ${referenceHint(missing, records)}` : "")];
 }
 
 /**
@@ -238,4 +249,80 @@ export function fittingTrustLabel(label, records) {
   if (label === "Authoritative") return hasPolicy ? label : "Observed";
   if (label === "Observed") return hasObserved ? label : "Authoritative";
   return hasObserved ? "Observed" : "Authoritative";
+}
+
+
+// ---------- Numbers by reference (SIGNALS_CONFIG.numbersByReference) ----------
+// The model writes figures from flow rows, and every time and date, as references that code
+// fills in after all the checks: {ID.field} (a number field), {ID.field%} (the same as a
+// percent), {ID.time}, {ID.date}. A misstated figure is then impossible by construction.
+
+const REFERENCE = /\{([A-Za-z0-9][A-Za-z0-9_-]*)\.([a-z][a-z0-9_]*)(%?)\}/g;
+const MONTH_ABBR = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+/** The value a reference stands for, as people read it, or null if it doesn't resolve. */
+function referenceValue(record, field, percent) {
+  if (!record) return null;
+  const ts = typeof record.timestamp === "string" && record.timestamp.match(/^\d{4}-(\d{2})-(\d{2})(?:T(\d{2}:\d{2}))?/);
+  if (field === "time") return ts?.[3] ?? null;
+  if (field === "date") return ts ? `${MONTH_ABBR[Number(ts[1]) - 1]} ${Number(ts[2])}` : null;
+  const v = record[field];
+  if (typeof v !== "number" || SKIP_FIELDS.has(field)) return null;
+  if (percent) return `${v > 0 && v <= 1 ? Math.round(v * 100) : v}%`;
+  return String(v);
+}
+
+/** Problems with a text's references (each must name a record it can cite, and a real field). */
+function checkReferences(text, records) {
+  const problems = [];
+  const stripped = String(text ?? "").replace(REFERENCE, (whole, id, field, percent) => {
+    const record = records.find((r) => r.source_id === id);
+    if (!record) problems.push(`${whole}: ${id} isn't a record this can cite.`);
+    else if (referenceValue(record, field, percent) === null) problems.push(`${whole}: ${id} has no number field "${field}".`);
+    return " ";
+  });
+  return { stripped, problems };
+}
+
+/** How to write a typed figure as a reference, using the first field it matches. */
+function referenceHint(missing, records) {
+  for (const n of missing) {
+    for (const r of records) {
+      for (const [field, v] of Object.entries(r)) {
+        if (typeof v === "number" && !SKIP_FIELDS.has(field) && (same(v, n) || asPercent(v).some((p) => same(p, n)))) {
+          return `Write figures from a flow row as references, like {${r.source_id}.${field}${same(v, n) ? "" : "%"}}.`;
+        }
+      }
+    }
+  }
+  return "Write figures from flow rows, and times and dates, as references like {ID.field}, {ID.time} or {ID.date}.";
+}
+
+// Fields that are never filled in: quotes must stay exactly as the record wrote them, and ids are ids.
+const NO_RESOLVE = new Set(["quote", "policy_quote", "source_id", "source_ids", "policy_source_id", "evidence_ids",
+  "id", "source", "target", "option_id", "leading_option_id", "vignette_id", "field"]);
+
+/**
+ * Fill in every reference in the model's text with the record's value (a copy; the input is
+ * unchanged). A reference that doesn't resolve becomes "[figure not found]".
+ * @param {*} value  Any step output (or several).
+ * @param {Map<string, object>} byId  Records by source_id.
+ * @returns {{ value, resolved: number, unresolved: number }}
+ */
+export function resolveReferences(value, byId) {
+  let resolved = 0;
+  let unresolved = 0;
+  const fill = (text) => text.replace(REFERENCE, (whole, id, field, percent) => {
+    const v = referenceValue(byId.get(id), field, percent);
+    if (v === null) { unresolved += 1; return "[figure not found]"; }
+    resolved += 1;
+    return v;
+  });
+  const walk = (node, key) => {
+    if (typeof node === "string") return NO_RESOLVE.has(key) ? node : fill(node);
+    if (Array.isArray(node)) return node.map((x) => walk(x, key));
+    if (node && typeof node === "object") return Object.fromEntries(Object.entries(node).map(([k, v]) => [k, walk(v, k)]));
+    return node;
+  };
+  return { value: walk(value, null), resolved, unresolved };
 }

@@ -2,7 +2,7 @@
 // Reads flow records and incident/complaint records; drafts a POSSIBLE vignette.
 // Output must match src/schemas/pattern.schema.json.
 
-import { assemble } from "./sharedRules.js";
+import { assemble, withReferenceRules } from "./sharedRules.js";
 
 const TEMPLATE = `SYSTEM PROMPT: PATTERN AND VIGNETTE DRAFTER
 
@@ -71,15 +71,15 @@ INCIDENT AND COMPLAINT RECORDS:
 {{QUALITATIVE_RECORDS}}`;
 
 /**
- * @param {object} inputs
+ * @param {object} inputs  (byReference: add the "numbers by reference" rules)
  * @param {object} inputs.thresholds  The domain's triggers from domain_rules.json.
  * @param {Array}  inputs.flowRecords  Quantitative records (each with source_id).
  * @param {Array}  inputs.qualitativeRecords  Incident and complaint records (each with source_id).
  */
-export function buildPatternPrompt({ thresholds, flowRecords, qualitativeRecords }) {
-  return assemble(TEMPLATE, {
+export function buildPatternPrompt({ thresholds, flowRecords, qualitativeRecords, byReference = false }) {
+  return withReferenceRules(assemble(TEMPLATE, {
     DOMAIN_THRESHOLDS: thresholds,
     QUANTITATIVE_RECORDS: flowRecords,
     QUALITATIVE_RECORDS: qualitativeRecords,
-  });
+  }), byReference);
 }

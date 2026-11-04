@@ -43,7 +43,17 @@ function mapAndCardLines(tallies, scored) {
       : "| Review card wording verified | n/a (runs from before this check) |",
     wordingLine(tallies),
     ...windowAndRationaleLines(scored),
+    ...referenceLines(tallies),
   ];
+}
+
+/** Numbers by reference: how many references were filled in (only when it was on). */
+function referenceLines(tallies) {
+  const refs = tallies.map((t) => t.references).filter(Boolean);
+  if (refs.length === 0) return [];
+  const resolved = refs.reduce((n, r) => n + r.resolved, 0);
+  const unresolved = refs.reduce((n, r) => n + r.unresolved, 0);
+  return [`| References filled in | ${resolved} (${unresolved} not found) |`];
 }
 
 /** Time windows with at least one cited record, and rationales code had to shorten. Run numbers count every run, failed ones too. */
@@ -92,6 +102,7 @@ export function renderScorecard(summary) {
     `- Temperatures: ${Object.entries(summary.temperatures).map(([k, v]) => `${k} ${v}`).join(", ")}`,
     `- Runs per pack: ${summary.runs}`,
     `- Code version (git commit): ${summary.gitCommit}`,
+    `- Numbers by reference: ${summary.numbersByReference ? "on" : "off"}`,
     `- Answer key: ${summary.answerKeyStatus}`,
     "",
     "All data is synthetic. \"Hard\" checks decide whether a run passed; \"soft\" checks are reported only.",

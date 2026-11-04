@@ -2,7 +2,7 @@
 // Examines the possible vignette against authoritative policy, using safety science lenses.
 // Output must match src/schemas/analysis.schema.json.
 
-import { assemble } from "./sharedRules.js";
+import { assemble, withReferenceRules } from "./sharedRules.js";
 
 const TEMPLATE = `SYSTEM PROMPT: SYSTEM ANALYSIS
 
@@ -74,10 +74,10 @@ POSSIBLE VIGNETTE:
 {{VIGNETTE_JSON}}`;
 
 /**
- * @param {object} inputs
+ * @param {object} inputs  (byReference: add the "numbers by reference" rules)
  * @param {Array}  inputs.policies  Policy records (each with source_id).
  * @param {object} inputs.vignette  Prompt 1's output.
  */
-export function buildAnalysisPrompt({ policies, vignette }) {
-  return assemble(TEMPLATE, { POLICIES: policies, VIGNETTE_JSON: vignette });
+export function buildAnalysisPrompt({ policies, vignette, byReference = false }) {
+  return withReferenceRules(assemble(TEMPLATE, { POLICIES: policies, VIGNETTE_JSON: vignette }), byReference);
 }

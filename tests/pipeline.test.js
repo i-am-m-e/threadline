@@ -512,3 +512,50 @@ test("Learn more check on, recorded energy run: 'Enhance pre-shift coordination'
   assert.equal(o2.type, "Process adjustment");
   assert.match(logText(result, "options"), /no genuine "Learn more" option is left/);
 });
+
+// ---------- Numbers by reference (switch, off by default) ----------
+
+const refOn = { ...SIGNALS_CONFIG, numbersByReference: true };
+
+test("numbers by reference is a setting, off by default; then no prompt mentions it", async () => {
+  assert.equal(SIGNALS_CONFIG.numbersByReference, false);
+  const { replay, result } = await run();
+  for (const p of replay.prompts) assert.doesNotMatch(p, /NUMBERS BY REFERENCE/);
+  assert.equal(result.meta.verification.references, undefined);
+});
+
+test("by reference on: Prompts 1, 2 and 4 explain how to write references", async () => {
+  const { replay } = await run({ config: refOn });
+  const [pattern, analysis, options, card] = replay.prompts;
+  for (const p of [pattern, analysis, card]) assert.match(p, /NUMBERS BY REFERENCE[\s\S]*\{SOURCE_ID\.field\}/);
+  assert.doesNotMatch(options, /NUMBERS BY REFERENCE/);
+});
+
+test("by reference on: references are checked, then filled in with the records' real values", async () => {
+  const withRefs = (s) => withEvidence(s.pattern, "HC-FLOW-20260920-1600", {
+    finding: "Occupancy reached {HC-FLOW-20260920-1600.bed_occupancy%} and room time {HC-FLOW-20260920-1600.room_to_physician_minutes} minutes at {HC-FLOW-20260920-1600.time}.",
+  });
+  const { replay, result } = await run({ config: refOn, answers: (s) => [withRefs(s), s.analysis, s.options, s.card] });
+  assert.equal(replay.calls.length, 4, "no retry");
+  const finding = result.steps.pattern.supporting_evidence.find((e) => e.source_id === "HC-FLOW-20260920-1600").finding;
+  assert.equal(finding, "Occupancy reached 96% and room time 90 minutes at 16:00.");
+  assert.deepEqual(result.meta.verification.references, { resolved: 3, unresolved: 0 });
+});
+
+test("by reference on: a flow figure typed as digits gets the retry, showing how to write it", async () => {
+  const typed = (s) => withEvidence(s.pattern, "HC-FLOW-20260920-1600", { finding: "Occupancy reached 96%." });
+  const { replay } = await run({ config: refOn, answers: (s) => [typed(s), s.pattern, s.analysis, s.options, s.card] });
+  assert.match(lastMessage(replay, 1), /mentions 96[\s\S]*\{HC-FLOW-20260920-1600\.bed_occupancy%\}/);
+});
+
+test("by reference on: a reference to a record the claim can't cite gets the retry", async () => {
+  const wrongRef = (s) => withCondition(s.analysis, 0, { condition: "Occupancy at {HC-FLOW-20260922-1500.bed_occupancy%}" });
+  const { replay } = await run({ config: refOn, answers: (s) => [s.pattern, wrongRef(s), s.analysis, s.options, s.card] });
+  assert.match(lastMessage(replay, 2), /HC-FLOW-20260922-1500 isn't a record this can cite/);
+});
+
+test("by reference on: the recorded first run (thresholds and incident/complaint figures only) still passes as it is", async () => {
+  const { replay, result } = await run({ config: refOn });
+  assert.equal(replay.calls.length, 4);
+  assert.deepEqual(result.meta.verification.findings_removed, []);
+});

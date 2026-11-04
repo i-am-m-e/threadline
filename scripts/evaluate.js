@@ -4,6 +4,7 @@
 //   npm run eval -- --pack healthcare     one pack (healthcare | energy | all)
 //   npm run eval -- --runs 1              a quick check
 //   npm run eval -- --model qwen3:8b      try another Ollama model
+//   npm run eval -- --by-reference        numbers by reference on (src/config.js numbersByReference)
 //
 // Each run uses the app's real "Check now" logic (src/monitor.js) and real prompts, against
 // local Ollama, on the evaluation packs in data/eval/. The healthcare pack is followed by the
@@ -51,6 +52,7 @@ const localDate = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart
  * @param {string[]} [args.packs]   "healthcare", "energy" and/or "all"
  * @param {number} [args.runs]
  * @param {string} [args.model]     Ollama model id (default: SIGNALS_CONFIG.model)
+ * @param {boolean} [args.byReference]  Numbers by reference on for this evaluation (default: SIGNALS_CONFIG)
  * @param {Function} [args.ask]     Stand-in for the model (tests); default is the real model
  * @param {string} [args.outDir]    Exact folder to write to (tests). Default: a new folder in baseDir
  * @param {string} [args.baseDir]   Default docs/eval. Results go to <date>/, or <date>-2/, -3/… if that exists
@@ -61,14 +63,14 @@ const localDate = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart
  * @returns {Promise<{ summary: object, scorecardPath: string }>}
  */
 export async function runEvaluation({
-  packs = ["all"], runs = 3, model, ask, outDir, baseDir = join(ROOT, "docs/eval"), now = new Date(),
+  packs = ["all"], runs = 3, model, byReference, ask, outDir, baseDir = join(ROOT, "docs/eval"), now = new Date(),
   checkOllama = defaultCheckOllama, gitCommit = currentCommit(), onProgress = () => {},
 } = {}) {
   try { await checkOllama(); } catch { throw new Error(OLLAMA_MESSAGE); }
 
   const answerKey = loadAnswerKey();
   const base = { rules: loadRules(), schemas: loadSchemas(), evidenceLibrary: loadEvidenceLibrary() };
-  const config = { ...SIGNALS_CONFIG, model: model ?? SIGNALS_CONFIG.model };
+  const config = { ...SIGNALS_CONFIG, model: model ?? SIGNALS_CONFIG.model, numbersByReference: byReference ?? SIGNALS_CONFIG.numbersByReference };
   const packNames = packs.includes("all") ? Object.keys(STAGES) : packs;
   for (const p of packNames) if (!STAGES[p]) throw new Error(`Unknown pack "${p}". Use healthcare, energy or all.`);
   const date = localDate(now);
@@ -110,6 +112,7 @@ export async function runEvaluation({
 
   const summary = {
     date, model: config.model, temperatures: config.temperatures, runs, gitCommit,
+    numbersByReference: Boolean(config.numbersByReference),
     answerKeyStatus: answerKey.status ?? "unknown", stages,
   };
   const scorecardPath = join(dir, "scorecard.md");
@@ -117,6 +120,7 @@ export async function runEvaluation({
   writeFileSync(join(dir, "settings.json"), JSON.stringify({
     date, model: config.model, temperatures: config.temperatures, runs, packs: packNames,
     git_commit: gitCommit, answer_key_status: summary.answerKeyStatus,
+    numbers_by_reference: summary.numbersByReference,
   }, null, 2));
   return { summary, scorecardPath };
 }
@@ -129,7 +133,8 @@ function parseArgs(argv) {
     if (flag === "--pack") { args.packs = [value]; i++; }
     else if (flag === "--runs") { args.runs = Number(value); i++; }
     else if (flag === "--model") { args.model = value; i++; }
-    else throw new Error(`Unknown option "${flag}". Options: --pack healthcare|energy|all, --runs <n>, --model <id>`);
+    else if (flag === "--by-reference") args.byReference = true;
+    else throw new Error(`Unknown option "${flag}". Options: --pack healthcare|energy|all, --runs <n>, --model <id>, --by-reference`);
   }
   if (!Number.isInteger(args.runs) || args.runs < 1) throw new Error("--runs needs a whole number of 1 or more.");
   return args;
