@@ -45,3 +45,62 @@ export function quoteProblem(quote, record) {
   }
   return null;
 }
+
+// ---------- Numbers in the finding's wording ----------
+
+const NUMBER = /\d+(?:\.\d+)?/g;
+const HOURS_IN_TEXT = /(\d+(?:\.\d+)?)\s*-?\s*(?:hours?|hrs?)\b/gi;
+const MINUTES_IN_TEXT = /(\d+(?:\.\d+)?)\s*-?\s*(?:minutes?|mins?)\b/gi;
+const SKIP_FIELDS = new Set(["file", "synthetic"]);
+const same = (a, b) => Math.abs(a - b) < 1e-6;
+
+/** Every number written in a piece of text, e.g. "At 15:30, 0.93" → [15, 30, 0.93]. */
+export const numbersIn = (text) => (String(text).match(NUMBER) ?? []).map(Number);
+
+// Minutes → hours, only for whole or half hours (90 → 1.5; 85 → nothing).
+const asHours = (minutes) => (Number.isInteger((minutes / 60) * 2) ? [minutes / 60] : []);
+// A fraction may be written as a percent, exactly or rounded (0.955 → 95.5 and 96).
+const asPercent = (v) => (v > 0 && v < 1 ? [v * 100, Math.round(v * 100)] : []);
+
+/**
+ * The numbers a finding may mention for this record: every number in the record (its
+ * values, text, time and id), the same numbers as percents, and hours/minutes conversions
+ * for numbers the record itself labels as hours or minutes. Plus the domain's thresholds.
+ */
+function allowedNumbers(record, thresholds) {
+  const base = [...thresholds];
+  const converted = [];
+  for (const [field, value] of Object.entries(record)) {
+    if (SKIP_FIELDS.has(field)) continue;
+    if (typeof value === "number") {
+      base.push(value);
+      if (field.endsWith("_minutes")) converted.push(...asHours(value));
+    } else if (typeof value === "string") {
+      base.push(...numbersIn(value));
+      for (const m of value.matchAll(HOURS_IN_TEXT)) converted.push(Number(m[1]) * 60);
+      for (const m of value.matchAll(MINUTES_IN_TEXT)) converted.push(...asHours(Number(m[1])));
+    }
+  }
+  return [...base, ...base.flatMap(asPercent), ...converted];
+}
+
+/**
+ * Every number in a finding's wording must be in the record it cites (see allowedNumbers).
+ * Numbers written as words ("two") aren't checked, and units aren't compared.
+ * @param {string} finding
+ * @param {object} record
+ * @param {number[]} thresholds  The domain's own thresholds (see thresholdsOf).
+ * @returns {string[]} Problems (at most one per record), empty if all is well.
+ */
+export function numberProblems(finding, record, thresholds) {
+  const allowed = allowedNumbers(record, thresholds);
+  const missing = [...new Set(numbersIn(finding))].filter((n) => !allowed.some((a) => same(a, n)));
+  if (missing.length === 0) return [];
+  return [`${record.source_id}: the finding mentions ${missing.join(", ")}, which ${missing.length === 1 ? "isn't" : "aren't"} in that record. Use the record's own numbers.`];
+}
+
+/** The numbers in a domain's trigger and safety thresholds, e.g. 0.9, 45, 60. */
+export function thresholdsOf(pack) {
+  const conditions = [...(pack.triggers ?? []).flatMap((t) => t.all ?? []), ...(pack.safety_relevant_conditions ?? [])];
+  return [...new Set(conditions.map((c) => c.value).filter((v) => typeof v === "number"))];
+}
