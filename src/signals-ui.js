@@ -15,7 +15,7 @@ import { checkForSignals, startMonitorTimer } from "./monitor.js";
 import {
   current, ROLES, isOpen, canMove, rejectionCounts,
   confirmPattern, addContext, doesNotMatch,
-  sendForValidation, notARealPattern, requestMoreInformation, recordDecision, closeWithOutcome,
+  sendForValidation, notARealPattern, requestMoreInformation, recordDecision, startOutcomeReview, closeWithOutcome,
 } from "./threads.js";
 import { SIGNALS_CONFIG } from "./config.js";
 import { routeAlerts, alertVolume, buildDigest, sendLocalNotification } from "./notify.js";
@@ -225,7 +225,7 @@ function renderDetail() {
     text("span", "", `Pattern confidence: ${run.steps.pattern.confidence}`),
     text("span", "", `Time window${thread.windows.length === 1 ? "" : "s"}: ${run.steps.pattern.time_window}`),
   );
-  if (thread.outcome_review_due && thread.status === "Outcome review due") facts.append(text("span", "signals-due", `Outcome review due ${thread.outcome_review_due}`));
+  if (thread.outcome_review_due && ["Decision recorded", "Outcome review due"].includes(thread.status)) facts.append(text("span", "signals-due", `Outcome review due ${thread.outcome_review_due}`));
   head.append(facts);
   const map = renderMapSection(thread);
   detail.append(head, renderCard(thread), map.section, renderBrief(thread));
@@ -572,6 +572,11 @@ function managerActions(thread) {
       : "";
   if (why) box.append(text("p", "card-why-disabled", why));
 
+  if (thread.status === "Decision recorded") {
+    box.append(text("p", "brief-small", `Outcome review due ${thread.outcome_review_due}. Revisit or stop if: ${thread.decision?.revisit_or_stop_if || "not stated"}`));
+    actions.append(button("Start outcome review", "primary", !manager,
+      () => act(thread, () => startOutcomeReview(thread, role), "Outcome review started")));
+  }
   if (thread.status === "Outcome review due") {
     box.append(text("p", "brief-small", `Outcome review due ${thread.outcome_review_due}. Revisit or stop if: ${thread.decision?.revisit_or_stop_if || "not stated"}`));
     actions.append(button("Record outcome", "primary", !manager, () => openForm(thread, "outcome")));

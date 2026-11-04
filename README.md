@@ -32,7 +32,7 @@ The **Signals** mode watches approved operational data for patterns in flows, qu
    and the next Check now retries it.
 4. People act by role: a manager sends it for front-line validation; a front-line lead confirms it,
    adds context or says it doesn't match; only then can a manager record a decision (which applies
-   nothing) and later an outcome. Threadline itself can only mark Threads Inferred or Flagged.
+   nothing), later press **Start outcome review**, and record the outcome. Threadline itself can only mark Threads Inferred or Flagged.
 5. Flags (badge + local notification) only for Medium+ confidence with a safety-relevant
    condition, capped per day; everything else goes to the digest.
 
@@ -263,3 +263,5 @@ Delete that folder to start fresh.
 - Scanned PDFs are images, so there's no text to extract.
 - Word files don't have reliable page numbers, so their passages are labeled by text only.
 - Review mode shows extracted text, not the original page layout.
+- If Ollama sends nothing for 5 minutes, a model call stops with "Ollama stopped responding"
+  (`IDLE_TIMEOUT_MS` in `src/model.js`). A long reply that keeps arriving is never cut off.

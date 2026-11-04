@@ -169,9 +169,17 @@ export function recordDecision(thread, role, optionId, now = new Date()) {
     date: now.toISOString(),
     revisit_or_stop_if: option?.revisit_or_stop_if ?? "",
   };
-  humanStatus(thread, "Decision recorded", role, `Decision: ${thread.decision.option_title}`, now);
   thread.outcome_review_due = due.toISOString().slice(0, 10);
-  humanStatus(thread, "Outcome review due", role, `Outcome review due ${thread.outcome_review_due} (${days} days)`, now);
+  humanStatus(thread, "Decision recorded", role, `Decision: ${thread.decision.option_title}. Outcome review due ${thread.outcome_review_due} (${days} days)`, now);
+}
+
+/**
+ * The manager starts the outcome review (usually on or after the due date). A button press,
+ * never automatic: the date alone doesn't move a Thread.
+ */
+export function startOutcomeReview(thread, role, now = new Date()) {
+  requireRole(role, ["Manager"], "Start outcome review");
+  humanStatus(thread, "Outcome review due", role, `Outcome review started (due ${thread.outcome_review_due})`, now);
 }
 
 /** At outcome review: what happened and whether it helped, then close the Thread. */
