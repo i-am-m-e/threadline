@@ -87,8 +87,13 @@ A problem goes into the step's one retry, naming exactly what was wrong. If a fi
 can't be verified, it is removed and logged as "unverified, removed" (the policy gap's id and
 quote are blanked instead), and confidence is worked out from what's left. Nothing unverified is
 kept silently. The quotes and values are saved in each Thread's file (not shown in the app yet).
-Contributing conditions, the pressure map, the graph and the options aren't checked this way
-yet. Design: `docs/specs/2026-11-04-step2-verify-findings.md`.
+**Analysis claims** (contributing conditions and pressure-map entries) get two checks: any number
+in them must be in the records they cite (retry, then removed as unverified, as above), and their
+trust label must fit what they cite. That label is corrected in code and logged: no sources →
+Inferred; Authoritative needs a policy; Observed needs a flow, incident, complaint or near-miss
+record; Experiential and Historical come only from people, so the model can't claim them. The
+claims' wording itself isn't checked yet. The graph, "evidence that does not fit", the vignette
+story, the options and the review card aren't checked this way yet. Design: `docs/specs/2026-11-04-step2-verify-findings.md`.
 
 ## Testing and the scorecard
 

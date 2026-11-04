@@ -27,7 +27,7 @@ import { buildOptionsPrompt } from "./prompts/options.js";
 import { buildReviewCardPrompt } from "./prompts/reviewCard.js";
 import { qualitativeNear, policiesFor, safetyConditionsIn, maxConfidence, lowerOf, CONFIDENCE_ORDER, SOURCE_TYPE_NAMES } from "./records.js";
 import { words } from "./passages.js";
-import { evidenceProblems, policyQuoteProblem, thresholdsOf } from "./verify.js";
+import { evidenceProblems, policyQuoteProblem, thresholdsOf, claimNumberProblems, fittingTrustLabel } from "./verify.js";
 
 /**
  * @param {object} run
@@ -67,7 +67,13 @@ export async function runPipeline({ windows, records, rules, evidenceLibrary, sc
 
   // Checking findings against their records (src/verify.js). The tally ends up in meta.
   const thresholds = thresholdsOf(pack);
-  const verification = { findings_checked: 0, findings_verified: 0, findings_removed: [], fixed_on_retry: 0, policy_quote: "none cited" };
+  const verification = {
+    findings_checked: 0, findings_verified: 0, findings_removed: [], fixed_on_retry: 0, policy_quote: "none cited",
+    analysis: { claims_checked: 0, claims_verified: 0, claims_removed: [], labels_corrected: 0 },
+  };
+  // The analysis claims checked against their records: contributing conditions and the pressure map.
+  const CLAIM_LISTS = [["contributing_conditions", (c) => [c.condition]], ["pressure_map", (p) => [p.pressure_carried, p.shifting_to]]];
+  const citedBy = (claim) => claim.source_ids.map((id) => byId.get(id)).filter(Boolean);
   const flaggedBeforeLast = new Set(); // findings that failed on an earlier answer
   let flaggedLast = new Set();
   const verifyFindings = (o) => {
@@ -132,11 +138,26 @@ export async function runPipeline({ windows, records, rules, evidenceLibrary, sc
     prompt: buildAnalysisPrompt({ policies: forModel(policies), vignette: pattern }),
     sourceIds: allIds,
     verify: (o) => {
+      // Numbers in each claim must be in the records it cites (any input record if it cites none).
+      const claimIssues = CLAIM_LISTS.flatMap(([list, textsOf]) => o[list].flatMap((claim) => {
+        const records = claim.source_ids.length ? citedBy(claim) : inputRecords;
+        const problems = textsOf(claim).filter(Boolean).flatMap((t) => claimNumberProblems(t, records, thresholds));
+        if (problems.length === 0) return [];
+        const problem = `${list}: ${problems.join(" ")}`;
+        return [{
+          problem,
+          remove: () => {
+            o[list].splice(o[list].indexOf(claim), 1);
+            verification.analysis.claims_removed.push({ list, text: textsOf(claim)[0], problem });
+            return `${list}: "${textsOf(claim)[0]}": unverified, removed`;
+          },
+        }];
+      }));
       const gap = o.policy_practice_gap;
       const policy = gap.policy_source_id && byId.get(gap.policy_source_id);
       const problem = policy && policyQuoteProblem(gap, policy);
-      if (!problem) return [];
-      return [{
+      if (!problem) return claimIssues;
+      return [...claimIssues, {
         problem,
         remove: () => {
           const id = gap.policy_source_id;
@@ -154,6 +175,18 @@ export async function runPipeline({ windows, records, rules, evidenceLibrary, sc
     ],
   });
   tidyGraph(analysis.graph, (detail) => note("analysis", detail));
+  // Each claim's trust label must fit what it cites (corrected in code, no retry needed).
+  for (const [list, textsOf] of CLAIM_LISTS) {
+    for (const claim of analysis[list]) {
+      const fit = fittingTrustLabel(claim.trust_label, citedBy(claim));
+      if (fit === claim.trust_label) continue;
+      note("analysis", `${list}: "${textsOf(claim)[0]}": trust_label "${claim.trust_label}" → "${fit}" (from the records it cites)`);
+      claim.trust_label = fit;
+      verification.analysis.labels_corrected += 1;
+    }
+  }
+  verification.analysis.claims_verified = CLAIM_LISTS.reduce((n, [list]) => n + analysis[list].length, 0);
+  verification.analysis.claims_checked = verification.analysis.claims_verified + verification.analysis.claims_removed.length;
   if (verification.policy_quote !== "removed" && analysis.policy_practice_gap.policy_source_id) verification.policy_quote = "verified";
 
   // ---- Evidence selection (code, not a prompt) ----

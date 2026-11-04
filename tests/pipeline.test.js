@@ -103,6 +103,7 @@ test("findings that match their records pass, and the tally says so", async () =
   assert.equal(replay.calls.length, 4, "no retry needed");
   assert.deepEqual(result.meta.verification, {
     findings_checked: 6, findings_verified: 6, findings_removed: [], fixed_on_retry: 0, policy_quote: "verified",
+    analysis: { claims_checked: 4, claims_verified: 4, claims_removed: [], labels_corrected: 0 },
   });
 });
 
@@ -173,4 +174,48 @@ test("Prompt 1 asks for a quote or record values; Prompt 2 asks for a policy quo
   assert.match(replay.prompts[0], /copied exactly/);
   assert.match(replay.prompts[1], /"policy_quote": ""/);
   assert.match(replay.prompts[1], /copied exactly/);
+});
+
+// ---------- Analysis claims: contributing conditions and the pressure map ----------
+
+const withCondition = (analysis, i, change) => ({ ...analysis, contributing_conditions: analysis.contributing_conditions.map((c, j) => (j === i ? { ...c, ...change } : c)) });
+const withPressure = (analysis, i, change) => ({ ...analysis, pressure_map: analysis.pressure_map.map((p, j) => (j === i ? { ...p, ...change } : p)) });
+
+test("the recorded analysis claims pass, and the tally says so", async () => {
+  const { result } = await run();
+  assert.deepEqual(result.meta.verification.analysis, { claims_checked: 4, claims_verified: 4, claims_removed: [], labels_corrected: 0 });
+});
+
+test("an analysis claim with an invented number is named in the retry", async () => {
+  const wrong = (s) => withCondition(s.analysis, 1, { condition: "Room-to-physician times of 140 minutes" });
+  const { replay, result } = await run({ answers: (s) => [s.pattern, wrong(s), s.analysis, s.options, s.card] });
+  assert.match(lastMessage(replay, 2), /"Room-to-physician times of 140 minutes" mentions 140/);
+  assert.equal(result.meta.verification.analysis.claims_verified, 4);
+});
+
+test("an analysis claim still unverified after the retry is removed and logged", async () => {
+  const wrong = (s) => withPressure(s.analysis, 0, { pressure_carried: "Escalating 12 times an hour" });
+  const { result } = await run({ answers: (s) => [s.pattern, wrong(s), wrong(s), s.options, s.card] });
+  assert.equal(result.steps.analysis.pressure_map.length, 1);
+  const a = result.meta.verification.analysis;
+  assert.equal(a.claims_checked, 4);
+  assert.equal(a.claims_verified, 3);
+  assert.match(a.claims_removed[0].problem, /mentions 12/);
+  assert.ok(result.log.some((l) => l.step === "analysis" && l.type === "unverified_removed" && /pressure_map/.test(l.detail)));
+});
+
+test("a trust label that doesn't fit the cited records is corrected in code and logged (no retry)", async () => {
+  const mislabelled = (s) => withPressure(withCondition(s.analysis, 0, { trust_label: "Authoritative" }), 1, { trust_label: "Experiential" });
+  const { replay, result } = await run({ answers: (s) => [s.pattern, mislabelled(s), s.options, s.card] });
+  assert.equal(replay.calls.length, 4, "no retry");
+  assert.equal(result.steps.analysis.contributing_conditions[0].trust_label, "Observed", "it cites flow records, not a policy");
+  assert.equal(result.steps.analysis.pressure_map[1].trust_label, "Authoritative", "it cites the policy; only people add Experiential");
+  assert.equal(result.meta.verification.analysis.labels_corrected, 2);
+  assert.match(logText(result, "analysis"), /trust_label "Authoritative" → "Observed"/);
+});
+
+test("a claim citing no records becomes Inferred", async () => {
+  const noSources = (s) => withCondition(s.analysis, 0, { source_ids: [], trust_label: "Observed" });
+  const { result } = await run({ answers: (s) => [s.pattern, noSources(s), s.options, s.card] });
+  assert.equal(result.steps.analysis.contributing_conditions[0].trust_label, "Inferred");
 });

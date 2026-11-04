@@ -24,7 +24,16 @@ function verificationLines(scored) {
   return [
     `| Findings checked against their source | ${sum("findings_verified")} of ${sum("findings_checked")} verified (${sum("findings_removed")} removed as unverified; ${sum("fixed_on_retry")} fixed on retry) |`,
     `| Policy quote verified | ${tallies.filter((t) => t.policy_quote === "verified").length} of ${tallies.length} runs |`,
+    analysisLine(tallies),
   ];
+}
+
+/** Contributing conditions and pressure-map entries checked against their records. */
+function analysisLine(tallies) {
+  const a = tallies.map((t) => t.analysis).filter(Boolean);
+  if (a.length === 0) return "| Analysis claims checked against their records | n/a (runs from before this check) |";
+  const sum = (key) => a.reduce((n, t) => n + (Array.isArray(t[key]) ? t[key].length : t[key]), 0);
+  return `| Analysis claims checked against their records | ${sum("claims_verified")} of ${sum("claims_checked")} verified (${sum("claims_removed")} removed as unverified; ${sum("labels_corrected")} trust labels corrected) |`;
 }
 
 /**
@@ -78,8 +87,11 @@ export function renderScorecard(summary) {
     const failures = scored.flatMap((s, i) => s.hard.filter((c) => !c.pass).map((c) => `- Run ${i + 1}: ${c.id}: ${c.detail}`));
     lines.push("", failures.length ? "**Failed hard checks**" : "**Failed hard checks:** none", ...failures);
 
-    const removed = scored.flatMap((s, i) => (s.verification?.findings_removed ?? []).map((r) => `- Run ${i + 1}: ${r.problem}`));
-    if (removed.length) lines.push("", "**Findings removed as unverified**", ...removed);
+    const removed = scored.flatMap((s, i) => [
+      ...(s.verification?.findings_removed ?? []),
+      ...(s.verification?.analysis?.claims_removed ?? []),
+    ].map((r) => `- Run ${i + 1}: ${r.problem}`));
+    if (removed.length) lines.push("", "**Findings and analysis claims removed as unverified**", ...removed);
 
     const softMisses = scored.flatMap((s, i) => s.soft.filter((c) => !c.pass && c.id !== "may_mention_as_possible_confounder").map((c) => `- Run ${i + 1}: ${c.id}: ${c.detail}`));
     if (softMisses.length) lines.push("", "**Soft checks not met**", ...softMisses);
