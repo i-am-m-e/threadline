@@ -54,7 +54,7 @@ export function scoreRun({ packKey, answerKey, threads, error, seconds }) {
   const soft = [];
   const add = (list, id, pass, detail) => list.push({ id, pass, detail });
 
-  const base = { packKey, hard, soft, citedIds: [], retries: 0, adjustments: 0, seconds };
+  const base = { packKey, hard, soft, citedIds: [], retries: 0, adjustments: 0, seconds, verification: null };
   if (error || !thread) {
     add(hard, "no_step_errors", false, error ?? `No Thread was found for "${expected.pattern_type}" at ${expected.location}.`);
     return { ...base, passed: false, ...(error ? { error } : {}) };
@@ -128,6 +128,8 @@ export function scoreRun({ packKey, answerKey, threads, error, seconds }) {
     confidence: steps.pattern.confidence,
     citedIds: [...new Set(patternCited)].sort(),
     leadingOptionType: leading?.type,
+    // Step 2: how many findings were checked against their records (null for older runs).
+    verification: meta?.verification ?? null,
     retries: log.filter((l) => l.type === "problems").length,
     adjustments: log.filter((l) => l.type !== "problems").length,
   };

@@ -97,3 +97,14 @@ test("consistency ignores failed runs and is 1 with fewer than two successes", (
   const c = consistency([{ error: "x" }, { confidence: "Low", citedIds: ["A"] }]);
   assert.deepEqual(c, { confidenceAgreement: 1, citationAgreement: 1, leadingOptionAgreement: 1, successfulRuns: 1 });
 });
+
+test("the run's verification tally is passed on for the scorecard", () => {
+  const t = firstRunThread();
+  const tally = { findings_checked: 6, findings_verified: 5, findings_removed: [{ source_id: "HC-CMP-4471", problem: "x" }], fixed_on_retry: 0, policy_quote: "verified" };
+  t.runs[0].meta.verification = tally;
+  assert.deepEqual(score(t).verification, tally);
+});
+
+test("a run recorded before step 2 has no verification tally", () => {
+  assert.equal(score(firstRunThread()).verification, null);
+});

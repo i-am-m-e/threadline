@@ -22,7 +22,8 @@ test("writes the scorecard, settings and one file per run", async () => {
   for (const f of ["scorecard.md", "settings.json", "runs/healthcare-1.json", "runs/healthcare-2.json"]) assert.ok(existsSync(join(dir, f)), f);
   const card = readFileSync(join(dir, "scorecard.md"), "utf8");
   assert.match(card, /Answer key: draft/);
-  assert.match(card, /not checked yet \(step 2\)/);
+  assert.match(card, /\| Findings checked against their source \| 12 of 12 verified \(0 removed as unverified; 0 fixed on retry\) \|/);
+  assert.match(card, /\| Policy quote verified \| 2 of 2 runs \|/);
   assert.match(card, /abc1234/);
   const settings = JSON.parse(readFileSync(join(dir, "settings.json"), "utf8"));
   assert.equal(settings.answer_key_status, "draft");
@@ -59,4 +60,16 @@ test("a second scorecard on the same day gets its own folder instead of overwrit
   const second = await run(replayAsk(healthcareRun()).ask);
   assert.match(first.scorecardPath, /2026-11-04\/scorecard\.md$/);
   assert.match(second.scorecardPath, /2026-11-04-2\/scorecard\.md$/);
+});
+
+test("findings removed as unverified are counted and listed on the scorecard", async () => {
+  const dir = outDir();
+  const [pattern, ...rest] = four(0);
+  const bad = { ...pattern, supporting_evidence: pattern.supporting_evidence.map((e) =>
+    (e.source_id === "HC-CMP-4471" ? { ...e, quote: "waited two hours in the exam room" } : e)) };
+  const replay = replayAsk([bad, bad, ...rest, ...four(1)]);
+  await runEvaluation({ ...options(replay.ask, dir), runs: 1 });
+  const card = readFileSync(join(dir, "scorecard.md"), "utf8");
+  assert.match(card, /\| Findings checked against their source \| 5 of 6 verified \(1 removed as unverified; 0 fixed on retry\) \|/);
+  assert.match(card, /\*\*Findings removed as unverified\*\*\n- Run 1: HC-CMP-4471: .*isn't in that record/);
 });

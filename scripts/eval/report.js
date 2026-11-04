@@ -16,6 +16,17 @@ function checkRate(scored, list, id) {
   return avg(found.map((cs) => (cs.every((c) => c.pass) ? 1 : 0)));
 }
 
+/** "17 of 18 verified (1 removed as unverified; 2 fixed on retry)", over the runs that have a tally. */
+function verificationLines(scored) {
+  const tallies = scored.map((s) => s.verification).filter(Boolean);
+  if (tallies.length === 0) return ["| Findings checked against their source | n/a (no completed run) |", "| Policy quote verified | n/a |"];
+  const sum = (key) => tallies.reduce((n, t) => n + (Array.isArray(t[key]) ? t[key].length : t[key]), 0);
+  return [
+    `| Findings checked against their source | ${sum("findings_verified")} of ${sum("findings_checked")} verified (${sum("findings_removed")} removed as unverified; ${sum("fixed_on_retry")} fixed on retry) |`,
+    `| Policy quote verified | ${tallies.filter((t) => t.policy_quote === "verified").length} of ${tallies.length} runs |`,
+  ];
+}
+
 /**
  * @param {object} summary  From runEvaluation(): { date, model, temperatures, runs, gitCommit,
  *                          answerKeyStatus, stages: { [stage]: { scored, consistency } } }
@@ -61,11 +72,14 @@ export function renderScorecard(summary) {
       `| Code adjustments per run | ${avg(ok.map((s) => s.adjustments)).toFixed(1)} |`,
       `| Step errors | ${scored.filter((s) => s.error).length} |`,
       `| Seconds per run | average ${Math.round(avg(seconds))}, slowest ${Math.round(Math.max(0, ...seconds))} |`,
-      "| Findings checked against their source | not checked yet (step 2) |",
+      ...verificationLines(scored),
     );
 
     const failures = scored.flatMap((s, i) => s.hard.filter((c) => !c.pass).map((c) => `- Run ${i + 1}: ${c.id}: ${c.detail}`));
     lines.push("", failures.length ? "**Failed hard checks**" : "**Failed hard checks:** none", ...failures);
+
+    const removed = scored.flatMap((s, i) => (s.verification?.findings_removed ?? []).map((r) => `- Run ${i + 1}: ${r.problem}`));
+    if (removed.length) lines.push("", "**Findings removed as unverified**", ...removed);
 
     const softMisses = scored.flatMap((s, i) => s.soft.filter((c) => !c.pass && c.id !== "may_mention_as_possible_confounder").map((c) => `- Run ${i + 1}: ${c.id}: ${c.detail}`));
     if (softMisses.length) lines.push("", "**Soft checks not met**", ...softMisses);
