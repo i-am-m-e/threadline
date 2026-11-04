@@ -216,7 +216,8 @@ export async function runPipeline({ windows, records, rules, evidenceLibrary, sc
   // The badge shown to people comes from the records the analysis cites, not the model's wording.
   const citedRecords = unique([...cited, ...analysis.contributing_conditions.flatMap((c) => c.source_ids)])
     .map((id) => byId.get(id)).filter((r) => r && r.source_type !== "policy");
-  const badge = `Based on ${citedRecords.length} records: ${unique(citedRecords.map((r) => SOURCE_TYPE_NAMES[r.source_type] ?? r.source_type)).join(", ")}`;
+  const sourceTypes = unique(citedRecords.map((r) => SOURCE_TYPE_NAMES[r.source_type] ?? r.source_type)).join(", ");
+  const badge = `Based on ${citedRecords.length} records${sourceTypes ? `: ${sourceTypes}` : ""}`;
 
   // ---- Prompt 4: front-line review card ----
   onStep("reviewCard");

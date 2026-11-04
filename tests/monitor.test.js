@@ -70,4 +70,5 @@ test("a Thread reaching 10 occasions is flagged for review even at Low confidenc
   assert.equal(thread.status, "Flagged");
   assert.equal(thread.runs.at(-1).steps.pattern.confidence, "Low", "recurrence never changes confidence");
   assert.match(thread.history.at(-1).note, /^Recurring: seen on 10 occasions \(10\+\)/);
+  assert.equal(thread.runs.at(-1).steps.card.evidence_badge, "Based on 0 records", "no record survived the checks: no dangling list");
 });

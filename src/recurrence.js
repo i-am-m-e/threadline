@@ -52,3 +52,16 @@ export function flagReason({ confidence, safetyConditions, occasions }, { bands,
   }
   return null;
 }
+
+/**
+ * The Thread's time windows as a short line for the header, and the full list (for hover).
+ * Up to 3 windows are listed; more become a count and a date range.
+ * @param {Array<{start: string, end: string}>} windows  e.g. { start: "2026-08-01T15:00", end: "2026-08-01T18:00" }
+ */
+export function windowsText(windows) {
+  const one = (w) => `${w.start.replace("T", " ")} to ${w.end.slice(11)}`;
+  const full = windows.map(one).join("; ");
+  if (windows.length <= 3) return { short: `Time window${windows.length === 1 ? "" : "s"}: ${full}`, full };
+  const days = windows.map((w) => w.start.slice(0, 10)).sort();
+  return { short: `${windows.length} time windows, ${days[0]} to ${days.at(-1)}`, full };
+}

@@ -19,7 +19,7 @@ import {
 } from "./threads.js";
 import { SIGNALS_CONFIG } from "./config.js";
 import { routeAlerts, alertVolume, buildDigest, sendLocalNotification } from "./notify.js";
-import { confidenceText, byPriority } from "./recurrence.js";
+import { confidenceText, byPriority, windowsText } from "./recurrence.js";
 import { evidenceLines, verificationSummary, removedLines, policyWording } from "./evidenceView.js";
 import { renderThreadMap, withApproaches, TRUST_COLORS, SHAPES } from "./threadMap.js";
 import { SOURCE_TYPE_NAMES } from "./records.js";
@@ -225,7 +225,7 @@ function renderDetail() {
   facts.append(
     statusPill(thread.status),
     text("span", "", `Pattern confidence: ${confidenceText(thread, SIGNALS_CONFIG.recurrenceBands)}`),
-    text("span", "", `Time window${thread.windows.length === 1 ? "" : "s"}: ${run.steps.pattern.time_window}`),
+    windowsSpan(thread.windows),
   );
   if (thread.outcome_review_due && ["Decision recorded", "Outcome review due"].includes(thread.status)) facts.append(text("span", "signals-due", `Outcome review due ${thread.outcome_review_due}`));
   head.append(facts);
@@ -776,6 +776,14 @@ export function updateBadge() {
 }
 
 // ---------- Small helpers ----------
+// The Thread's time windows: a short line, with the full list on hover.
+function windowsSpan(windows) {
+  const { short, full } = windowsText(windows);
+  const span = text("span", "", short);
+  span.title = full;
+  return span;
+}
+
 function text(tag, className, content) {
   const node = document.createElement(tag);
   if (className) node.className = className;

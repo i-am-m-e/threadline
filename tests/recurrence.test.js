@@ -61,3 +61,23 @@ test("flag reasons: reaching 10+ occasions flags for review even at Low confiden
   assert.equal(flagReason({ confidence: "Low", safetyConditions: 0, occasions: 12 }, { bands, flagAt: 10 }),
     "Recurring: seen on 12 occasions (10+). Confidence is unchanged; a person should review why it keeps happening.");
 });
+
+// ---------- A short line for many time windows ----------
+import { windowsText } from "../src/recurrence.js";
+
+const win = (day, from = "15:00", to = "18:00") => ({ start: `2026-08-${day}T${from}`, end: `2026-08-${day}T${to}` });
+
+test("up to 3 time windows are listed in full", () => {
+  assert.deepEqual(windowsText([win("01"), win("02", "14:00", "16:00")]), {
+    short: "Time windows: 2026-08-01 15:00 to 18:00; 2026-08-02 14:00 to 16:00",
+    full: "2026-08-01 15:00 to 18:00; 2026-08-02 14:00 to 16:00",
+  });
+  assert.equal(windowsText([win("01")]).short, "Time window: 2026-08-01 15:00 to 18:00");
+});
+
+test("more than 3 time windows become a count and a date range (the full list is kept for hover)", () => {
+  const many = Array.from({ length: 12 }, (_, i) => win(String(i + 1).padStart(2, "0")));
+  const t = windowsText(many);
+  assert.equal(t.short, "12 time windows, 2026-08-01 to 2026-08-12");
+  assert.match(t.full, /^2026-08-01 15:00 to 18:00; .*; 2026-08-12 15:00 to 18:00$/);
+});
