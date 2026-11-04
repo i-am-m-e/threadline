@@ -156,7 +156,7 @@ them only with his approval. The design is in `docs/specs/2026-11-04-step1-tests
 | `src/monitor.js` | Check now / timer: new files, triggers, de-duplication into open Threads |
 | `src/threads.js` | Thread lifecycle: status rules and the human actions (by role) |
 | `src/notify.js` | Flags, daily cap, digest, alert volume, local notifications |
-| `src/recurrence.js` | Recurrence: occasions seen, bands (10+, 50+, 70+), list priority, recurrence flags |
+| `src/recurrence.js` | Recurrence: occasions seen, bands (every 10: 10+, 20+, 30+…), list priority, recurrence flags |
 | `src/threadMap.js` | The Thread map (Cytoscape + dagre) |
 | `src/config.js` | Signals settings: model, temperatures, monitor interval, daily flag cap |
 | `data/` | Synthetic benchmark packs, placeholder evidence, domain rules (packaged with the app) |
