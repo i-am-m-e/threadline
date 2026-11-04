@@ -21,4 +21,11 @@ export const SIGNALS_CONFIG = {
   // At most this many Threads per day may raise a flag (badge + macOS notification).
   // Anything beyond goes to the digest instead.
   dailyFlagCap: 3,
+
+  // Recurrence (src/recurrence.js): how many occasions (triggered time windows) a Thread has
+  // been seen on is always shown beside its confidence. These bands raise a Thread's place
+  // in the list; reaching recurrenceFlagAt occasions can flag it for review even at Low
+  // confidence (the daily cap still applies). Recurrence never changes confidence.
+  recurrenceBands: [10, 50, 70],
+  recurrenceFlagAt: 10,
 };
