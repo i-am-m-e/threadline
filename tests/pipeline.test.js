@@ -102,7 +102,7 @@ test("findings that match their records pass, and the tally says so", async () =
   const { result, replay } = await run();
   assert.equal(replay.calls.length, 4, "no retry needed");
   assert.deepEqual(result.meta.verification, {
-    findings_checked: 6, findings_verified: 6, findings_removed: [], fixed_on_retry: 0, policy_quote: "verified",
+    findings_checked: 6, findings_verified: 6, findings_removed: [], fixed_on_retry: 0, findings_labels_corrected: 0, policy_quote: "verified",
     analysis: { claims_checked: 4, claims_verified: 4, claims_removed: [], labels_corrected: 0 },
     map: { nodes_checked: 9, nodes_verified: 9, nodes_removed: [], labels_corrected: 2 },
     card: "verified",
@@ -408,4 +408,53 @@ test("a recommendation rationale over 2 sentences gets the retry, then is cut to
 test("a rationale of 2 sentences or fewer is left alone", async () => {
   const { result } = await run();
   assert.equal(result.meta.verification.rationale, "ok");
+});
+
+// ---------- Review fixes ----------
+
+test("review card: stating how many records support the pattern is allowed (the prompt asks for it)", async () => {
+  const counting = (s) => ({ ...s.card, noticed: "Threadline noticed a pattern across 6 records from 3 source types in 1 time window." });
+  const { replay, result } = await run({ answers: (s) => [s.pattern, s.analysis, s.options, counting(s)] });
+  assert.equal(replay.calls.length, 4, "no retry");
+  assert.equal(result.meta.verification.card, "verified");
+});
+
+test("review card: if replacing its wording takes it over 80 words, that's noted, not hidden", async () => {
+  const long = (s) => ({ ...s.card, noticed: "Threadline noticed 140.", why_it_may_matter: "word ".repeat(37).trim() }); // 79 words before the replacement
+  const { result } = await run({ answers: (s) => [s.pattern, s.analysis, s.options, long(s), long(s)] });
+  assert.equal(result.meta.verification.card, "replaced");
+  assert.match(logText(result, "reviewCard"), /the card is \d+ words after the replacement \(limit 80\)/);
+});
+
+test("map: removals that leave fewer than 6 nodes are accepted and noted, not padded", async () => {
+  const wrong = (s) => ({ ...s.analysis, graph: { ...s.analysis.graph, nodes: s.analysis.graph.nodes.map((n, i) => (i < 4 ? { ...n, label: `Waited ${140 + i} minutes` } : n)) } });
+  const { result } = await run({ answers: (s) => [s.pattern, wrong(s), wrong(s), s.options, s.card] });
+  assert.equal(result.steps.analysis.graph.nodes.length, 5);
+  assert.match(logText(result, "analysis"), /the map has 5 nodes after removals \(usually 6 to 12\)/);
+});
+
+test("the policy gap must cite a policy, not another kind of record", async () => {
+  const notAPolicy = (s) => withGap(s.analysis, { policy_source_id: "HC-INC-99102", policy_quote: "no available monitored bed when an EMS" });
+  const first = await run({ answers: (s) => [s.pattern, notAPolicy(s), s.analysis, s.options, s.card] });
+  assert.match(lastMessage(first.replay, 2), /policy_source_id: HC-INC-99102 is an incident report, not a policy/);
+
+  const { result } = await run({ answers: (s) => [s.pattern, notAPolicy(s), notAPolicy(s), s.options, s.card] });
+  assert.equal(result.steps.analysis.policy_practice_gap.policy_source_id, "");
+  assert.equal(result.meta.verification.policy_quote, "removed");
+});
+
+test("a finding's trust label must fit its record too (corrected in code)", async () => {
+  const mislabelled = (s) => withEvidence(s.pattern, "HC-FLOW-20260920-1600", { trust_label: "Historical" });
+  const { result } = await run({ answers: (s) => [mislabelled(s), s.analysis, s.options, s.card] });
+  assert.equal(result.steps.pattern.supporting_evidence.find((e) => e.source_id === "HC-FLOW-20260920-1600").trust_label, "Observed");
+  assert.equal(result.meta.verification.findings_labels_corrected, 1);
+});
+
+test("'fixed or dropped on retry' counts findings, not record ids", async () => {
+  // The first answer cites the incident twice, one finding wrong; the retry drops the wrong one.
+  const twice = (s) => ({ ...s.pattern, supporting_evidence: [...s.pattern.supporting_evidence,
+    { source_id: "HC-INC-99102", trust_label: "Observed", finding: "Two beds were free for 140 minutes.", quote: "no available monitored bed when an EMS", record_values: [] }] });
+  const { result } = await run({ answers: (s) => [twice(s), s.pattern, s.analysis, s.options, s.card] });
+  assert.equal(result.meta.verification.fixed_on_retry, 1);
+  assert.equal(result.meta.verification.findings_removed.length, 0);
 });

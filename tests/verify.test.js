@@ -272,3 +272,36 @@ test("claim numbers: a long list of cited records is shortened in the message", 
   const [problem] = claimNumberProblems("Waits of 140 minutes", many, none);
   assert.match(problem, /\(HC-FLOW-TEST-1, HC-FLOW-TEST-2, HC-FLOW-TEST-3 and 9 more\)\.$/);
 });
+
+// ---------- Review fixes: a record's id, time and date only count when used as such ----------
+
+test("numbers: a number taken from the record's time doesn't count as a quantity (15:00 ≠ 15 patients)", () => {
+  const at1500 = { source_id: "HC-FLOW-20260920-1500", timestamp: "2026-09-20T15:00", waiting_room_count: 13 };
+  assert.equal(numberProblems("15 patients were waiting.", at1500, none).length, 1);
+  assert.deepEqual(numberProblems("13 patients were waiting at 15:00.", at1500, none), []);
+});
+
+test("numbers: a number taken from the record's id doesn't count as a quantity (HC-CMP-4471 ≠ 4471 patients)", () => {
+  assert.equal(numberProblems("4471 patients waited.", complaint, none).length, 1);
+  assert.deepEqual(numberProblems("Complaint HC-CMP-4471 describes an 85-minute wait.", complaint, none), []);
+});
+
+test("numbers: the record's date may be written as a date (2026-09-20, Sept 20, September 20th); other dates fail", () => {
+  const at1500 = { source_id: "HC-FLOW-20260920-1500", timestamp: "2026-09-20T15:00", bed_occupancy: 0.93 };
+  for (const t of ["On 2026-09-20 occupancy was 93%.", "On Sept 20 occupancy was 93%.", "On September 20th occupancy was 93%.", "On 20 September occupancy was 93%."]) {
+    assert.deepEqual(numberProblems(t, at1500, none), [], t);
+  }
+  assert.equal(numberProblems("On September 21st occupancy was 93%.", at1500, none).length, 1);
+});
+
+test("numbers: a time span written on a 12-hour clock uses the records' own hours (3:00 to 6:00 PM)", () => {
+  const recs = [15, 16, 17, 18].map((h) => ({ source_id: `HC-FLOW-20260920-${h}00`, timestamp: `2026-09-20T${h}:00`, bed_occupancy: 0.93 }));
+  assert.deepEqual(claimNumberProblems("Between 3:00 and 6:00 PM occupancy stayed at 93%.", recs, none), []);
+  assert.equal(claimNumberProblems("Between 1:00 and 6:00 PM occupancy stayed at 93%.", recs, none).length, 1);
+});
+
+test("numbers: 'CTAS 2' counts only when a cited record's text says it, not because of its date", () => {
+  const flowOnly = [{ source_id: "HC-FLOW-TEST-20260802", timestamp: "2026-08-02T15:00", bed_occupancy: 0.95 }];
+  assert.equal(claimNumberProblems("No monitored bed for CTAS 2", flowOnly, none).length, 1);
+  assert.deepEqual(claimNumberProblems("No monitored bed for CTAS 2", [incident], none), []);
+});

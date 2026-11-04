@@ -16,13 +16,13 @@ function checkRate(scored, list, id) {
   return avg(found.map((cs) => (cs.every((c) => c.pass) ? 1 : 0)));
 }
 
-/** "17 of 18 verified (1 removed as unverified; 2 fixed on retry)", over the runs that have a tally. */
+/** "17 of 18 verified (1 removed as unverified; 2 fixed or dropped on retry)", over the runs that have a tally. */
 function verificationLines(scored) {
   const tallies = scored.map((s) => s.verification).filter(Boolean);
   if (tallies.length === 0) return ["| Findings checked against their source | n/a (no completed run) |", "| Policy quote verified | n/a |"];
   const sum = (key) => tallies.reduce((n, t) => n + (Array.isArray(t[key]) ? t[key].length : t[key]), 0);
   return [
-    `| Findings checked against their source | ${sum("findings_verified")} of ${sum("findings_checked")} verified (${sum("findings_removed")} removed as unverified; ${sum("fixed_on_retry")} fixed on retry) |`,
+    `| Findings checked against their source | ${sum("findings_verified")} of ${sum("findings_checked")} verified (${sum("findings_removed")} removed as unverified; ${sum("fixed_on_retry")} fixed or dropped on retry) |`,
     `| Policy quote verified | ${tallies.filter((t) => t.policy_quote === "verified").length} of ${tallies.length} runs |`,
     analysisLine(tallies),
     ...mapAndCardLines(tallies, scored),

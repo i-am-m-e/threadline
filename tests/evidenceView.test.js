@@ -36,7 +36,7 @@ test("the summary mentions removals, retries and corrected labels", () => {
   const v = { ...okVerification, findings_verified: 5, findings_removed: [{ source_id: "HC-CMP-4471", problem: "x" }], fixed_on_retry: 1, policy_quote: "removed",
     analysis: { claims_checked: 4, claims_verified: 3, claims_removed: [{ list: "pressure_map", text: "y", problem: "z" }], labels_corrected: 2 } };
   assert.equal(verificationSummary(v),
-    "Checked against their records: 5 of 6 findings and 3 of 4 analysis claims verified; 2 removed as unverified; 1 fixed on retry; 2 trust labels corrected; policy wording couldn't be verified and was removed.");
+    "Checked against their records: 5 of 6 findings and 3 of 4 analysis claims verified; 2 removed as unverified; 1 fixed or dropped on retry; 2 trust labels corrected; policy wording couldn't be verified and was removed.");
 });
 
 test("a run from before the checks says so", () => {
@@ -106,4 +106,14 @@ test("the summary notes a time window with no cited record, and a shortened rati
   const v = { ...okVerification, windows: { total: 2, cited: 1, uncited: ["2026-09-22 14:00 to 16:00"] }, rationale: "shortened" };
   assert.match(verificationSummary(v), /; 1 of 2 time windows has no cited record \(2026-09-22 14:00 to 16:00\); recommendation shortened to two sentences\.$/);
   assert.doesNotMatch(verificationSummary({ ...okVerification, windows: { total: 1, cited: 1, uncited: [] }, rationale: "ok" }), /time window|shortened/);
+});
+
+test("trust labels corrected on findings count in the summary too", () => {
+  assert.match(verificationSummary({ ...okVerification, findings_labels_corrected: 1 }), /; 1 trust label corrected;/);
+});
+
+test("many uncited time windows are shortened in the summary", () => {
+  const uncited = Array.from({ length: 12 }, (_, i) => `2026-08-${String(i + 1).padStart(2, "0")} 15:00 to 15:00`);
+  assert.match(verificationSummary({ ...okVerification, windows: { total: 12, cited: 0, uncited } }),
+    /12 of 12 time windows have no cited record \(2026-08-01 15:00 to 15:00; 2026-08-02 15:00 to 15:00; 2026-08-03 15:00 to 15:00 and 9 more\)/);
 });

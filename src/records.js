@@ -92,6 +92,9 @@ function addDerivedMetrics(r) {
   }
 }
 
+/** A field name as words: "room_to_physician_minutes" → "Room to physician minutes". */
+export const fieldName = (key) => key.replace(/_/g, " ").replace(/^./, (c) => c.toUpperCase());
+
 /**
  * A record file as readable text (for "Discuss in a thread"): one paragraph per record,
  * naming each field, e.g. "Timestamp: 2026-09-20T15:00; Bed occupancy: 0.93; …".
@@ -99,10 +102,9 @@ function addDerivedMetrics(r) {
  */
 export function recordFileAsText(fileName, raw) {
   const records = parseRecordFile(fileName, raw);
-  const nice = (key) => key.replace(/_/g, " ").replace(/^./, (c) => c.toUpperCase());
   const skip = new Set(["file", "synthetic", "text", "title"]);
   const paragraphs = records.map((r) => {
-    const fields = Object.entries(r).filter(([k]) => !skip.has(k)).map(([k, v]) => `${nice(k)}: ${v}`).join("; ");
+    const fields = Object.entries(r).filter(([k]) => !skip.has(k)).map(([k, v]) => `${fieldName(k)}: ${v}`).join("; ");
     return [r.title, r.text, fields].filter(Boolean).join("\n");
   });
   return {

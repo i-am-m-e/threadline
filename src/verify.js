@@ -64,24 +64,57 @@ const asHours = (minutes) => (Number.isInteger((minutes / 60) * 2) ? [minutes / 
 // A fraction may be written as a percent, exactly or rounded (0.955 → 95.5 and 96).
 const asPercent = (v) => (v > 0 && v < 1 ? [v * 100, Math.round(v * 100)] : []);
 
+// A record's id, time, date and title are labels, not quantities: their numbers only count
+// when the text uses them AS an id, time or date (see withoutOwnReferences). So "15 patients"
+// doesn't pass because a record is timestamped 15:00, nor "4471 patients" because of HC-CMP-4471.
+const LABEL_FIELDS = new Set(["source_id", "timestamp", "title", "location", "domain", "source_type"]);
+const MONTHS = ["jan(?:uary)?", "feb(?:ruary)?", "mar(?:ch)?", "apr(?:il)?", "may", "june?", "july?", "aug(?:ust)?", "sep(?:t(?:ember)?)?", "oct(?:ober)?", "nov(?:ember)?", "dec(?:ember)?"];
+const escapeRe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
 /**
- * The numbers a finding may mention for this record: every number in the record (its
- * values, text, time and id), the same numbers as percents, and hours/minutes conversions
- * for numbers the record itself labels as hours or minutes. Plus the domain's thresholds.
+ * The text with the records' own ids, times and dates taken out, so their digits aren't
+ * mistaken for quantities. Times may be written on a 24- or 12-hour clock ("15:30", "3:30 PM",
+ * "3 PM"); dates as "2026-09-20", "Sept 20", "September 20th" or "20 September".
+ */
+function withoutOwnReferences(text, records) {
+  let out = String(text ?? "");
+  for (const r of records) {
+    if (r.source_id) out = out.replace(new RegExp(escapeRe(r.source_id), "g"), " ");
+    const m = typeof r.timestamp === "string" && r.timestamp.match(/^(\d{4})-(\d{2})-(\d{2})(?:T(\d{2}):(\d{2}))?/);
+    if (!m) continue;
+    const [, year, month, day, hh, mm] = m;
+    const d = Number(day);
+    const monthName = MONTHS[Number(month) - 1];
+    out = out
+      .replace(new RegExp(`${year}-${month}-${day}`, "g"), " ")
+      .replace(new RegExp(`\\b${monthName}\\.?\\s+0?${d}(?:st|nd|rd|th)?\\b`, "gi"), " ")
+      .replace(new RegExp(`\\b0?${d}(?:st|nd|rd|th)?\\s+(?:of\\s+)?${monthName}\\b`, "gi"), " ");
+    if (hh === undefined) continue;
+    const h24 = Number(hh);
+    const h12 = h24 % 12 || 12;
+    out = out
+      .replace(new RegExp(`\\b0?(?:${h24}|${h12}):${mm}(?:\\s*[ap]\\.?m\\.?)?`, "gi"), " ")
+      .replace(new RegExp(`\\b${h12}\\s*[ap]\\.?m\\b\\.?`, "gi"), " ");
+  }
+  return out;
+}
+
+/**
+ * The numbers a text may mention as quantities for this record: its values and the numbers in
+ * its text (not its id, time or date: see LABEL_FIELDS), the same numbers as percents, and
+ * hours/minutes conversions for numbers the record itself labels as hours or minutes.
+ * Plus the domain's thresholds.
  */
 function allowedNumbers(record, thresholds) {
   const base = [...thresholds];
   const converted = [];
   for (const [field, value] of Object.entries(record)) {
-    if (SKIP_FIELDS.has(field)) continue;
+    if (SKIP_FIELDS.has(field) || LABEL_FIELDS.has(field)) continue;
     if (typeof value === "number") {
       base.push(value);
       if (field.endsWith("_minutes")) converted.push(...asHours(value));
     } else if (typeof value === "string") {
       base.push(...numbersIn(value));
-      // The record's own hour on a 12-hour clock ("15:00" may be written "3:00 PM").
-      const hour = field === "timestamp" && value.match(/T(\d{2}):/);
-      if (hour) converted.push(Number(hour[1]) % 12 || 12);
       for (const m of value.matchAll(HOURS_IN_TEXT)) converted.push(Number(m[1]) * 60);
       for (const m of value.matchAll(MINUTES_IN_TEXT)) converted.push(...asHours(Number(m[1])));
     }
@@ -99,7 +132,7 @@ function allowedNumbers(record, thresholds) {
  */
 export function numberProblems(finding, record, thresholds) {
   const allowed = allowedNumbers(record, thresholds);
-  const missing = [...new Set(numbersIn(finding))].filter((n) => !allowed.some((a) => same(a, n)));
+  const missing = [...new Set(numbersIn(withoutOwnReferences(finding, [record])))].filter((n) => !allowed.some((a) => same(a, n)));
   if (missing.length === 0) return [];
   return [`${record.source_id}: the finding mentions ${missing.join(", ")}, which ${missing.length === 1 ? "isn't" : "aren't"} in that record. Use the record's own numbers.`];
 }
@@ -181,7 +214,7 @@ export function policyQuoteProblem(gap, policy) {
 export function claimNumberProblems(text, records, thresholds, { where = "the records it cites" } = {}) {
   const allowed = [...thresholds, ...records.flatMap((r) => allowedNumbers(r, []))];
   const withPercents = [...allowed, ...thresholds.flatMap(asPercent)];
-  const missing = [...new Set(numbersIn(text))].filter((n) => !withPercents.some((a) => same(a, n)));
+  const missing = [...new Set(numbersIn(withoutOwnReferences(text, records)))].filter((n) => !withPercents.some((a) => same(a, n)));
   if (missing.length === 0) return [];
   const all = records.map((r) => r.source_id);
   const ids = all.length > 3 ? `${all.slice(0, 3).join(", ")} and ${all.length - 3} more` : all.join(", ");

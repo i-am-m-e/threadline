@@ -28,7 +28,7 @@ test("writes the scorecard, settings and one file per run", async () => {
   for (const f of ["scorecard.md", "settings.json", "runs/healthcare-1.json", "runs/healthcare-2.json"]) assert.ok(existsSync(join(dir, f)), f);
   const card = readFileSync(join(dir, "scorecard.md"), "utf8");
   assert.match(card, /Answer key: draft/);
-  assert.match(card, /\| Findings checked against their source \| 12 of 12 verified \(0 removed as unverified; 0 fixed on retry\) \|/);
+  assert.match(card, /\| Findings checked against their source \| 12 of 12 verified \(0 removed as unverified; 0 fixed or dropped on retry\) \|/);
   assert.match(card, /\| Policy quote verified \| 2 of 2 runs \|/);
   assert.match(card, /\| Analysis claims checked against their records \| 8 of 8 verified \(0 removed as unverified; 0 trust labels corrected\) \|/);
   assert.match(card, /\| Map nodes checked against their records \| 18 of 18 verified \(0 removed as unverified; 4 trust labels corrected\) \|/);
@@ -83,7 +83,7 @@ test("findings removed as unverified are counted and listed on the scorecard", a
   const replay = replayAsk([bad, bad, ...rest, ...update()]);
   await runEvaluation({ ...options(replay.ask, dir), runs: 1 });
   const card = readFileSync(join(dir, "scorecard.md"), "utf8");
-  assert.match(card, /\| Findings checked against their source \| 5 of 6 verified \(1 removed as unverified; 0 fixed on retry\) \|/);
+  assert.match(card, /\| Findings checked against their source \| 5 of 6 verified \(1 removed as unverified; 0 fixed or dropped on retry\) \|/);
   assert.match(card, /\*\*Removed or replaced as unverified\*\*\n- Run 1: HC-CMP-4471: .*isn't in that record/);
 });
 

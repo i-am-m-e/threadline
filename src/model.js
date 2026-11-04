@@ -96,7 +96,12 @@ export async function getModelResponse(messages, {
       throw new Error(`The model "${model}" isn't installed in Ollama. In Terminal, run: ollama pull ${model}`);
     }
     if (!response.ok) {
-      const details = await response.text();
+      let details = "";
+      try {
+        details = await response.text();
+      } catch {
+        if (timedOut) throw timeoutError();
+      }
       throw new Error(`Ollama returned an error (${response.status}): ${details}`);
     }
 

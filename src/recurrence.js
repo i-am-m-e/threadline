@@ -11,6 +11,8 @@
 // rule. "Low confidence, seen on 5 occasions" means: this keeps happening and nobody has
 // confirmed why yet. Plain code, no AI.
 
+import { current } from "./threads.js";
+
 /**
  * @param {number} occasions
  * @param {number} every  The band interval, e.g. 10 → every at 10+, 20+, 30+…
@@ -23,7 +25,10 @@ export function recurrence(occasions, every) {
 }
 
 const occasionsOf = (thread) => thread.windows?.length ?? 0;
-const confidenceOf = (thread) => thread.runs.at(-1).steps.pattern.confidence;
+const confidenceOf = (thread) => current(thread).steps.pattern.confidence;
+
+/** One time window as text, e.g. "2026-09-20 15:00 to 18:00". The one place this is written. */
+export const windowLabel = (w) => `${w.start.replace("T", " ")} to ${w.end.slice(11)}`;
 
 /** "Medium confidence, seen on 2 occasions" for a Thread. */
 export function confidenceText(thread, every) {
@@ -60,8 +65,7 @@ export function flagReason({ confidence, safetyConditions, occasions }, { every,
  * @param {Array<{start: string, end: string}>} windows  e.g. { start: "2026-08-01T15:00", end: "2026-08-01T18:00" }
  */
 export function windowsText(windows) {
-  const one = (w) => `${w.start.replace("T", " ")} to ${w.end.slice(11)}`;
-  const full = windows.map(one).join("; ");
+  const full = windows.map(windowLabel).join("; ");
   if (windows.length <= 3) return { short: `Time window${windows.length === 1 ? "" : "s"}: ${full}`, full };
   const days = windows.map((w) => w.start.slice(0, 10)).sort();
   return { short: `${windows.length} time windows, ${days[0]} to ${days.at(-1)}`, full };

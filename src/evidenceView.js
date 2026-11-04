@@ -3,8 +3,9 @@
 // from the flow row), a one-line summary of the checks, what was removed and why, and the
 // policy's own wording. Plain code: signals-ui.js draws it.
 
+import { fieldName } from "./records.js";
+
 const quoted = (s) => `“${s}”`;
-const nice = (field) => field.replace(/_/g, " ").replace(/^./, (c) => c.toUpperCase());
 const plural = (n, word) => `${n} ${word}${n === 1 ? "" : "s"}`;
 
 /**
@@ -16,7 +17,7 @@ export function evidenceLines(pattern) {
   return pattern.supporting_evidence.map((e) => {
     let proof = null;
     if (e.quote?.trim()) proof = quoted(e.quote.trim());
-    else if (e.record_values?.length) proof = e.record_values.map((v) => `${nice(v.field)}: ${v.value}`).join(" · ");
+    else if (e.record_values?.length) proof = e.record_values.map((v) => `${fieldName(v.field)}: ${v.value}`).join(" · ");
     return { source_id: e.source_id, finding: e.finding, trust_label: e.trust_label, proof };
   });
 }
@@ -39,15 +40,16 @@ export function verificationSummary(v) {
   const removed = v.findings_removed.length + (a?.claims_removed.length ?? 0) + (m?.nodes_removed.length ?? 0) + (w?.removed.length ?? 0);
   if (removed) parts.push(`${removed} removed as unverified`);
   if (w?.replaced.length) parts.push(`${w.replaced.length} passage${w.replaced.length === 1 ? "'s" : "s'"} wording replaced`);
-  if (v.fixed_on_retry) parts.push(`${v.fixed_on_retry} fixed on retry`);
-  const relabelled = (a?.labels_corrected ?? 0) + (m?.labels_corrected ?? 0);
+  if (v.fixed_on_retry) parts.push(`${v.fixed_on_retry} fixed or dropped on retry`);
+  const relabelled = (v.findings_labels_corrected ?? 0) + (a?.labels_corrected ?? 0) + (m?.labels_corrected ?? 0);
   if (relabelled) parts.push(`${plural(relabelled, "trust label")} corrected`);
   parts.push({ verified: "policy wording verified", removed: "policy wording couldn't be verified and was removed" }[v.policy_quote] ?? "no policy cited");
   if (v.card === "verified") parts.push("review card wording verified");
   if (v.card === "replaced") parts.push("review card wording replaced (it mentioned figures not in the records)");
   if (v.windows?.uncited.length) {
     const n = v.windows.uncited.length;
-    parts.push(`${n} of ${v.windows.total} time windows ${n === 1 ? "has" : "have"} no cited record (${v.windows.uncited.join("; ")})`);
+    const listed = n > 3 ? `${v.windows.uncited.slice(0, 3).join("; ")} and ${n - 3} more` : v.windows.uncited.join("; ");
+    parts.push(`${n} of ${v.windows.total} time windows ${n === 1 ? "has" : "have"} no cited record (${listed})`);
   }
   if (v.rationale === "shortened") parts.push("recommendation shortened to two sentences");
   return parts.join("; ") + ".";

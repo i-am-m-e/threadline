@@ -76,3 +76,10 @@ test("an empty reply is refused instead of being saved", async () => {
 test("Ollama's own error message is passed on", async () => {
   await assert.rejects(ask([JSON.stringify({ error: "model crashed" }) + "\n"]), /Ollama error: model crashed/);
 });
+
+test("an error reply that stalls while being read still gives the plain time-out message", async () => {
+  const stallingError = (url, { signal } = {}) => Promise.resolve(new Response(new ReadableStream({
+    start(c) { signal?.addEventListener("abort", () => c.error(Object.assign(new Error("This operation was aborted"), { name: "AbortError" }))); },
+  }), { status: 500 }));
+  await assert.rejects(getModelResponse([{ role: "user", content: "hi" }], { fetch: stallingError, idleTimeoutMs: 50 }), /stopped responding/);
+});

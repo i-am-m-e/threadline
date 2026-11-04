@@ -114,7 +114,10 @@ given to that step: one retry, then a field's wording is replaced with a plain l
 expects", the policy's own quoted words) and a list item removed, all logged. The options, "other
 explanations" and "open questions" aren't checked this way: they're proposals and questions, not
 claims about the records. Still not checked anywhere: the wording itself, only numbers and labels.
-Small numbers are a weak check, because they often appear somewhere in a record's dates or times.
+A record's id, time and date
+are labels, not quantities: their digits only count when the text uses them as an id, time or date
+("HC-CMP-4471", "15:30" or "3:30 PM", "Sept 20"), so "15 patients" doesn't pass because a record is
+timestamped 15:00.
 
 Two more checks, for weaknesses Command R showed in the 2026-09-28 test runs: **every time window
 must have at least one cited record** (update runs used to describe only the first window), and
