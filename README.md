@@ -12,7 +12,8 @@ lines back to their sources.
 
 ## Signals (system-signals monitor, v3.2)
 
-**Threadline notices, drafts and routes. People decide.** Spec: [docs/threadline-spec-v3.2.md](docs/threadline-spec-v3.2.md).
+**Threadline notices, drafts and routes. People decide.** Spec: [docs/threadline-spec-v3.2.md](docs/threadline-spec-v3.2.md). A one-page guide for
+the people who'd use it: [docs/guide-signals.md](docs/guide-signals.md).
 
 The **Signals** mode watches approved operational data for patterns in flows, queues and capacity
 (never individuals):
