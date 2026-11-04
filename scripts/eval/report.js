@@ -25,6 +25,22 @@ function verificationLines(scored) {
     `| Findings checked against their source | ${sum("findings_verified")} of ${sum("findings_checked")} verified (${sum("findings_removed")} removed as unverified; ${sum("fixed_on_retry")} fixed on retry) |`,
     `| Policy quote verified | ${tallies.filter((t) => t.policy_quote === "verified").length} of ${tallies.length} runs |`,
     analysisLine(tallies),
+    ...mapAndCardLines(tallies),
+  ];
+}
+
+/** The Thread map's nodes, and the review card's wording. */
+function mapAndCardLines(tallies) {
+  const maps = tallies.map((t) => t.map).filter(Boolean);
+  const cards = tallies.map((t) => t.card).filter((c) => c && c !== "not checked");
+  const sum = (key) => maps.reduce((n, t) => n + (Array.isArray(t[key]) ? t[key].length : t[key]), 0);
+  return [
+    maps.length
+      ? `| Map nodes checked against their records | ${sum("nodes_verified")} of ${sum("nodes_checked")} verified (${sum("nodes_removed")} removed as unverified; ${sum("labels_corrected")} trust labels corrected) |`
+      : "| Map nodes checked against their records | n/a (runs from before this check) |",
+    cards.length
+      ? `| Review card wording verified | ${cards.filter((c) => c === "verified").length} of ${cards.length} runs |`
+      : "| Review card wording verified | n/a (runs from before this check) |",
   ];
 }
 
@@ -90,8 +106,9 @@ export function renderScorecard(summary) {
     const removed = scored.flatMap((s, i) => [
       ...(s.verification?.findings_removed ?? []),
       ...(s.verification?.analysis?.claims_removed ?? []),
+      ...(s.verification?.map?.nodes_removed ?? []),
     ].map((r) => `- Run ${i + 1}: ${r.problem}`));
-    if (removed.length) lines.push("", "**Findings and analysis claims removed as unverified**", ...removed);
+    if (removed.length) lines.push("", "**Findings, analysis claims and map nodes removed as unverified**", ...removed);
 
     const softMisses = scored.flatMap((s, i) => s.soft.filter((c) => !c.pass && c.id !== "may_mention_as_possible_confounder").map((c) => `- Run ${i + 1}: ${c.id}: ${c.detail}`));
     if (softMisses.length) lines.push("", "**Soft checks not met**", ...softMisses);

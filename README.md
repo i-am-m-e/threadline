@@ -102,8 +102,13 @@ in them must be in the records they cite (retry, then removed as unverified, as 
 trust label must fit what they cite. That label is corrected in code and logged: no sources →
 Inferred; Authoritative needs a policy; Observed needs a flow, incident, complaint or near-miss
 record; Experiential and Historical come only from people, so the model can't claim them. The
-claims' wording itself isn't checked yet. The graph, "evidence that does not fit", the vignette
-story, the options and the review card aren't checked this way yet. Design: `docs/specs/2026-11-04-step2-verify-findings.md`.
+**Thread map's nodes** get the same two checks (a node still unverified after the retry is
+removed, with its lines). The **review card**'s title, "noticed" and "why it may matter" may only
+use numbers from the records the run cites (or thresholds); wording still failing after the
+retry is replaced with a plain line written by code and logged. In the manager brief, the policy
+box shows "Authoritative" only when a policy is cited and "Observed" only when a finding was
+verified; otherwise "Inferred". Still not checked: the wording itself (only numbers and labels),
+"evidence that does not fit", "where small variations combine", the vignette story and the options. Design: `docs/specs/2026-11-04-step2-verify-findings.md`.
 
 ## Testing and the scorecard
 

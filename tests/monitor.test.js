@@ -5,7 +5,7 @@ import { checkForSignals } from "../src/monitor.js";
 import { SIGNALS_CONFIG } from "../src/config.js";
 import { loadAnswerKey, loadEvalPack, loadRules, loadEvidenceLibrary, loadSchemas } from "../scripts/eval/packs.js";
 import { memoryIo } from "../scripts/eval/memoryIo.js";
-import { fixtureSteps, replayAsk } from "./helpers.js";
+import { fixtureSteps, replayAsk, askByStep } from "./helpers.js";
 
 const key = loadAnswerKey();
 const base = { rules: loadRules(), schemas: loadSchemas(), config: SIGNALS_CONFIG, evidenceLibrary: loadEvidenceLibrary() };
@@ -56,15 +56,19 @@ const policyFile = () => loadEvalPack("healthcare", key).files.find((f) => f.nam
 
 test("a Thread reaching 10 occasions is flagged for review even at Low confidence, saying why", async () => {
   const mem = memoryIo();
+  // The answers were written for other records, so the checks rightly retry and remove what
+  // isn't in these ones (e.g. a map node "Patient waited 85 minutes").
+  const ask = askByStep(fixtureSteps("rooming"));
   mem.put([flowFile("Flow_Aug_1-9.csv", days(1, 9)), policyFile()]);
-  await checkForSignals({ ...base, io: mem.io, ask: replayAsk(fourAnswers(0)).ask });
+  let first = await checkForSignals({ ...base, io: mem.io, ask });
+  assert.deepEqual(first.errors, []);
   let [thread] = mem.threads();
   assert.equal(thread.windows.length, 9);
   assert.equal(thread.runs.at(-1).steps.pattern.confidence, "Low");
   assert.equal(thread.status, "Inferred", "9 occasions: listed, not flagged");
 
   mem.put([flowFile("Flow_Aug_10.csv", days(10, 10))]);
-  await checkForSignals({ ...base, io: mem.io, ask: replayAsk(fourAnswers(0)).ask });
+  await checkForSignals({ ...base, io: mem.io, ask });
   [thread] = mem.threads();
   assert.equal(thread.windows.length, 10);
   assert.equal(thread.status, "Flagged");
@@ -94,7 +98,8 @@ test("a new domain with its own kind of flow records goes through Signals like t
 
   const mem = memoryIo();
   mem.put([{ name: "Turnarounds_2026-09-20.csv", text: csv }]);
-  const summary = await checkForSignals({ ...base, rules, io: mem.io, ask: replayAsk(answers).ask });
+  const [pattern, analysis, options, card] = answers;
+  const summary = await checkForSignals({ ...base, rules, io: mem.io, ask: askByStep({ pattern, analysis, options, card }) });
   assert.deepEqual(summary.errors, []);
   const [thread] = mem.threads();
   assert.equal(thread.domain, "Aviation");

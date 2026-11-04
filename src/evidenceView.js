@@ -25,15 +25,22 @@ export function evidenceLines(pattern) {
 export function verificationSummary(v) {
   if (!v) return "Recorded before findings were checked against their records.";
   const a = v.analysis;
-  const parts = [
-    `Checked against their records: ${v.findings_verified} of ${plural(v.findings_checked, "finding")}` +
-      (a ? ` and ${a.claims_verified} of ${plural(a.claims_checked, "analysis claim")}` : "") + " verified",
+  const m = v.map;
+  const counts = [
+    `${v.findings_verified} of ${plural(v.findings_checked, "finding")}`,
+    ...(a ? [`${a.claims_verified} of ${plural(a.claims_checked, "analysis claim")}`] : []),
+    ...(m ? [`${m.nodes_verified} of ${plural(m.nodes_checked, "map node")}`] : []),
   ];
-  const removed = v.findings_removed.length + (a?.claims_removed.length ?? 0);
+  const joined = counts.length > 1 ? `${counts.slice(0, -1).join(", ")} and ${counts.at(-1)}` : counts[0];
+  const parts = [`Checked against their records: ${joined} verified`];
+  const removed = v.findings_removed.length + (a?.claims_removed.length ?? 0) + (m?.nodes_removed.length ?? 0);
   if (removed) parts.push(`${removed} removed as unverified`);
   if (v.fixed_on_retry) parts.push(`${v.fixed_on_retry} fixed on retry`);
-  if (a?.labels_corrected) parts.push(`${plural(a.labels_corrected, "trust label")} corrected`);
+  const relabelled = (a?.labels_corrected ?? 0) + (m?.labels_corrected ?? 0);
+  if (relabelled) parts.push(`${plural(relabelled, "trust label")} corrected`);
   parts.push({ verified: "policy wording verified", removed: "policy wording couldn't be verified and was removed" }[v.policy_quote] ?? "no policy cited");
+  if (v.card === "verified") parts.push("review card wording verified");
+  if (v.card === "replaced") parts.push("review card wording replaced (it mentioned figures not in the records)");
   return parts.join("; ") + ".";
 }
 
@@ -44,6 +51,7 @@ export function removedLines(v) {
   return [
     ...v.findings_removed.map((r) => `Finding ${quoted(r.finding)} (${r.source_id}): ${r.problem.replace(`${r.source_id}: `, "")}`),
     ...(v.analysis?.claims_removed ?? []).map((r) => `${listNames[r.list] ?? r.list} ${quoted(r.text)}: ${r.problem.replace(`${r.list}: `, "").replace(`"${r.text}" `, "")}`),
+    ...(v.map?.nodes_removed ?? []).map((r) => `Map node ${quoted(r.text)}: ${r.problem.replace("graph.nodes: ", "").replace(`"${r.text}" `, "")}`),
   ];
 }
 
@@ -51,4 +59,17 @@ export function removedLines(v) {
 export function policyWording(gap) {
   if (!gap.policy_source_id || !gap.policy_quote?.trim()) return null;
   return `Policy wording (${gap.policy_source_id}): ${quoted(gap.policy_quote.trim())}`;
+}
+
+/**
+ * Trust labels for the policy-practice box, only where the records back them: "what the policy
+ * expects" is Authoritative only when a policy is cited (otherwise Inferred, with a note), and
+ * "what the records suggest" is Observed only when at least one finding was verified.
+ * Runs from before the checks keep the labels they had.
+ */
+export function gapLabels(gap, v) {
+  const expects = gap.policy_source_id ? "Authoritative" : "Inferred";
+  const suggests = v && v.findings_verified === 0 ? "Inferred" : "Observed";
+  const note = gap.policy_source_id ? null : "No policy was cited for this, so what the policy expects is unconfirmed.";
+  return { expects, suggests, note };
 }

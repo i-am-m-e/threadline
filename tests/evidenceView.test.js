@@ -58,3 +58,32 @@ test("the policy gap shows the policy's own words when there are some", () => {
     "Policy wording (HC-POL-CTAS-ESC): “require immediate access to a monitored bed on arrival”");
   assert.equal(policyWording({ policy_source_id: "", policy_quote: "" }), null);
 });
+
+test("the summary also covers the map's nodes and the review card", () => {
+  const v = { ...okVerification, map: { nodes_checked: 9, nodes_verified: 8, nodes_removed: [{ id: "n7", text: "Patient waited 140 minutes", problem: 'graph.nodes: "Patient waited 140 minutes" mentions 140, which isn\'t in the records it cites (HC-CMP-4471).' }], labels_corrected: 2 }, card: "replaced" };
+  assert.equal(verificationSummary(v),
+    "Checked against their records: 6 of 6 findings, 4 of 4 analysis claims and 8 of 9 map nodes verified; 1 removed as unverified; 2 trust labels corrected; policy wording verified; review card wording replaced (it mentioned figures not in the records).");
+  assert.deepEqual(removedLines(v), ["Map node \u201cPatient waited 140 minutes\u201d: mentions 140, which isn't in the records it cites (HC-CMP-4471)."]);
+  assert.match(verificationSummary({ ...v, card: "verified" }), /review card wording verified\.$/);
+});
+
+// ---------- The policy-practice box: labels only where the records back them ----------
+import { gapLabels } from "../src/evidenceView.js";
+
+test("policy box: Authoritative and Observed when a policy is cited and findings were verified", () => {
+  assert.deepEqual(gapLabels({ policy_source_id: "HC-POL-CTAS-ESC" }, okVerification), { expects: "Authoritative", suggests: "Observed", note: null });
+});
+
+test("policy box: no policy cited → Inferred, with a note saying so", () => {
+  assert.deepEqual(gapLabels({ policy_source_id: "" }, okVerification),
+    { expects: "Inferred", suggests: "Observed", note: "No policy was cited for this, so what the policy expects is unconfirmed." });
+});
+
+test("policy box: no verified findings → what the records suggest is Inferred", () => {
+  const none = { ...okVerification, findings_checked: 0, findings_verified: 0 };
+  assert.equal(gapLabels({ policy_source_id: "HC-POL-CTAS-ESC" }, none).suggests, "Inferred");
+});
+
+test("policy box: a run from before the checks keeps its labels", () => {
+  assert.deepEqual(gapLabels({ policy_source_id: "HC-POL-CTAS-ESC" }, undefined), { expects: "Authoritative", suggests: "Observed", note: null });
+});

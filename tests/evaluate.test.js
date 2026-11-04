@@ -25,6 +25,8 @@ test("writes the scorecard, settings and one file per run", async () => {
   assert.match(card, /\| Findings checked against their source \| 12 of 12 verified \(0 removed as unverified; 0 fixed on retry\) \|/);
   assert.match(card, /\| Policy quote verified \| 2 of 2 runs \|/);
   assert.match(card, /\| Analysis claims checked against their records \| 8 of 8 verified \(0 removed as unverified; 0 trust labels corrected\) \|/);
+  assert.match(card, /\| Map nodes checked against their records \| 18 of 18 verified \(0 removed as unverified; 4 trust labels corrected\) \|/);
+  assert.match(card, /\| Review card wording verified \| 2 of 2 runs \|/);
   assert.match(card, /abc1234/);
   const settings = JSON.parse(readFileSync(join(dir, "settings.json"), "utf8"));
   assert.equal(settings.answer_key_status, "draft");
@@ -72,5 +74,5 @@ test("findings removed as unverified are counted and listed on the scorecard", a
   await runEvaluation({ ...options(replay.ask, dir), runs: 1 });
   const card = readFileSync(join(dir, "scorecard.md"), "utf8");
   assert.match(card, /\| Findings checked against their source \| 5 of 6 verified \(1 removed as unverified; 0 fixed on retry\) \|/);
-  assert.match(card, /\*\*Findings and analysis claims removed as unverified\*\*\n- Run 1: HC-CMP-4471: .*isn't in that record/);
+  assert.match(card, /\*\*Findings, analysis claims and map nodes removed as unverified\*\*\n- Run 1: HC-CMP-4471: .*isn't in that record/);
 });

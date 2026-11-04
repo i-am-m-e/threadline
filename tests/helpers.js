@@ -43,3 +43,17 @@ export function replayAsk(answers) {
     },
   };
 }
+
+/**
+ * A stand-in for the model that answers by step (it reads which prompt it was sent), and gives
+ * the same answer again on a retry, like a model that doesn't fix its mistake. For runs on
+ * records the answers weren't written for, where the checks rightly ask for retries.
+ * @param {{pattern, analysis, options, card}} steps
+ */
+export function askByStep(steps) {
+  const markers = [["PATTERN AND VIGNETTE", "pattern"], ["SYSTEM ANALYSIS", "analysis"], ["OPTIONS AND RECOMMENDATION", "options"], ["REVIEW CARD", "card"]];
+  return async (messages) => {
+    const step = markers.find(([m]) => messages[0].content.includes(`SYSTEM PROMPT: ${m}`))[1];
+    return JSON.stringify(steps[step]);
+  };
+}

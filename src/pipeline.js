@@ -70,6 +70,8 @@ export async function runPipeline({ windows, records, rules, evidenceLibrary, sc
   const verification = {
     findings_checked: 0, findings_verified: 0, findings_removed: [], fixed_on_retry: 0, policy_quote: "none cited",
     analysis: { claims_checked: 0, claims_verified: 0, claims_removed: [], labels_corrected: 0 },
+    map: { nodes_checked: 0, nodes_verified: 0, nodes_removed: [], labels_corrected: 0 },
+    card: "not checked",
   };
   // The analysis claims checked against their records: contributing conditions and the pressure map.
   const CLAIM_LISTS = [["contributing_conditions", (c) => [c.condition]], ["pressure_map", (p) => [p.pressure_carried, p.shifting_to]]];
@@ -153,11 +155,26 @@ export async function runPipeline({ windows, records, rules, evidenceLibrary, sc
           },
         }];
       }));
+      // The Thread map's nodes: numbers in a label must be in the node's records too.
+      const nodeIssues = o.graph.nodes.flatMap((node) => {
+        const records = node.source_ids.length ? citedBy(node) : inputRecords;
+        const problems = claimNumberProblems(node.label, records, thresholds);
+        if (problems.length === 0) return [];
+        const problem = `graph.nodes: ${problems.join(" ")}`;
+        return [{
+          problem,
+          remove: () => {
+            o.graph.nodes.splice(o.graph.nodes.indexOf(node), 1); // its lines go in tidyGraph below
+            verification.map.nodes_removed.push({ id: node.id, text: node.label, problem });
+            return `graph.nodes: "${node.label}": unverified, removed`;
+          },
+        }];
+      });
       const gap = o.policy_practice_gap;
       const policy = gap.policy_source_id && byId.get(gap.policy_source_id);
       const problem = policy && policyQuoteProblem(gap, policy);
-      if (!problem) return claimIssues;
-      return [...claimIssues, {
+      if (!problem) return [...claimIssues, ...nodeIssues];
+      return [...claimIssues, ...nodeIssues, {
         problem,
         remove: () => {
           const id = gap.policy_source_id;
@@ -185,6 +202,15 @@ export async function runPipeline({ windows, records, rules, evidenceLibrary, sc
       verification.analysis.labels_corrected += 1;
     }
   }
+  for (const node of analysis.graph.nodes) {
+    const fit = fittingTrustLabel(node.trust_label, citedBy(node));
+    if (fit === node.trust_label) continue;
+    note("analysis", `graph.nodes: "${node.label}": trust_label "${node.trust_label}" → "${fit}" (from the records it cites)`);
+    node.trust_label = fit;
+    verification.map.labels_corrected += 1;
+  }
+  verification.map.nodes_verified = analysis.graph.nodes.length;
+  verification.map.nodes_checked = verification.map.nodes_verified + verification.map.nodes_removed.length;
   verification.analysis.claims_verified = CLAIM_LISTS.reduce((n, [list]) => n + analysis[list].length, 0);
   verification.analysis.claims_checked = verification.analysis.claims_verified + verification.analysis.claims_removed.length;
   if (verification.policy_quote !== "removed" && analysis.policy_practice_gap.policy_source_id) verification.policy_quote = "verified";
@@ -220,10 +246,39 @@ export async function runPipeline({ windows, records, rules, evidenceLibrary, sc
   const badge = `Based on ${citedRecords.length} records${sourceTypes ? `: ${sourceTypes}` : ""}`;
 
   // ---- Prompt 4: front-line review card ----
+  // Numbers in the card's wording must be in the records this run cites (after the checks
+  // above), or be domain thresholds. If they still aren't after the retry, that wording is
+  // replaced with a plain line written by code (from the trigger), and logged.
+  const runCited = unique([
+    ...pattern.supporting_evidence.map((e) => e.source_id),
+    ...CLAIM_LISTS.flatMap(([list]) => analysis[list].flatMap((c) => c.source_ids)),
+    ...analysis.graph.nodes.flatMap((n) => n.source_ids),
+    analysis.policy_practice_gap.policy_source_id,
+  ]).map((id) => byId.get(id)).filter(Boolean);
+  const cardRecords = runCited.length ? runCited : inputRecords;
+  const CARD_FALLBACK = {
+    card_title: `Possible pattern: ${pattern_type}`,
+    noticed: `Threadline noticed a possible pattern: ${pattern_type} at ${location}.`,
+    why_it_may_matter: "The drafted wording mentioned figures that aren't in the records, so it was removed.",
+  };
+  verification.card = "verified";
+  const verifyCard = (o) => Object.keys(CARD_FALLBACK).flatMap((field) => {
+    const problems = claimNumberProblems(o[field], cardRecords, thresholds);
+    if (problems.length === 0) return [];
+    return [{
+      problem: `card.${field}: ${problems.join(" ")}`,
+      remove: () => {
+        o[field] = CARD_FALLBACK[field];
+        verification.card = "replaced";
+        return `card.${field}: unverified, replaced with a plain line`;
+      },
+    }];
+  });
   onStep("reviewCard");
   const card = await step({
     name: "reviewCard", schema: schemas.reviewCard, temperature: config.temperatures.reviewCard,
     prompt: buildReviewCardPrompt({ vignette: pattern, analysis, options }),
+    verify: verifyCard,
     checks: (o) => [
       ...(/^Threadline noticed\b/.test(o.noticed.trim()) ? [] : ['"noticed" must begin with "Threadline noticed".']),
       ...(cardWordCount({ ...o, evidence_badge: badge }) <= 80 ? [] : [`The card has ${cardWordCount({ ...o, evidence_badge: badge })} words; the limit is 80 across all text fields. Shorten it.`]),

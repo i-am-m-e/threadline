@@ -79,6 +79,9 @@ function allowedNumbers(record, thresholds) {
       if (field.endsWith("_minutes")) converted.push(...asHours(value));
     } else if (typeof value === "string") {
       base.push(...numbersIn(value));
+      // The record's own hour on a 12-hour clock ("15:00" may be written "3:00 PM").
+      const hour = field === "timestamp" && value.match(/T(\d{2}):/);
+      if (hour) converted.push(Number(hour[1]) % 12 || 12);
       for (const m of value.matchAll(HOURS_IN_TEXT)) converted.push(Number(m[1]) * 60);
       for (const m of value.matchAll(MINUTES_IN_TEXT)) converted.push(...asHours(Number(m[1])));
     }
@@ -179,7 +182,8 @@ export function claimNumberProblems(text, records, thresholds) {
   const withPercents = [...allowed, ...thresholds.flatMap(asPercent)];
   const missing = [...new Set(numbersIn(text))].filter((n) => !withPercents.some((a) => same(a, n)));
   if (missing.length === 0) return [];
-  const ids = records.map((r) => r.source_id).join(", ");
+  const all = records.map((r) => r.source_id);
+  const ids = all.length > 3 ? `${all.slice(0, 3).join(", ")} and ${all.length - 3} more` : all.join(", ");
   return [`"${text}" mentions ${missing.join(", ")}, which ${missing.length === 1 ? "isn't" : "aren't"} in the records it cites (${ids}).`];
 }
 

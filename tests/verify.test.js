@@ -260,3 +260,15 @@ test("trust label: the model can't claim Experiential or Historical (only people
   assert.equal(fittingTrustLabel("Experiential", [complaint]), "Observed");
   assert.equal(fittingTrustLabel("Historical", [policy]), "Authoritative");
 });
+
+test("numbers: the record's own hour may be written on a 12-hour clock (15:00 → 3:00 PM)", () => {
+  const at1500 = { source_id: "HC-FLOW-20260920-1500", timestamp: "2026-09-20T15:00", bed_occupancy: 0.93 };
+  assert.deepEqual(numberProblems("Flow record 3:00 PM", at1500, none), []);
+  assert.equal(numberProblems("Flow record 4:00 PM", at1500, none).length, 1, "only the record's own hour");
+});
+
+test("claim numbers: a long list of cited records is shortened in the message", () => {
+  const many = Array.from({ length: 12 }, (_, i) => ({ source_id: `HC-FLOW-TEST-${i + 1}`, bed_occupancy: 0.95 }));
+  const [problem] = claimNumberProblems("Waits of 140 minutes", many, none);
+  assert.match(problem, /\(HC-FLOW-TEST-1, HC-FLOW-TEST-2, HC-FLOW-TEST-3 and 9 more\)\.$/);
+});

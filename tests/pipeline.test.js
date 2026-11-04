@@ -104,6 +104,8 @@ test("findings that match their records pass, and the tally says so", async () =
   assert.deepEqual(result.meta.verification, {
     findings_checked: 6, findings_verified: 6, findings_removed: [], fixed_on_retry: 0, policy_quote: "verified",
     analysis: { claims_checked: 4, claims_verified: 4, claims_removed: [], labels_corrected: 0 },
+    map: { nodes_checked: 9, nodes_verified: 9, nodes_removed: [], labels_corrected: 2 },
+    card: "verified",
   });
 });
 
@@ -223,4 +225,55 @@ test("a claim citing no records becomes Inferred", async () => {
 test("Prompt 1 doesn't limit the domain to Healthcare or Energy", async () => {
   const { replay } = await run();
   assert.doesNotMatch(replay.prompts[0], /"Healthcare" \| "Energy"/);
+});
+
+// ---------- The Thread map's nodes and the review card ----------
+
+const withNode = (analysis, i, change) => ({ ...analysis, graph: { ...analysis.graph, nodes: analysis.graph.nodes.map((n, j) => (j === i ? { ...n, ...change } : n)) } });
+
+test("map nodes: the recorded run's labels verify; its two role nodes labelled Experiential with no sources become Inferred", async () => {
+  const { result, replay } = await run();
+  assert.equal(replay.calls.length, 4, "no retry");
+  assert.deepEqual(result.meta.verification.map, { nodes_checked: 9, nodes_verified: 9, nodes_removed: [], labels_corrected: 2 });
+  const roles = result.steps.analysis.graph.nodes.filter((n) => n.node_type === "role");
+  assert.deepEqual(roles.map((n) => n.trust_label), ["Inferred", "Inferred"]);
+  assert.match(logText(result, "analysis"), /graph\.nodes: "Charge Nurse": trust_label "Experiential" → "Inferred"/);
+});
+
+test("map nodes: a label with an invented number is named in the retry", async () => {
+  const wrong = (s) => withNode(s.analysis, 6, { label: "Patient waited 140 minutes" });
+  const { replay } = await run({ answers: (s) => [s.pattern, wrong(s), s.analysis, s.options, s.card] });
+  assert.match(lastMessage(replay, 2), /graph\.nodes: "Patient waited 140 minutes" mentions 140/);
+});
+
+test("map nodes: a node still unverified after the retry is removed, with its lines", async () => {
+  const wrong = (s) => withNode(s.analysis, 6, { label: "Patient waited 140 minutes" });
+  const { result } = await run({ answers: (s) => [s.pattern, wrong(s), wrong(s), s.options, s.card] });
+  const { nodes, edges } = result.steps.analysis.graph;
+  const goneId = fixtureSteps("rooming").analysis.graph.nodes[6].id;
+  assert.ok(!nodes.some((n) => n.id === goneId));
+  assert.ok(!edges.some((e) => e.source === goneId || e.target === goneId));
+  assert.equal(result.meta.verification.map.nodes_removed.length, 1);
+});
+
+test("review card: the recorded card verifies", async () => {
+  const { result } = await run();
+  assert.equal(result.meta.verification.card, "verified");
+});
+
+test("review card: a number that isn't in the cited records is named in the retry", async () => {
+  const wrong = (s) => ({ ...s.card, why_it_may_matter: "Patients waited up to 140 minutes." });
+  const { replay, result } = await run({ answers: (s) => [s.pattern, s.analysis, s.options, wrong(s), s.card] });
+  assert.match(lastMessage(replay, 4), /card\.why_it_may_matter: "Patients waited up to 140 minutes\." mentions 140/);
+  assert.equal(result.meta.verification.card, "verified");
+});
+
+test("review card: still unverified after the retry → that wording is replaced and logged, not kept", async () => {
+  const wrong = (s) => ({ ...s.card, noticed: "Threadline noticed waits of 140 minutes." });
+  const { result } = await run({ answers: (s) => [s.pattern, s.analysis, s.options, wrong(s), wrong(s)] });
+  const card = result.steps.card;
+  assert.match(card.noticed, /^Threadline noticed a possible pattern/);
+  assert.doesNotMatch(card.noticed, /140/);
+  assert.equal(result.meta.verification.card, "replaced");
+  assert.ok(result.log.some((l) => l.step === "reviewCard" && l.type === "unverified_removed" && /card\.noticed/.test(l.detail)));
 });

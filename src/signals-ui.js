@@ -20,7 +20,7 @@ import {
 import { SIGNALS_CONFIG } from "./config.js";
 import { routeAlerts, alertVolume, buildDigest, sendLocalNotification } from "./notify.js";
 import { confidenceText, byPriority, windowsText } from "./recurrence.js";
-import { evidenceLines, verificationSummary, removedLines, policyWording } from "./evidenceView.js";
+import { evidenceLines, verificationSummary, removedLines, policyWording, gapLabels } from "./evidenceView.js";
 import { renderThreadMap, withApproaches, TRUST_COLORS, SHAPES } from "./threadMap.js";
 import { SOURCE_TYPE_NAMES } from "./records.js";
 
@@ -486,10 +486,12 @@ function renderBrief(thread) {
   const gap = analysis.policy_practice_gap;
   const gapBox = document.createElement("div");
   gapBox.className = "brief-gap";
+  const gapTrust = gapLabels(gap, verification);
   gapBox.append(
-    labelled("Policy expects", gap.what_policy_expects, "Authoritative"),
-    labelled("Records suggest", gap.what_records_suggest, "Observed"),
+    labelled("Policy expects", gap.what_policy_expects, gapTrust.expects),
+    labelled("Records suggest", gap.what_records_suggest, gapTrust.suggests),
   );
+  if (gapTrust.note) gapBox.append(text("p", "brief-small", gapTrust.note));
   const wording = policyWording(gap);
   if (wording) gapBox.append(text("p", "brief-proof", wording));
   box.append(text("div", "card-label", "Policy and practice"), gapBox);
