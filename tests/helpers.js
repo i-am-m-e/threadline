@@ -1,5 +1,5 @@
 // Shared helpers for the tests. Nothing here talks to Ollama or the app's data folder.
-import { readFileSync, readdirSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -16,12 +16,8 @@ export function recordedSteps(name, run = 0) {
   return clone({ pattern, analysis, options, card });
 }
 
-/** The JSON Schemas for the four Signals steps. */
-export function loadSchemas() {
-  const dir = join(ROOT, "src/schemas");
-  const byFile = Object.fromEntries(readdirSync(dir).map((f) => [f.replace(".schema.json", ""), JSON.parse(readFileSync(join(dir, f), "utf8"))]));
-  return { pattern: byFile.pattern, analysis: byFile.analysis, options: byFile.options, reviewCard: byFile.reviewCard };
-}
+// The schemas are loaded the same way the scorecard loads them.
+export { loadSchemas } from "../scripts/eval/packs.js";
 
 /**
  * A stand-in for the model that gives prepared answers in order.
