@@ -7,6 +7,8 @@
 //
 // Rules agreed with the founder: docs/specs/2026-11-04-step2-verify-findings.md.
 
+import { isFlow } from "./records.js";
+
 const MIN_QUOTE_WORDS = 4;
 
 /**
@@ -103,4 +105,62 @@ export function numberProblems(finding, record, thresholds) {
 export function thresholdsOf(pack) {
   const conditions = [...(pack.triggers ?? []).flatMap((t) => t.all ?? []), ...(pack.safety_relevant_conditions ?? [])];
   return [...new Set(conditions.map((c) => c.value).filter((v) => typeof v === "number"))];
+}
+
+// ---------- Record values (flow records) ----------
+
+// A claimed value matches the record's value exactly, or as a percent of a fraction (96 for 0.96).
+const sameValue = (claimed, actual) => same(claimed, actual) || asPercent(actual).some((p) => same(p, claimed));
+
+/**
+ * Each { field, value } must be a field of the record with that value.
+ * @returns {string[]} Problems, empty if all is well.
+ */
+export function recordValueProblems(recordValues, record) {
+  const problems = [];
+  for (const { field, value } of recordValues) {
+    if (SKIP_FIELDS.has(field) || !(field in record)) {
+      problems.push(`${record.source_id}: has no field "${field}". Use the field names exactly as they appear in the record.`);
+    } else if (typeof record[field] !== "number" || !sameValue(value, record[field])) {
+      problems.push(`${record.source_id}: ${field} is ${record[field]} in that record, not ${value}.`);
+    }
+  }
+  return problems;
+}
+
+// ---------- One supporting-evidence item, and the policy gap ----------
+
+/**
+ * Check one supporting-evidence item against the record it cites:
+ *  - flow records (CSV rows): at least one { field, value }, all matching; no quote (no text);
+ *  - incident, complaint and near-miss records: a quote from the record's text; no record_values;
+ *  - either way, every number in the finding's wording is in the record.
+ * @returns {string[]} Problems, empty if the item is verified.
+ */
+export function evidenceProblems(item, record, thresholds) {
+  const id = record.source_id;
+  const values = item.record_values ?? [];
+  const problems = [];
+  if (isFlow(record)) {
+    if (values.length === 0) problems.push(`${id}: needs record_values: the field and value this finding relies on, e.g. { "field": "room_to_physician_minutes", "value": 90 }.`);
+    if ((item.quote ?? "").trim()) problems.push(`${id}: flow records have no text to quote; leave quote empty and use record_values.`);
+    problems.push(...recordValueProblems(values, record));
+  } else {
+    const quote = quoteProblem(item.quote, record);
+    if (quote) problems.push(quote);
+    if (values.length > 0) problems.push(`${id}: this kind of record has no fields to check; leave record_values empty and quote its text.`);
+  }
+  problems.push(...numberProblems(item.finding ?? "", record, thresholds));
+  return problems;
+}
+
+/**
+ * The policy-practice gap must quote the policy it cites.
+ * @param {object} gap  Prompt 2's policy_practice_gap.
+ * @param {object} policy  The cited policy record.
+ * @returns {string|null}
+ */
+export function policyQuoteProblem(gap, policy) {
+  const problem = quoteProblem(gap.policy_quote, policy);
+  return problem && `policy_practice_gap: ${problem}`;
 }

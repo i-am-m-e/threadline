@@ -2,7 +2,7 @@
 // Records here are the real benchmark records (all synthetic).
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { quoteProblem, numberProblems, thresholdsOf } from "../src/verify.js";
+import { quoteProblem, numberProblems, thresholdsOf, recordValueProblems, evidenceProblems, policyQuoteProblem } from "../src/verify.js";
 
 const complaint = {
   source_id: "HC-CMP-4471", source_type: "complaint",
@@ -140,4 +140,82 @@ test("thresholds: the numbers come from the domain's triggers and safety conditi
     safety_relevant_conditions: [{ id: "a", text_groups: [["CTAS 1"]] }, { id: "b", metric: "room_to_physician_minutes", op: ">", value: 60 }],
   };
   assert.deepEqual(thresholdsOf(pack).sort((a, b) => a - b), [0.9, 45, 60]);
+});
+
+// ---------- Part 3: record values, the whole evidence item, the policy quote ----------
+
+test("record values: a field with its real value passes", () => {
+  assert.deepEqual(recordValueProblems([{ field: "room_to_physician_minutes", value: 90 }, { field: "bed_occupancy", value: 0.96 }], flow1600), []);
+});
+
+test("record values: a fraction given as a percent passes (bed_occupancy 96 for 0.96)", () => {
+  assert.deepEqual(recordValueProblems([{ field: "bed_occupancy", value: 96 }], flow1600), []);
+});
+
+test("record values: a wrong value fails, naming the field and the record's value", () => {
+  const problems = recordValueProblems([{ field: "room_to_physician_minutes", value: 76 }], flow1600);
+  assert.equal(problems.length, 1);
+  assert.match(problems[0], /HC-FLOW-20260920-1600: room_to_physician_minutes is 90 in that record, not 76/);
+});
+
+test("record values: a field the record doesn't have fails", () => {
+  assert.match(recordValueProblems([{ field: "nurse_ratio", value: 4 }], flow1600)[0], /has no field "nurse_ratio"/);
+});
+
+test("record values: a field code works out (permits_per_inspector) counts", () => {
+  assert.deepEqual(recordValueProblems([{ field: "permits_per_inspector", value: 9 }], permits0900), []);
+});
+
+const item = (over) => ({ source_id: "x", trust_label: "Observed", finding: "", quote: "", record_values: [], ...over });
+
+test("evidence item: a flow finding with matching values and numbers passes", () => {
+  const e = item({ source_id: flow1600.source_id, finding: "Occupancy 96% and room-to-physician time 90 minutes.",
+    record_values: [{ field: "bed_occupancy", value: 0.96 }, { field: "room_to_physician_minutes", value: 90 }] });
+  assert.deepEqual(evidenceProblems(e, flow1600, none), []);
+});
+
+test("evidence item: a flow finding needs record values", () => {
+  assert.match(evidenceProblems(item({ finding: "Occupancy was high." }), flow1600, none).join(), /needs record_values/);
+});
+
+test("evidence item: a flow record has no text to quote", () => {
+  const e = item({ finding: "Time 90 minutes.", quote: "room to physician 90 minutes", record_values: [{ field: "room_to_physician_minutes", value: 90 }] });
+  assert.match(evidenceProblems(e, flow1600, none).join(), /no text to quote/);
+});
+
+test("evidence item: an incident, complaint or near-miss finding needs a quote", () => {
+  assert.match(evidenceProblems(item({ finding: "A long wait." }), complaint, none).join(), /needs a quote/);
+});
+
+test("evidence item: record values on a complaint are refused (it has no fields to check)", () => {
+  const e = item({ finding: "A long wait.", quote: "waiting 85 minutes after being placed", record_values: [{ field: "wait", value: 85 }] });
+  assert.match(evidenceProblems(e, complaint, none).join(), /leave record_values empty/);
+});
+
+test("evidence item: a real quote with a made-up number in the finding fails", () => {
+  const e = item({ finding: "Patient waited 95 minutes.", quote: "waiting 85 minutes after being placed" });
+  assert.match(evidenceProblems(e, complaint, none).join(), /mentions 95/);
+});
+
+test("evidence item: a real quote with matching wording passes", () => {
+  const e = item({ finding: "Patient waited 85 minutes after rooming.", quote: "waiting 85 minutes after being placed in an exam room" });
+  assert.deepEqual(evidenceProblems(e, complaint, none), []);
+});
+
+const policy = {
+  source_id: "HC-POL-CTAS-ESC", source_type: "policy",
+  text: "Synthetic policy excerpt. Patients triaged as CTAS 1 or CTAS 2 require immediate access to a monitored bed on arrival. When no monitored bed is available, the charge nurse escalates to the physician lead to create capacity.",
+};
+const gap = (over) => ({ policy_source_id: "HC-POL-CTAS-ESC", policy_quote: "", what_policy_expects: "", what_records_suggest: "", confidence: "Medium", ...over });
+
+test("policy quote: words from the policy pass", () => {
+  assert.equal(policyQuoteProblem(gap({ policy_quote: "require immediate access to a monitored bed on arrival" }), policy), null);
+});
+
+test("policy quote: words not in the policy fail", () => {
+  assert.match(policyQuoteProblem(gap({ policy_quote: "require a monitored bed within 10 minutes" }), policy), /isn't in that record/);
+});
+
+test("policy quote: a missing quote fails", () => {
+  assert.match(policyQuoteProblem(gap({}), policy), /needs a quote/);
 });
