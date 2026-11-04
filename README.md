@@ -114,7 +114,14 @@ given to that step: one retry, then a field's wording is replaced with a plain l
 expects", the policy's own quoted words) and a list item removed, all logged. The options, "other
 explanations" and "open questions" aren't checked this way: they're proposals and questions, not
 claims about the records. Still not checked anywhere: the wording itself, only numbers and labels.
-Small numbers are a weak check, because they often appear somewhere in a record's dates or times. Design: `docs/specs/2026-11-04-step2-verify-findings.md`.
+Small numbers are a weak check, because they often appear somewhere in a record's dates or times.
+
+Two more checks, for weaknesses Command R showed in the 2026-09-28 test runs: **every time window
+must have at least one cited record** (update runs used to describe only the first window), and
+**the recommendation's reasoning is two sentences or fewer** (Prompt 3, rule 4). Each gets the one
+retry; after it, an uncited window is accepted and noted in the brief and on the scorecard
+(confidence already counts only cited records), and a long rationale is cut to its first two
+sentences by code. Both are logged. Design: `docs/specs/2026-11-04-step2-verify-findings.md`.
 
 ## Testing and the scorecard
 

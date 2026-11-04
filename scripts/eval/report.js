@@ -25,12 +25,12 @@ function verificationLines(scored) {
     `| Findings checked against their source | ${sum("findings_verified")} of ${sum("findings_checked")} verified (${sum("findings_removed")} removed as unverified; ${sum("fixed_on_retry")} fixed on retry) |`,
     `| Policy quote verified | ${tallies.filter((t) => t.policy_quote === "verified").length} of ${tallies.length} runs |`,
     analysisLine(tallies),
-    ...mapAndCardLines(tallies),
+    ...mapAndCardLines(tallies, scored),
   ];
 }
 
 /** The Thread map's nodes, and the review card's wording. */
-function mapAndCardLines(tallies) {
+function mapAndCardLines(tallies, scored) {
   const maps = tallies.map((t) => t.map).filter(Boolean);
   const cards = tallies.map((t) => t.card).filter((c) => c && c !== "not checked");
   const sum = (key) => maps.reduce((n, t) => n + (Array.isArray(t[key]) ? t[key].length : t[key]), 0);
@@ -42,6 +42,22 @@ function mapAndCardLines(tallies) {
       ? `| Review card wording verified | ${cards.filter((c) => c === "verified").length} of ${cards.length} runs |`
       : "| Review card wording verified | n/a (runs from before this check) |",
     wordingLine(tallies),
+    ...windowAndRationaleLines(scored),
+  ];
+}
+
+/** Time windows with at least one cited record, and rationales code had to shorten. Run numbers count every run, failed ones too. */
+function windowAndRationaleLines(scored) {
+  const runs = scored.map((s, i) => ({ w: s.verification?.windows, r: s.verification?.rationale, run: i + 1 })).filter((x) => x.w);
+  if (runs.length === 0) return ["| Time windows with a cited record | n/a (runs from before this check) |"];
+  const total = runs.reduce((n, x) => n + x.w.total, 0);
+  const cited = runs.reduce((n, x) => n + x.w.cited, 0);
+  const uncited = new Map(); // window → runs
+  for (const x of runs) for (const label of x.w.uncited) uncited.set(label, [...(uncited.get(label) ?? []), x.run]);
+  const detail = uncited.size ? ` (uncited: ${[...uncited].map(([label, rs]) => `${label} in run${rs.length === 1 ? "" : "s"} ${rs.join(", ")}`).join("; ")})` : "";
+  return [
+    `| Time windows with a cited record | ${cited} of ${total}${detail} |`,
+    `| Recommendation rationale shortened to two sentences | ${runs.filter((x) => x.r === "shortened").length} of ${runs.length} runs |`,
   ];
 }
 

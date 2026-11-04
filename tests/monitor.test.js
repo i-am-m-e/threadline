@@ -22,7 +22,9 @@ test("the healthcare pack creates one Thread, and the second file updates it", a
   assert.deepEqual(first.errors, []);
 
   mem.put(loadEvalPack("healthcare_update", key).files);
-  const second = await checkForSignals({ ...base, io: mem.io, ask: replayAsk(fourAnswers(1)).ask });
+  // The recorded update run's answers, given again on each retry (it cites only Sept 20, and its
+  // rationale has 3 sentences: both are retried and then noted).
+  const second = await checkForSignals({ ...base, io: mem.io, ask: askByStep(fixtureSteps("rooming", 1)) });
   assert.deepEqual(second.updated, first.created);
   const threads = mem.threads();
   assert.equal(threads.length, 1);

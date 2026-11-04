@@ -11,7 +11,13 @@ const four = (run) => {
   const s = fixtureSteps("rooming", run);
   return [s.pattern, s.analysis, s.options, s.card];
 };
-const healthcareRun = () => [...four(0), ...four(1)]; // the pack, then the update file
+// The recorded update run cites only Sept 20 (window retry) and its rationale has 3 sentences
+// (options retry), so the update stage takes six answers.
+const update = () => {
+  const s = fixtureSteps("rooming", 1);
+  return [s.pattern, s.pattern, s.analysis, s.options, s.options, s.card];
+};
+const healthcareRun = () => [...four(0), ...update()]; // the pack, then the update file
 const outDir = () => mkdtempSync(join(tmpdir(), "threadline-eval-"));
 const options = (ask, dir) => ({ packs: ["healthcare"], runs: 2, ask, outDir: dir, checkOllama: async () => {}, now: new Date("2026-11-04T12:00:00"), gitCommit: "abc1234" });
 
@@ -28,6 +34,9 @@ test("writes the scorecard, settings and one file per run", async () => {
   assert.match(card, /\| Map nodes checked against their records \| 18 of 18 verified \(0 removed as unverified; 4 trust labels corrected\) \|/);
   assert.match(card, /\| Review card wording verified \| 2 of 2 runs \|/);
   assert.match(card, /\| Other wording checked for numbers \| 14 of 14 verified \(0 replaced, 0 removed\) \|/);
+  assert.match(card, /## Healthcare pack[\s\S]*\| Time windows with a cited record \| 2 of 2 \|/);
+  assert.match(card, /## Healthcare update[\s\S]*\| Time windows with a cited record \| 2 of 4 \(uncited: 2026-09-22 14:00 to 16:00 in runs 1, 2\) \|/);
+  assert.match(card, /## Healthcare update[\s\S]*\| Recommendation rationale shortened to two sentences \| 2 of 2 runs \|/);
   assert.match(card, /abc1234/);
   const settings = JSON.parse(readFileSync(join(dir, "settings.json"), "utf8"));
   assert.equal(settings.answer_key_status, "draft");
@@ -71,9 +80,18 @@ test("findings removed as unverified are counted and listed on the scorecard", a
   const [pattern, ...rest] = four(0);
   const bad = { ...pattern, supporting_evidence: pattern.supporting_evidence.map((e) =>
     (e.source_id === "HC-CMP-4471" ? { ...e, quote: "waited two hours in the exam room" } : e)) };
-  const replay = replayAsk([bad, bad, ...rest, ...four(1)]);
+  const replay = replayAsk([bad, bad, ...rest, ...update()]);
   await runEvaluation({ ...options(replay.ask, dir), runs: 1 });
   const card = readFileSync(join(dir, "scorecard.md"), "utf8");
   assert.match(card, /\| Findings checked against their source \| 5 of 6 verified \(1 removed as unverified; 0 fixed on retry\) \|/);
   assert.match(card, /\*\*Removed or replaced as unverified\*\*\n- Run 1: HC-CMP-4471: .*isn't in that record/);
+});
+
+test("run numbers for uncited windows count failed runs too", async () => {
+  const dir = outDir();
+  // Run 1 fails at its first step (so its update stage is skipped); run 2 completes.
+  const replay = replayAsk([new Error("model stalled"), ...healthcareRun()]);
+  await runEvaluation(options(replay.ask, dir));
+  const card = readFileSync(join(dir, "scorecard.md"), "utf8");
+  assert.match(card, /## Healthcare update[\s\S]*\| Time windows with a cited record \| 1 of 2 \(uncited: 2026-09-22 14:00 to 16:00 in run 2\) \|/);
 });

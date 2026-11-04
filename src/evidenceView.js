@@ -45,6 +45,11 @@ export function verificationSummary(v) {
   parts.push({ verified: "policy wording verified", removed: "policy wording couldn't be verified and was removed" }[v.policy_quote] ?? "no policy cited");
   if (v.card === "verified") parts.push("review card wording verified");
   if (v.card === "replaced") parts.push("review card wording replaced (it mentioned figures not in the records)");
+  if (v.windows?.uncited.length) {
+    const n = v.windows.uncited.length;
+    parts.push(`${n} of ${v.windows.total} time windows ${n === 1 ? "has" : "have"} no cited record (${v.windows.uncited.join("; ")})`);
+  }
+  if (v.rationale === "shortened") parts.push("recommendation shortened to two sentences");
   return parts.join("; ") + ".";
 }
 

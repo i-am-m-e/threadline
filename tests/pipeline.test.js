@@ -7,7 +7,7 @@ import { parseRecordFile, findTriggeredWindows } from "../src/records.js";
 import { runPipeline } from "../src/pipeline.js";
 import { SIGNALS_CONFIG } from "../src/config.js";
 import { loadAnswerKey, loadEvalPack, loadRules, loadEvidenceLibrary, loadSchemas } from "../scripts/eval/packs.js";
-import { fixtureSteps, replayAsk } from "./helpers.js";
+import { fixtureSteps, replayAsk, askByStep } from "./helpers.js";
 
 const rules = loadRules();
 const records = loadEvalPack("healthcare", loadAnswerKey()).files.flatMap((f) => parseRecordFile(f.name, f.text));
@@ -107,6 +107,8 @@ test("findings that match their records pass, and the tally says so", async () =
     map: { nodes_checked: 9, nodes_verified: 9, nodes_removed: [], labels_corrected: 2 },
     card: "verified",
     wording: { checked: 7, replaced: [], removed: [] },
+    windows: { total: 1, cited: 1, uncited: [] },
+    rationale: "ok",
   });
 });
 
@@ -162,10 +164,11 @@ test("an invented policy quote is caught in the retry, then blanked with its pol
 test("the energy pack's findings verify too, including permits per inspector (worked out by code)", async () => {
   const energyRecords = loadEvalPack("energy", loadAnswerKey()).files.flatMap((f) => parseRecordFile(f.name, f.text));
   const s = fixtureSteps("energy");
-  const replay = replayAsk([s.pattern, s.analysis, s.options, s.card]);
+  // The recorded energy rationale has 3 sentences, so the options step is retried once.
+  const replay = replayAsk([s.pattern, s.analysis, s.options, s.options, s.card]);
   const result = await runPipeline({ windows: findTriggeredWindows(energyRecords, rules), records: energyRecords, rules,
     evidenceLibrary: loadEvidenceLibrary(), schemas: loadSchemas(), config: SIGNALS_CONFIG, ask: replay.ask });
-  assert.equal(replay.calls.length, 4);
+  assert.equal(replay.calls.length, 5);
   assert.equal(result.meta.verification.findings_verified, 12);
   assert.equal(result.meta.verification.policy_quote, "verified");
 });
@@ -286,9 +289,10 @@ const wordingLog = (result) => result.log.filter((l) => l.type === "unverified_r
 test("the recorded runs' other wording verifies, with nothing replaced or removed", async () => {
   for (const runIndex of [0, 1]) {
     const s = fixtureSteps("rooming", runIndex);
-    const replay = replayAsk([s.pattern, s.analysis, s.options, s.card]);
-    const result = await runPipeline({ windows, records, rules, evidenceLibrary: loadEvidenceLibrary(), schemas: loadSchemas(), config: SIGNALS_CONFIG, ask: replay.ask });
-    assert.equal(replay.calls.length, 4, `rooming run ${runIndex}: no retry`);
+    const ask = askByStep(s);
+    const result = await runPipeline({ windows, records, rules, evidenceLibrary: loadEvidenceLibrary(), schemas: loadSchemas(), config: SIGNALS_CONFIG, ask });
+    // (Run 2's options are retried for its 3-sentence rationale; that's not about wording.)
+    assert.deepEqual(ask.calls.filter((c) => c !== "options"), ["pattern", "analysis", "card"], `rooming run ${runIndex}: no wording retry`);
     assert.deepEqual(result.meta.verification.wording.replaced, []);
     assert.deepEqual(result.meta.verification.wording.removed, []);
   }
@@ -355,4 +359,53 @@ test("wording checked against all the step's records says so in the reason", asy
   const wrong = (s) => ({ ...s.pattern, pattern_statement: "Records suggest waits of 140 minutes." });
   const { replay } = await run({ answers: (s) => [wrong(s), s.pattern, s.analysis, s.options, s.card] });
   assert.match(lastMessage(replay, 1), /mentions 140, which isn't in this Thread's records/);
+});
+
+// ---------- Model weaknesses from the 2026-09-28 results ----------
+
+// The healthcare Thread after the second flow file: two time windows (Sept 20 and Sept 22).
+const bothFiles = [...loadEvalPack("healthcare", loadAnswerKey()).files, ...loadEvalPack("healthcare_update", loadAnswerKey()).files]
+  .flatMap((f) => parseRecordFile(f.name, f.text));
+const twoWindows = findTriggeredWindows(bothFiles, rules);
+const runUpdate = (steps) => {
+  const ask = askByStep(steps);
+  return runPipeline({ windows: twoWindows, records: bothFiles, rules, evidenceLibrary: loadEvidenceLibrary(), schemas: loadSchemas(), config: SIGNALS_CONFIG, ask })
+    .then((result) => ({ result, calls: ask.calls }));
+};
+
+test("update runs: a time window with no cited record gets the retry, naming the window", async () => {
+  assert.equal(twoWindows.length, 2);
+  const { result, calls } = await runUpdate(fixtureSteps("rooming", 1)); // the recorded update run cites only Sept 20
+  assert.deepEqual(calls.filter((c) => c === "pattern"), ["pattern", "pattern"]);
+  assert.deepEqual(result.meta.verification.windows, { total: 2, cited: 1, uncited: ["2026-09-22 14:00 to 16:00"] });
+  assert.match(logText(result, "pattern"), /2026-09-22 14:00 to 16:00: still no cited record after the retry/);
+});
+
+test("update runs: citing a record from each window passes without a retry", async () => {
+  const s = fixtureSteps("rooming", 1);
+  s.pattern.supporting_evidence.push({ source_id: "HC-FLOW-20260922-1500", trust_label: "Observed", finding: "Bed occupancy was 94% on Sept 22.",
+    quote: "", record_values: [{ field: "bed_occupancy", value: 0.94 }] });
+  const { result, calls } = await runUpdate(s);
+  assert.deepEqual(calls.filter((c) => c === "pattern"), ["pattern"]);
+  assert.deepEqual(result.meta.verification.windows, { total: 2, cited: 2, uncited: [] });
+});
+
+test("a single-window run passes the window check", async () => {
+  const { result } = await run();
+  assert.deepEqual(result.meta.verification.windows, { total: 1, cited: 1, uncited: [] });
+});
+
+test("a recommendation rationale over 2 sentences gets the retry, then is cut to 2 sentences", async () => {
+  const s = fixtureSteps("rooming", 1); // its recorded rationale has 3 sentences
+  const { result, calls } = await runUpdate(s);
+  assert.deepEqual(calls.filter((c) => c === "options"), ["options", "options"]);
+  const rationale = result.steps.options.recommendation.rationale;
+  assert.equal(rationale, s.options.recommendation.rationale.split(/(?<=[.!?])\s+(?=[A-Z])/).slice(0, 2).join(" "));
+  assert.equal(result.meta.verification.rationale, "shortened");
+  assert.match(logText(result, "options"), /rationale: still 3 sentences after the retry; shortened to the first 2/);
+});
+
+test("a rationale of 2 sentences or fewer is left alone", async () => {
+  const { result } = await run();
+  assert.equal(result.meta.verification.rationale, "ok");
 });

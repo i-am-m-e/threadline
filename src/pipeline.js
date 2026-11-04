@@ -73,6 +73,42 @@ export async function runPipeline({ windows, records, rules, evidenceLibrary, sc
     map: { nodes_checked: 0, nodes_verified: 0, nodes_removed: [], labels_corrected: 0 },
     card: "not checked",
     wording: { checked: 0, replaced: [], removed: [] },
+    windows: { total: windows.length, cited: 0, uncited: [] },
+    rationale: "ok",
+  };
+
+  // Update runs under-used new evidence (2026-09-28 results): every time window must have at
+  // least one cited record. After the retry, an uncited window is accepted and noted (confidence
+  // already counts only cited records, so it isn't inflated).
+  const windowLabel = (w) => `${w.start.replace("T", " ")} to ${w.end.slice(11)}`;
+  const windowRecords = windows.map((w, i) => [...w.flowRecords, ...nearByWindow[i]]);
+  const verifyWindows = (o) => {
+    const cited = new Set(o.supporting_evidence.map((e) => e.source_id));
+    return windows.flatMap((w, i) => {
+      if (windowRecords[i].some((r) => cited.has(r.source_id))) return [];
+      const label = windowLabel(w);
+      const examples = w.flowRecords.slice(0, 2).map((r) => r.source_id).join(", ");
+      return [{
+        problem: `The time window ${label} has no cited record. Cite at least one record from each time window (for example ${examples}), with its quote or values.`,
+        remove: () => `${label}: still no cited record after the retry (accepted; confidence counts only cited records)`,
+      }];
+    });
+  };
+
+  // Prompt 3 rule 4: the recommendation's rationale is two sentences or fewer. After the retry,
+  // code keeps the first two.
+  const sentencesOf = (text) => text.trim().split(/(?<=[.!?])\s+(?=[A-Z])/).filter(Boolean);
+  const verifyRationale = (o) => {
+    const sentences = sentencesOf(o.recommendation.rationale);
+    if (sentences.length <= 2) return [];
+    return [{
+      problem: `recommendation.rationale has ${sentences.length} sentences; rule 4 allows two or fewer. Shorten it.`,
+      remove: () => {
+        o.recommendation.rationale = sentences.slice(0, 2).join(" ");
+        verification.rationale = "shortened";
+        return `rationale: still ${sentences.length} sentences after the retry; shortened to the first 2`;
+      },
+    }];
   };
   // The rest of the text that describes the records (pattern statement, vignette, "evidence that
   // does not fit", compounding factors, the policy gap's wording): numbers must be in the records
@@ -147,6 +183,7 @@ export async function runPipeline({ windows, records, rules, evidenceLibrary, sc
     checks: (o) => (/^Records suggest\b/.test(o.pattern_statement.trim()) ? [] : ['pattern_statement must begin with "Records suggest".']),
     verify: (o) => [
       ...verifyFindings(o),
+      ...verifyWindows(o),
       ...fieldIssues("pattern_statement", o, "pattern_statement", patternInputs, `Records suggest a possible pattern: ${pattern_type} at ${location}.`),
       ...["situation", "what_appears_to_happen", "observed_effects"].flatMap((key) =>
         fieldIssues(`possible_vignette.${key}`, o.possible_vignette, key, patternInputs, PLAIN)),
@@ -154,6 +191,11 @@ export async function runPipeline({ windows, records, rules, evidenceLibrary, sc
     ],
   });
   verification.findings_verified = pattern.supporting_evidence.length;
+  {
+    const cited = new Set(pattern.supporting_evidence.map((e) => e.source_id)); // after removals
+    const uncited = windows.filter((w, i) => !windowRecords[i].some((r) => cited.has(r.source_id)));
+    verification.windows = { total: windows.length, cited: windows.length - uncited.length, uncited: uncited.map(windowLabel) };
+  }
   verification.findings_checked = verification.findings_verified + verification.findings_removed.length;
   verification.fixed_on_retry = new Set(pattern.supporting_evidence.map((e) => e.source_id).filter((id) => flaggedBeforeLast.has(id))).size;
 
@@ -279,6 +321,7 @@ export async function runPipeline({ windows, records, rules, evidenceLibrary, sc
     prompt: buildOptionsPrompt({ patternConfidence: pattern.confidence, analysis, evidence: evidence.map(forEvidencePrompt) }),
     evidenceIds: new Set(evidence.map((e) => e.evidence_id)),
     sourceIds: allIds,
+    verify: verifyRationale,
     checks: (o) => [
       ...(o.options.some((x) => x.type === "Learn more") ? [] : [
         'Include at least one option whose "type" is exactly "Learn more": for example, track this pattern for two weeks, ' +

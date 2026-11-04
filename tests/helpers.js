@@ -52,8 +52,12 @@ export function replayAsk(answers) {
  */
 export function askByStep(steps) {
   const markers = [["PATTERN AND VIGNETTE", "pattern"], ["SYSTEM ANALYSIS", "analysis"], ["OPTIONS AND RECOMMENDATION", "options"], ["REVIEW CARD", "card"]];
-  return async (messages) => {
+  const calls = []; // which step each call was for, in order (e.g. ["pattern", "pattern", "analysis", …])
+  const ask = async (messages) => {
     const step = markers.find(([m]) => messages[0].content.includes(`SYSTEM PROMPT: ${m}`))[1];
+    calls.push(step);
     return JSON.stringify(steps[step]);
   };
+  ask.calls = calls;
+  return ask;
 }

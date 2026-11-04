@@ -101,3 +101,9 @@ test("the summary and the removed list also cover the rest of the wording", () =
     "Pattern statement (wording replaced) \u201cRecords suggest waits of 140 minutes.\u201d: mentions 140, which isn't in the records it cites (HC-CMP-4471).",
   ]);
 });
+
+test("the summary notes a time window with no cited record, and a shortened rationale", () => {
+  const v = { ...okVerification, windows: { total: 2, cited: 1, uncited: ["2026-09-22 14:00 to 16:00"] }, rationale: "shortened" };
+  assert.match(verificationSummary(v), /; 1 of 2 time windows has no cited record \(2026-09-22 14:00 to 16:00\); recommendation shortened to two sentences\.$/);
+  assert.doesNotMatch(verificationSummary({ ...okVerification, windows: { total: 1, cited: 1, uncited: [] }, rationale: "ok" }), /time window|shortened/);
+});
