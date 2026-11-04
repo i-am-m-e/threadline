@@ -7,7 +7,7 @@
 //
 // Rules agreed with the founder: docs/specs/2026-11-04-step2-verify-findings.md.
 
-import { isFlow } from "./records.js";
+import { isFlow, isPolicy } from "./records.js";
 
 const MIN_QUOTE_WORDS = 4;
 
@@ -163,4 +163,41 @@ export function evidenceProblems(item, record, thresholds) {
 export function policyQuoteProblem(gap, policy) {
   const problem = quoteProblem(gap.policy_quote, policy);
   return problem && `policy_practice_gap: ${problem}`;
+}
+
+// ---------- Analysis claims: contributing conditions and the pressure map ----------
+
+/**
+ * Every number in a claim's text must be in at least one of the records it cites (or be one
+ * of the domain's thresholds). The same number rules as numberProblems.
+ * @param {string} text
+ * @param {Array} records  The records the claim cites (or, if it cites none, all the step's inputs).
+ * @returns {string[]}
+ */
+export function claimNumberProblems(text, records, thresholds) {
+  const allowed = [...thresholds, ...records.flatMap((r) => allowedNumbers(r, []))];
+  const withPercents = [...allowed, ...thresholds.flatMap(asPercent)];
+  const missing = [...new Set(numbersIn(text))].filter((n) => !withPercents.some((a) => same(a, n)));
+  if (missing.length === 0) return [];
+  const ids = records.map((r) => r.source_id).join(", ");
+  return [`"${text}" mentions ${missing.join(", ")}, which ${missing.length === 1 ? "isn't" : "aren't"} in the records it cites (${ids}).`];
+}
+
+/**
+ * The trust label a claim can honestly carry, given the records it cites:
+ *  • Inferred stays Inferred (the model is saying it's unconfirmed);
+ *  • citing no records → Inferred;
+ *  • Authoritative needs a policy; Observed needs a flow, incident, complaint or near-miss record;
+ *  • Experiential and Historical come only from people (Add context, past decisions), so the
+ *    model can't claim them: they become Observed or Authoritative from what's cited.
+ * @returns {string} The same label if it fits, otherwise the one that does.
+ */
+export function fittingTrustLabel(label, records) {
+  if (label === "Inferred") return label;
+  if (records.length === 0) return "Inferred";
+  const hasPolicy = records.some(isPolicy);
+  const hasObserved = records.some((r) => !isPolicy(r));
+  if (label === "Authoritative") return hasPolicy ? label : "Observed";
+  if (label === "Observed") return hasObserved ? label : "Authoritative";
+  return hasObserved ? "Observed" : "Authoritative";
 }

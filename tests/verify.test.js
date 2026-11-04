@@ -2,7 +2,7 @@
 // Records here are the real benchmark records (all synthetic).
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { quoteProblem, numberProblems, thresholdsOf, recordValueProblems, evidenceProblems, policyQuoteProblem } from "../src/verify.js";
+import { quoteProblem, numberProblems, thresholdsOf, recordValueProblems, evidenceProblems, policyQuoteProblem, claimNumberProblems, fittingTrustLabel } from "../src/verify.js";
 
 const complaint = {
   source_id: "HC-CMP-4471", source_type: "complaint",
@@ -218,4 +218,45 @@ test("policy quote: words not in the policy fail", () => {
 
 test("policy quote: a missing quote fails", () => {
   assert.match(policyQuoteProblem(gap({}), policy), /needs a quote/);
+});
+
+// ---------- Analysis claims (contributing conditions, pressure map) ----------
+
+test("claim numbers: a number in any one of the cited records passes", () => {
+  assert.deepEqual(claimNumberProblems("Waits of 85 minutes with occupancy at 96%", [complaint, flow1600], none), []);
+});
+
+test("claim numbers: a number in none of the cited records fails, naming them", () => {
+  const problems = claimNumberProblems("Waits of 140 minutes", [complaint, flow1600], none);
+  assert.equal(problems.length, 1);
+  assert.match(problems[0], /mentions 140, which isn't in the records it cites \(HC-CMP-4471, HC-FLOW-20260920-1600\)/);
+});
+
+test("claim numbers: text without numbers passes, and thresholds are allowed", () => {
+  assert.deepEqual(claimNumberProblems("High bed occupancy", [flow1600], none), []);
+  assert.deepEqual(claimNumberProblems("Room-to-physician time above 45 minutes", [flow1600], [45]), []);
+});
+
+test("trust label: Inferred is always kept", () => {
+  assert.equal(fittingTrustLabel("Inferred", [flow1600]), "Inferred");
+  assert.equal(fittingTrustLabel("Inferred", []), "Inferred");
+});
+
+test("trust label: a claim citing no records is Inferred", () => {
+  assert.equal(fittingTrustLabel("Observed", []), "Inferred");
+});
+
+test("trust label: Observed needs a flow, incident, complaint or near-miss record", () => {
+  assert.equal(fittingTrustLabel("Observed", [flow1600, policy]), "Observed");
+  assert.equal(fittingTrustLabel("Observed", [policy]), "Authoritative");
+});
+
+test("trust label: Authoritative needs a policy", () => {
+  assert.equal(fittingTrustLabel("Authoritative", [policy]), "Authoritative");
+  assert.equal(fittingTrustLabel("Authoritative", [complaint]), "Observed");
+});
+
+test("trust label: the model can't claim Experiential or Historical (only people add those)", () => {
+  assert.equal(fittingTrustLabel("Experiential", [complaint]), "Observed");
+  assert.equal(fittingTrustLabel("Historical", [policy]), "Authoritative");
 });
