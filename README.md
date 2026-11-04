@@ -107,8 +107,14 @@ removed, with its lines). The **review card**'s title, "noticed" and "why it may
 use numbers from the records the run cites (or thresholds); wording still failing after the
 retry is replaced with a plain line written by code and logged. In the manager brief, the policy
 box shows "Authoritative" only when a policy is cited and "Observed" only when a finding was
-verified; otherwise "Inferred". Still not checked: the wording itself (only numbers and labels),
-"evidence that does not fit", "where small variations combine", the vignette story and the options. Design: `docs/specs/2026-11-04-step2-verify-findings.md`.
+verified; otherwise "Inferred". The **rest of the text that describes the records** (the pattern
+statement, the vignette story, "evidence that does not fit", "where small variations combine",
+and the policy gap's "policy expects" and "records suggest") may only use numbers from the records
+given to that step: one retry, then a field's wording is replaced with a plain line (for "policy
+expects", the policy's own quoted words) and a list item removed, all logged. The options, "other
+explanations" and "open questions" aren't checked this way: they're proposals and questions, not
+claims about the records. Still not checked anywhere: the wording itself, only numbers and labels.
+Small numbers are a weak check, because they often appear somewhere in a record's dates or times. Design: `docs/specs/2026-11-04-step2-verify-findings.md`.
 
 ## Testing and the scorecard
 

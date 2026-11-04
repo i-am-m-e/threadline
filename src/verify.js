@@ -175,16 +175,17 @@ export function policyQuoteProblem(gap, policy) {
  * of the domain's thresholds). The same number rules as numberProblems.
  * @param {string} text
  * @param {Array} records  The records the claim cites (or, if it cites none, all the step's inputs).
+ * @param {{where?: string}} [options]  How to name those records in the message.
  * @returns {string[]}
  */
-export function claimNumberProblems(text, records, thresholds) {
+export function claimNumberProblems(text, records, thresholds, { where = "the records it cites" } = {}) {
   const allowed = [...thresholds, ...records.flatMap((r) => allowedNumbers(r, []))];
   const withPercents = [...allowed, ...thresholds.flatMap(asPercent)];
   const missing = [...new Set(numbersIn(text))].filter((n) => !withPercents.some((a) => same(a, n)));
   if (missing.length === 0) return [];
   const all = records.map((r) => r.source_id);
   const ids = all.length > 3 ? `${all.slice(0, 3).join(", ")} and ${all.length - 3} more` : all.join(", ");
-  return [`"${text}" mentions ${missing.join(", ")}, which ${missing.length === 1 ? "isn't" : "aren't"} in the records it cites (${ids}).`];
+  return [`"${text}" mentions ${missing.join(", ")}, which ${missing.length === 1 ? "isn't" : "aren't"} in ${where} (${ids}).`];
 }
 
 /**

@@ -471,7 +471,7 @@ function renderBrief(thread) {
   }
   box.append(said, text("p", "brief-small", verificationSummary(verification)));
   const removed = removedLines(verification);
-  if (removed.length) box.append(text("div", "card-label", "Removed as unverified"), list(removed));
+  if (removed.length) box.append(text("div", "card-label", "Removed or replaced as unverified"), list(removed));
 
   // Possible contributing factors
   box.append(text("h4", "", "Possible contributing factors"));

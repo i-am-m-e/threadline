@@ -72,7 +72,42 @@ export async function runPipeline({ windows, records, rules, evidenceLibrary, sc
     analysis: { claims_checked: 0, claims_verified: 0, claims_removed: [], labels_corrected: 0 },
     map: { nodes_checked: 0, nodes_verified: 0, nodes_removed: [], labels_corrected: 0 },
     card: "not checked",
+    wording: { checked: 0, replaced: [], removed: [] },
   };
+  // The rest of the text that describes the records (pattern statement, vignette, "evidence that
+  // does not fit", compounding factors, the policy gap's wording): numbers must be in the records
+  // given to that step. After the retry, a field is replaced by a plain line, a list item removed.
+  // (Options, other explanations and open questions are proposals and questions, not claims.)
+  const wording = verification.wording;
+  const PLAIN = "The drafted wording mentioned figures that aren't in the records, so the wording was removed.";
+  const fieldIssues = (field, holder, key, records, fallback) => {
+    const problems = claimNumberProblems(holder[key] ?? "", records, thresholds, { where: "this Thread's records" });
+    if (problems.length === 0) return [];
+    const problem = `${field}: ${problems.join(" ")}`;
+    return [{
+      problem,
+      remove: () => {
+        wording.replaced.push({ field, text: holder[key], problem });
+        holder[key] = typeof fallback === "function" ? fallback() : fallback;
+        return `${field}: unverified, replaced with a plain line`;
+      },
+    }];
+  };
+  const itemIssues = (list, holder, records) => holder[list].flatMap((text) => {
+    const problems = claimNumberProblems(text, records, thresholds, { where: "this Thread's records" });
+    if (problems.length === 0) return [];
+    const problem = `${list}: ${problems.join(" ")}`;
+    return [{
+      problem,
+      remove: () => {
+        holder[list].splice(holder[list].indexOf(text), 1);
+        wording.removed.push({ list, text, problem });
+        return `${list}: "${text}": unverified, removed`;
+      },
+    }];
+  });
+  const patternInputs = [...flowRecords, ...qualitativeRecords];
+
   // The analysis claims checked against their records: contributing conditions and the pressure map.
   const CLAIM_LISTS = [["contributing_conditions", (c) => [c.condition]], ["pressure_map", (p) => [p.pressure_carried, p.shifting_to]]];
   const citedBy = (claim) => claim.source_ids.map((id) => byId.get(id)).filter(Boolean);
@@ -110,7 +145,13 @@ export async function runPipeline({ windows, records, rules, evidenceLibrary, sc
     prompt: buildPatternPrompt({ thresholds: promptThresholds, flowRecords: forModel(flowRecords), qualitativeRecords: forModel(qualitativeRecords) }),
     sourceIds: recordIds,
     checks: (o) => (/^Records suggest\b/.test(o.pattern_statement.trim()) ? [] : ['pattern_statement must begin with "Records suggest".']),
-    verify: verifyFindings,
+    verify: (o) => [
+      ...verifyFindings(o),
+      ...fieldIssues("pattern_statement", o, "pattern_statement", patternInputs, `Records suggest a possible pattern: ${pattern_type} at ${location}.`),
+      ...["situation", "what_appears_to_happen", "observed_effects"].flatMap((key) =>
+        fieldIssues(`possible_vignette.${key}`, o.possible_vignette, key, patternInputs, PLAIN)),
+      ...itemIssues("evidence_that_does_not_fit", o, patternInputs),
+    ],
   });
   verification.findings_verified = pattern.supporting_evidence.length;
   verification.findings_checked = verification.findings_verified + verification.findings_removed.length;
@@ -172,9 +213,16 @@ export async function runPipeline({ windows, records, rules, evidenceLibrary, sc
       });
       const gap = o.policy_practice_gap;
       const policy = gap.policy_source_id && byId.get(gap.policy_source_id);
+      // The gap's own wording: "policy expects" against the cited policy, "records suggest"
+      // against the step's records. A replaced "policy expects" uses the policy's own words.
+      const policyQuoted = () => (gap.policy_quote?.trim() ? `\u201c${gap.policy_quote.trim()}\u201d (quoted from the policy)` : PLAIN);
+      const textIssues = [
+        ...itemIssues("compounding_factors", o, inputRecords),
+        ...fieldIssues("policy_practice_gap.what_policy_expects", gap, "what_policy_expects", policy ? [policy] : inputRecords, policyQuoted),
+        ...fieldIssues("policy_practice_gap.what_records_suggest", gap, "what_records_suggest", inputRecords, PLAIN),
+      ];
       const problem = policy && policyQuoteProblem(gap, policy);
-      if (!problem) return [...claimIssues, ...nodeIssues];
-      return [...claimIssues, ...nodeIssues, {
+      const quoteIssues = problem ? [{
         problem,
         remove: () => {
           const id = gap.policy_source_id;
@@ -183,7 +231,10 @@ export async function runPipeline({ windows, records, rules, evidenceLibrary, sc
           verification.policy_quote = "removed";
           return `policy_practice_gap: ${id}: unverified, removed (policy id and quote blanked)`;
         },
-      }];
+      }] : [];
+      // The quote's removal comes before the text's, so a replaced "policy expects" can never
+      // borrow an unverified quote.
+      return [...claimIssues, ...nodeIssues, ...quoteIssues, ...textIssues];
     },
     checks: (o) => [
       ...(o.alternative_explanations.length ? [] : ["Give at least one alternative explanation."]),
@@ -209,6 +260,7 @@ export async function runPipeline({ windows, records, rules, evidenceLibrary, sc
     node.trust_label = fit;
     verification.map.labels_corrected += 1;
   }
+  wording.checked = 4 + 2 + pattern.evidence_that_does_not_fit.length + analysis.compounding_factors.length + wording.removed.length;
   verification.map.nodes_verified = analysis.graph.nodes.length;
   verification.map.nodes_checked = verification.map.nodes_verified + verification.map.nodes_removed.length;
   verification.analysis.claims_verified = CLAIM_LISTS.reduce((n, [list]) => n + analysis[list].length, 0);
@@ -259,7 +311,7 @@ export async function runPipeline({ windows, records, rules, evidenceLibrary, sc
   const CARD_FALLBACK = {
     card_title: `Possible pattern: ${pattern_type}`,
     noticed: `Threadline noticed a possible pattern: ${pattern_type} at ${location}.`,
-    why_it_may_matter: "The drafted wording mentioned figures that aren't in the records, so it was removed.",
+    why_it_may_matter: PLAIN,
   };
   verification.card = "verified";
   const verifyCard = (o) => Object.keys(CARD_FALLBACK).flatMap((field) => {

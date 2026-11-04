@@ -41,7 +41,18 @@ function mapAndCardLines(tallies) {
     cards.length
       ? `| Review card wording verified | ${cards.filter((c) => c === "verified").length} of ${cards.length} runs |`
       : "| Review card wording verified | n/a (runs from before this check) |",
+    wordingLine(tallies),
   ];
+}
+
+/** The rest of the text that describes the records (statement, vignette, lists, policy gap). */
+function wordingLine(tallies) {
+  const w = tallies.map((t) => t.wording).filter(Boolean);
+  if (w.length === 0) return "| Other wording checked for numbers | n/a (runs from before this check) |";
+  const checked = w.reduce((n, t) => n + t.checked, 0);
+  const replaced = w.reduce((n, t) => n + t.replaced.length, 0);
+  const removed = w.reduce((n, t) => n + t.removed.length, 0);
+  return `| Other wording checked for numbers | ${checked - replaced - removed} of ${checked} verified (${replaced} replaced, ${removed} removed) |`;
 }
 
 /** Contributing conditions and pressure-map entries checked against their records. */
@@ -107,8 +118,10 @@ export function renderScorecard(summary) {
       ...(s.verification?.findings_removed ?? []),
       ...(s.verification?.analysis?.claims_removed ?? []),
       ...(s.verification?.map?.nodes_removed ?? []),
+      ...(s.verification?.wording?.removed ?? []),
+      ...(s.verification?.wording?.replaced ?? []),
     ].map((r) => `- Run ${i + 1}: ${r.problem}`));
-    if (removed.length) lines.push("", "**Findings, analysis claims and map nodes removed as unverified**", ...removed);
+    if (removed.length) lines.push("", "**Removed or replaced as unverified**", ...removed);
 
     const softMisses = scored.flatMap((s, i) => s.soft.filter((c) => !c.pass && c.id !== "may_mention_as_possible_confounder").map((c) => `- Run ${i + 1}: ${c.id}: ${c.detail}`));
     if (softMisses.length) lines.push("", "**Soft checks not met**", ...softMisses);

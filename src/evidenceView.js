@@ -26,15 +26,19 @@ export function verificationSummary(v) {
   if (!v) return "Recorded before findings were checked against their records.";
   const a = v.analysis;
   const m = v.map;
+  const w = v.wording;
+  const wChanged = w ? w.replaced.length + w.removed.length : 0;
   const counts = [
     `${v.findings_verified} of ${plural(v.findings_checked, "finding")}`,
     ...(a ? [`${a.claims_verified} of ${plural(a.claims_checked, "analysis claim")}`] : []),
     ...(m ? [`${m.nodes_verified} of ${plural(m.nodes_checked, "map node")}`] : []),
+    ...(w ? [`${w.checked - wChanged} of ${w.checked} other passage${w.checked === 1 ? "" : "s"}`] : []),
   ];
   const joined = counts.length > 1 ? `${counts.slice(0, -1).join(", ")} and ${counts.at(-1)}` : counts[0];
   const parts = [`Checked against their records: ${joined} verified`];
-  const removed = v.findings_removed.length + (a?.claims_removed.length ?? 0) + (m?.nodes_removed.length ?? 0);
+  const removed = v.findings_removed.length + (a?.claims_removed.length ?? 0) + (m?.nodes_removed.length ?? 0) + (w?.removed.length ?? 0);
   if (removed) parts.push(`${removed} removed as unverified`);
+  if (w?.replaced.length) parts.push(`${w.replaced.length} passage${w.replaced.length === 1 ? "'s" : "s'"} wording replaced`);
   if (v.fixed_on_retry) parts.push(`${v.fixed_on_retry} fixed on retry`);
   const relabelled = (a?.labels_corrected ?? 0) + (m?.labels_corrected ?? 0);
   if (relabelled) parts.push(`${plural(relabelled, "trust label")} corrected`);
@@ -44,6 +48,17 @@ export function verificationSummary(v) {
   return parts.join("; ") + ".";
 }
 
+const TEXT_NAMES = {
+  pattern_statement: "Pattern statement",
+  "possible_vignette.situation": "Situation",
+  "possible_vignette.what_appears_to_happen": "What appears to happen",
+  "possible_vignette.observed_effects": "Observed effects",
+  evidence_that_does_not_fit: "Evidence that does not fit",
+  compounding_factors: "Where small variations combine",
+  "policy_practice_gap.what_policy_expects": "Policy expects",
+  "policy_practice_gap.what_records_suggest": "Records suggest",
+};
+
 /** What was removed as unverified, and why, one line each. */
 export function removedLines(v) {
   if (!v) return [];
@@ -52,6 +67,8 @@ export function removedLines(v) {
     ...v.findings_removed.map((r) => `Finding ${quoted(r.finding)} (${r.source_id}): ${r.problem.replace(`${r.source_id}: `, "")}`),
     ...(v.analysis?.claims_removed ?? []).map((r) => `${listNames[r.list] ?? r.list} ${quoted(r.text)}: ${r.problem.replace(`${r.list}: `, "").replace(`"${r.text}" `, "")}`),
     ...(v.map?.nodes_removed ?? []).map((r) => `Map node ${quoted(r.text)}: ${r.problem.replace("graph.nodes: ", "").replace(`"${r.text}" `, "")}`),
+    ...(v.wording?.removed ?? []).map((r) => `${TEXT_NAMES[r.list] ?? r.list} ${quoted(r.text)}: ${r.problem.replace(`${r.list}: `, "").replace(`"${r.text}" `, "")}`),
+    ...(v.wording?.replaced ?? []).map((r) => `${TEXT_NAMES[r.field] ?? r.field} (wording replaced) ${quoted(r.text)}: ${r.problem.replace(`${r.field}: `, "").replace(`"${r.text}" `, "")}`),
   ];
 }
 

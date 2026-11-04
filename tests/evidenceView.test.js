@@ -87,3 +87,17 @@ test("policy box: no verified findings → what the records suggest is Inferred"
 test("policy box: a run from before the checks keeps its labels", () => {
   assert.deepEqual(gapLabels({ policy_source_id: "HC-POL-CTAS-ESC" }, undefined), { expects: "Authoritative", suggests: "Observed", note: null });
 });
+
+test("the summary and the removed list also cover the rest of the wording", () => {
+  const v = { ...okVerification, wording: {
+    checked: 7,
+    replaced: [{ field: "pattern_statement", text: "Records suggest waits of 140 minutes.", problem: 'pattern_statement: "Records suggest waits of 140 minutes." mentions 140, which isn\'t in the records it cites (HC-CMP-4471).' }],
+    removed: [{ list: "compounding_factors", text: "Delays of 140 minutes", problem: 'compounding_factors: "Delays of 140 minutes" mentions 140, which isn\'t in the records it cites (HC-CMP-4471).' }],
+  } };
+  assert.equal(verificationSummary(v),
+    "Checked against their records: 6 of 6 findings, 4 of 4 analysis claims and 5 of 7 other passages verified; 1 removed as unverified; 1 passage's wording replaced; policy wording verified.");
+  assert.deepEqual(removedLines(v), [
+    "Where small variations combine \u201cDelays of 140 minutes\u201d: mentions 140, which isn't in the records it cites (HC-CMP-4471).",
+    "Pattern statement (wording replaced) \u201cRecords suggest waits of 140 minutes.\u201d: mentions 140, which isn't in the records it cites (HC-CMP-4471).",
+  ]);
+});

@@ -106,6 +106,7 @@ test("findings that match their records pass, and the tally says so", async () =
     analysis: { claims_checked: 4, claims_verified: 4, claims_removed: [], labels_corrected: 0 },
     map: { nodes_checked: 9, nodes_verified: 9, nodes_removed: [], labels_corrected: 2 },
     card: "verified",
+    wording: { checked: 7, replaced: [], removed: [] },
   });
 });
 
@@ -276,4 +277,82 @@ test("review card: still unverified after the retry → that wording is replaced
   assert.doesNotMatch(card.noticed, /140/);
   assert.equal(result.meta.verification.card, "replaced");
   assert.ok(result.log.some((l) => l.step === "reviewCard" && l.type === "unverified_removed" && /card\.noticed/.test(l.detail)));
+});
+
+// ---------- The rest of the text that describes the records ----------
+
+const wordingLog = (result) => result.log.filter((l) => l.type === "unverified_removed").map((l) => l.detail).join("\n");
+
+test("the recorded runs' other wording verifies, with nothing replaced or removed", async () => {
+  for (const runIndex of [0, 1]) {
+    const s = fixtureSteps("rooming", runIndex);
+    const replay = replayAsk([s.pattern, s.analysis, s.options, s.card]);
+    const result = await runPipeline({ windows, records, rules, evidenceLibrary: loadEvidenceLibrary(), schemas: loadSchemas(), config: SIGNALS_CONFIG, ask: replay.ask });
+    assert.equal(replay.calls.length, 4, `rooming run ${runIndex}: no retry`);
+    assert.deepEqual(result.meta.verification.wording.replaced, []);
+    assert.deepEqual(result.meta.verification.wording.removed, []);
+  }
+  const { result } = await run();
+  assert.equal(result.meta.verification.wording.checked, 7, "statement, 3 vignette parts, 1 compounding factor, 2 policy-gap parts");
+});
+
+test("pattern statement with an invented number: named in the retry, then replaced by a plain line", async () => {
+  const wrong = (s) => ({ ...s.pattern, pattern_statement: "Records suggest waits of 140 minutes." });
+  const first = await run({ answers: (s) => [wrong(s), s.pattern, s.analysis, s.options, s.card] });
+  assert.match(lastMessage(first.replay, 1), /pattern_statement: "Records suggest waits of 140 minutes\." mentions 140/);
+
+  const { result } = await run({ answers: (s) => [wrong(s), wrong(s), s.analysis, s.options, s.card] });
+  assert.equal(result.steps.pattern.pattern_statement, "Records suggest a possible pattern: Rooming during slow physician pace at Synthetic UCC A.");
+  assert.match(wordingLog(result), /pattern_statement: unverified, replaced/);
+  assert.equal(result.meta.verification.wording.replaced[0].field, "pattern_statement");
+});
+
+test("a vignette part with an invented number is replaced, the others kept", async () => {
+  const wrong = (s) => ({ ...s.pattern, possible_vignette: { ...s.pattern.possible_vignette, observed_effects: "A patient waited 140 minutes." } });
+  const { result } = await run({ answers: (s) => [wrong(s), wrong(s), s.analysis, s.options, s.card] });
+  const v = result.steps.pattern.possible_vignette;
+  assert.doesNotMatch(v.observed_effects, /140/);
+  assert.match(v.observed_effects, /wording was removed/);
+  assert.equal(v.situation, fixtureSteps("rooming").pattern.possible_vignette.situation);
+});
+
+test("an 'evidence that does not fit' item with an invented number is removed", async () => {
+  const wrong = (s) => ({ ...s.pattern, evidence_that_does_not_fit: ["A compliment about a 15-minute wait (HC-CMP-4475)", "A 140-minute wait in triage"] });
+  const { result } = await run({ answers: (s) => [wrong(s), wrong(s), s.analysis, s.options, s.card] });
+  assert.deepEqual(result.steps.pattern.evidence_that_does_not_fit, ["A compliment about a 15-minute wait (HC-CMP-4475)"], "the compliment's 15 is in its record; 140 isn't in any");
+  assert.equal(result.meta.verification.wording.removed[0].list, "evidence_that_does_not_fit");
+});
+
+test("a 'where small variations combine' item with an invented number is removed", async () => {
+  const wrong = (s) => ({ ...s.analysis, compounding_factors: [...s.analysis.compounding_factors, "Three discharges delayed by 140 minutes"] });
+  const { result } = await run({ answers: (s) => [s.pattern, wrong(s), wrong(s), s.options, s.card] });
+  assert.deepEqual(result.steps.analysis.compounding_factors, fixtureSteps("rooming").analysis.compounding_factors);
+});
+
+test("'policy expects' with an invented number is replaced by the verified policy quote", async () => {
+  const wrong = (s) => withGap(s.analysis, { what_policy_expects: "A monitored bed within 10 minutes of arrival." });
+  const { result } = await run({ answers: (s) => [s.pattern, wrong(s), wrong(s), s.options, s.card] });
+  const gap = result.steps.analysis.policy_practice_gap;
+  assert.equal(gap.what_policy_expects, "“require immediate access to a monitored bed on arrival” (quoted from the policy)");
+});
+
+test("'records suggest' with an invented number is replaced by a plain line", async () => {
+  const wrong = (s) => withGap(s.analysis, { what_records_suggest: "Occupancy reached 99%." });
+  const { result } = await run({ answers: (s) => [s.pattern, wrong(s), wrong(s), s.options, s.card] });
+  assert.match(result.steps.analysis.policy_practice_gap.what_records_suggest, /wording was removed/);
+});
+
+test("if the policy quote is unverified too, 'policy expects' gets the plain line, never the unverified quote", async () => {
+  const wrong = (s) => withGap(s.analysis, { what_policy_expects: "A monitored bed within 10 minutes.", policy_quote: "a monitored bed within 10 minutes" });
+  const { result } = await run({ answers: (s) => [s.pattern, wrong(s), wrong(s), s.options, s.card] });
+  const gap = result.steps.analysis.policy_practice_gap;
+  assert.equal(gap.policy_quote, "");
+  assert.match(gap.what_policy_expects, /wording was removed/);
+  assert.doesNotMatch(gap.what_policy_expects, /10 minutes/);
+});
+
+test("wording checked against all the step's records says so in the reason", async () => {
+  const wrong = (s) => ({ ...s.pattern, pattern_statement: "Records suggest waits of 140 minutes." });
+  const { replay } = await run({ answers: (s) => [wrong(s), s.pattern, s.analysis, s.options, s.card] });
+  assert.match(lastMessage(replay, 1), /mentions 140, which isn't in this Thread's records/);
 });
