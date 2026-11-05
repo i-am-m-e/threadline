@@ -33,7 +33,7 @@ A one-page summary for picking the work back up. Branch: `verify-card-map` (draf
 | Energy pack: hard pass | 3 of 3 | 3 of 3 |
 | Time per run | about 12–17 minutes | about 14–21 minutes |
 
-Every healthcare failure in those two runs was the same: **HC-INC-99102** (no monitored bed for a
+Every healthcare-pack failure in those two scorecards was the same: **HC-INC-99102** (no monitored bed for a
 CTAS 2 arrival) was not cited. In most failing runs the model had read it and called it "not
 fitting". Commit `2b7fbdf` changes the pattern prompt to say that a record describing a
 safety-relevant condition supports the pattern. **It hasn't been scored yet.**
