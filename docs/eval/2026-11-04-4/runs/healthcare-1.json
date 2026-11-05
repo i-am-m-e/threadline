@@ -1,0 +1,790 @@
+{
+  "pack": "healthcare",
+  "run": 1,
+  "stages": [
+    {
+      "packKey": "healthcare",
+      "hard": [
+        {
+          "id": "no_step_errors",
+          "pass": true,
+          "detail": "The run completed."
+        },
+        {
+          "id": "pattern_must_cite_all",
+          "pass": true,
+          "detail": "All required records cited."
+        },
+        {
+          "id": "pattern_must_cite_at_least_one_of",
+          "pass": true,
+          "detail": "Cited 4 flow record(s)."
+        },
+        {
+          "id": "must_not_cite_anywhere",
+          "pass": true,
+          "detail": "No unrelated decoy cited."
+        },
+        {
+          "id": "must_not_cite_as_support",
+          "pass": true,
+          "detail": "No counter-evidence or confounder cited as support."
+        },
+        {
+          "id": "analysis_policy_source_id",
+          "pass": true,
+          "detail": "Policy cited: HC-POL-CTAS-ESC"
+        },
+        {
+          "id": "acceptable_pattern_confidence",
+          "pass": true,
+          "detail": "Pattern confidence Medium; acceptable: Medium"
+        },
+        {
+          "id": "expected_safety_conditions",
+          "pass": true,
+          "detail": "Found: no_monitored_bed_acute, long_wait_after_rooming"
+        },
+        {
+          "id": "status_never_past_flagged",
+          "pass": true,
+          "detail": "Status: Flagged"
+        },
+        {
+          "id": "no_person_names_or_blame_labels",
+          "pass": true,
+          "detail": "None found."
+        }
+      ],
+      "soft": [
+        {
+          "id": "should_acknowledge_as_not_fitting",
+          "pass": false,
+          "detail": "HC-CMP-4475 not acknowledged"
+        },
+        {
+          "id": "may_mention_as_possible_confounder",
+          "pass": true,
+          "detail": "HC-CMP-4480 mentioned (\"parking\")"
+        }
+      ],
+      "citedIds": [
+        "HC-CMP-4471",
+        "HC-FLOW-20260920-1500",
+        "HC-FLOW-20260920-1600",
+        "HC-FLOW-20260920-1700",
+        "HC-FLOW-20260920-1800",
+        "HC-INC-99102"
+      ],
+      "retries": 3,
+      "adjustments": 10,
+      "seconds": 819.769,
+      "verification": {
+        "findings_checked": 7,
+        "findings_verified": 7,
+        "findings_removed": [],
+        "fixed_on_retry": 1,
+        "findings_labels_corrected": 0,
+        "policy_quote": "verified",
+        "analysis": {
+          "claims_checked": 5,
+          "claims_verified": 5,
+          "claims_removed": [],
+          "labels_corrected": 0
+        },
+        "map": {
+          "nodes_checked": 11,
+          "nodes_verified": 7,
+          "nodes_removed": [
+            {
+              "id": "HC-FLOW-20260920-1500",
+              "text": "Flow Record 1500",
+              "problem": "graph.nodes: \"Flow Record 1500\" mentions 1500, which isn't in the records it cites (HC-FLOW-20260920-1500)."
+            },
+            {
+              "id": "HC-FLOW-20260920-1600",
+              "text": "Flow Record 1600",
+              "problem": "graph.nodes: \"Flow Record 1600\" mentions 1600, which isn't in the records it cites (HC-FLOW-20260920-1600)."
+            },
+            {
+              "id": "HC-FLOW-20260920-1700",
+              "text": "Flow Record 1700",
+              "problem": "graph.nodes: \"Flow Record 1700\" mentions 1700, which isn't in the records it cites (HC-FLOW-20260920-1700)."
+            },
+            {
+              "id": "HC-FLOW-20260920-1800",
+              "text": "Flow Record 1800",
+              "problem": "graph.nodes: \"Flow Record 1800\" mentions 1800, which isn't in the records it cites (HC-FLOW-20260920-1800)."
+            }
+          ],
+          "labels_corrected": 4
+        },
+        "card": "verified",
+        "wording": {
+          "checked": 10,
+          "replaced": [],
+          "removed": []
+        },
+        "windows": {
+          "total": 1,
+          "cited": 1,
+          "uncited": []
+        },
+        "rationale": "ok",
+        "learn_more": "not checked"
+      },
+      "passed": true,
+      "confidence": "Medium",
+      "leadingOptionType": "Process adjustment"
+    },
+    {
+      "packKey": "healthcare_update",
+      "hard": [
+        {
+          "id": "no_step_errors",
+          "pass": false,
+          "detail": "Rooming during slow physician pace at Synthetic UCC A: Threadline couldn't complete the \"options\" step: Include at least one option whose \"type\" is exactly \"Learn more\": for example, track this pattern for two weeks, or bring it to an existing huddle, before changing anything. Keep your other options. (the file stays in the incoming folder; Check now will try again)"
+        }
+      ],
+      "soft": [],
+      "citedIds": [],
+      "retries": 0,
+      "adjustments": 0,
+      "seconds": 1035.139,
+      "verification": null,
+      "passed": false,
+      "error": "Rooming during slow physician pace at Synthetic UCC A: Threadline couldn't complete the \"options\" step: Include at least one option whose \"type\" is exactly \"Learn more\": for example, track this pattern for two weeks, or bring it to an existing huddle, before changing anything. Keep your other options. (the file stays in the incoming folder; Check now will try again)"
+    }
+  ],
+  "threads": [
+    {
+      "id": "THR-20261105-1",
+      "domain": "Healthcare",
+      "pattern_type": "Rooming during slow physician pace",
+      "location": "Synthetic UCC A",
+      "status": "Flagged",
+      "created_at": "2026-11-05T00:12:07.660Z",
+      "updated_at": "2026-11-05T00:12:07.660Z",
+      "windows": [
+        {
+          "start": "2026-09-20T15:00",
+          "end": "2026-09-20T18:00",
+          "source_ids": [
+            "HC-FLOW-20260920-1500",
+            "HC-FLOW-20260920-1600",
+            "HC-FLOW-20260920-1700",
+            "HC-FLOW-20260920-1800"
+          ]
+        }
+      ],
+      "files": [
+        "EHR_Flow_2026-09-20.csv",
+        "Complaint_4471.json",
+        "RLDatix_Report_99102.json",
+        "HC_Eval_Extra_2026-09-20.json"
+      ],
+      "runs": [
+        {
+          "time": "2026-11-05T00:12:07.660Z",
+          "steps": {
+            "pattern": {
+              "vignette_id": "VIG-2026-09-20-1",
+              "domain": "Healthcare",
+              "pattern_type": "Rooming during slow physician pace",
+              "location": "Synthetic UCC A",
+              "time_window": "2026-09-20 15:00 to 18:00",
+              "pattern_statement": "Records suggest that between 3:00 and 6:00 p.m., rooming of patients continued while physician pace slowed, leading to long waits after rooming.",
+              "supporting_evidence": [
+                {
+                  "source_id": "HC-FLOW-20260920-1500",
+                  "trust_label": "Observed",
+                  "finding": "Bed occupancy above 90% (bed_occupancy > 0.9)",
+                  "quote": "",
+                  "record_values": [
+                    {
+                      "field": "bed_occupancy",
+                      "value": 0.93
+                    }
+                  ]
+                },
+                {
+                  "source_id": "HC-FLOW-20260920-1500",
+                  "trust_label": "Observed",
+                  "finding": "Room-to-physician time above 45 minutes (room_to_physician_minutes > 45)",
+                  "quote": "",
+                  "record_values": [
+                    {
+                      "field": "room_to_physician_minutes",
+                      "value": 76
+                    }
+                  ]
+                },
+                {
+                  "source_id": "HC-FLOW-20260920-1600",
+                  "trust_label": "Observed",
+                  "finding": "Room-to-physician time above 45 minutes (room_to_physician_minutes > 45)",
+                  "quote": "",
+                  "record_values": [
+                    {
+                      "field": "room_to_physician_minutes",
+                      "value": 90
+                    }
+                  ]
+                },
+                {
+                  "source_id": "HC-FLOW-20260920-1700",
+                  "trust_label": "Observed",
+                  "finding": "Room-to-physician time above 45 minutes (room_to_physician_minutes > 45)",
+                  "quote": "",
+                  "record_values": [
+                    {
+                      "field": "room_to_physician_minutes",
+                      "value": 96
+                    }
+                  ]
+                },
+                {
+                  "source_id": "HC-FLOW-20260920-1800",
+                  "trust_label": "Observed",
+                  "finding": "Room-to-physician time above 45 minutes (room_to_physician_minutes > 45)",
+                  "quote": "",
+                  "record_values": [
+                    {
+                      "field": "room_to_physician_minutes",
+                      "value": 90
+                    }
+                  ]
+                },
+                {
+                  "source_id": "HC-CMP-4471",
+                  "trust_label": "Observed",
+                  "finding": "Waits after rooming over 60 minutes",
+                  "quote": "waiting 85 minutes after being placed in an exam room before seeing a physician",
+                  "record_values": []
+                },
+                {
+                  "source_id": "HC-INC-99102",
+                  "trust_label": "Observed",
+                  "finding": "No monitored bed for a CTAS 2 arrival",
+                  "quote": "Triage reported no available monitored bed when an EMS CTAS 2 chest pain patient arrived",
+                  "record_values": []
+                }
+              ],
+              "possible_vignette": {
+                "situation": "Between 3:00 and 6:00 p.m., the UCC was busy, with bed occupancy consistently above 90%.",
+                "what_appears_to_happen": "As rooming of patients continued, the time between patients being placed in exam rooms and seeing a physician began to increase, reaching over 90 minutes at one point. This slowdown in physician pace may have been due to a variety of factors, such as a high volume of complex cases or staffing challenges.",
+                "observed_effects": "The long waits after rooming led to patient frustration, as expressed in a complaint. Additionally, the lack of available monitored beds for a CTAS 2 patient could have contributed to potential safety concerns."
+              },
+              "evidence_that_does_not_fit": [
+                "A complaint about a parking pay machine being out of order, which is unrelated to the rooming and physician pace issues.",
+                "An incident report about expired glucometer test strips, which also seems unrelated to the main pattern."
+              ],
+              "confidence": "Medium",
+              "confidence_reason": "The pattern is supported by multiple flow records and two qualitative records, indicating a consistent issue over a three-hour period."
+            },
+            "analysis": {
+              "vignette_id": "VIG-2026-09-20-1",
+              "policy_practice_gap": {
+                "policy_source_id": "HC-POL-CTAS-ESC",
+                "policy_quote": "immediate access to a monitored bed",
+                "what_policy_expects": "CTAS 1 or CTAS 2 patients to have immediate access to a monitored bed on arrival",
+                "what_records_suggest": "CTAS 2 patients may not have immediate access to a monitored bed, leading to potential safety concerns",
+                "confidence": "Medium"
+              },
+              "contributing_conditions": [
+                {
+                  "condition": "High bed occupancy",
+                  "source_ids": [
+                    "HC-FLOW-20260920-1500"
+                  ],
+                  "trust_label": "Observed"
+                },
+                {
+                  "condition": "Slow physician pace",
+                  "source_ids": [
+                    "HC-FLOW-20260920-1500",
+                    "HC-FLOW-20260920-1600",
+                    "HC-FLOW-20260920-1700",
+                    "HC-FLOW-20260920-1800"
+                  ],
+                  "trust_label": "Observed"
+                }
+              ],
+              "compounding_factors": [
+                "High volume of complex cases",
+                "Staffing challenges"
+              ],
+              "pressure_map": [
+                {
+                  "role": "Charge Nurse",
+                  "pressure_carried": "Escalation of monitored bed availability",
+                  "shifting_to": "Physician Lead",
+                  "source_ids": [
+                    "HC-POL-CTAS-ESC"
+                  ],
+                  "trust_label": "Authoritative"
+                },
+                {
+                  "role": "Physician",
+                  "pressure_carried": "Slow pace due to complex cases or staffing issues",
+                  "shifting_to": "N/A",
+                  "source_ids": [
+                    "HC-FLOW-20260920-1500",
+                    "HC-FLOW-20260920-1600",
+                    "HC-FLOW-20260920-1700",
+                    "HC-FLOW-20260920-1800"
+                  ],
+                  "trust_label": "Observed"
+                },
+                {
+                  "role": "Triage Staff",
+                  "pressure_carried": "Reporting of monitored bed availability",
+                  "shifting_to": "Charge Nurse",
+                  "source_ids": [
+                    "HC-INC-99102"
+                  ],
+                  "trust_label": "Observed"
+                }
+              ],
+              "alternative_explanations": [
+                "The slowdown in physician pace could be due to factors beyond high volume or staffing, such as the complexity of individual cases or unexpected events."
+              ],
+              "open_questions": [
+                "What specific factors contributed to the slow physician pace during this time?",
+                "How often does the charge nurse need to escalate monitored bed availability issues to the physician lead?",
+                "Are there any systemic issues affecting bed availability or physician staffing that need to be addressed?"
+              ],
+              "graph": {
+                "nodes": [
+                  {
+                    "id": "HC-POL-CTAS-ESC",
+                    "label": "Policy: CTAS Escalation",
+                    "node_type": "policy",
+                    "trust_label": "Authoritative",
+                    "source_ids": [
+                      "HC-POL-CTAS-ESC"
+                    ]
+                  },
+                  {
+                    "id": "HC-CMP-4471",
+                    "label": "Complaint Record",
+                    "node_type": "evidence",
+                    "trust_label": "Observed",
+                    "source_ids": [
+                      "HC-CMP-4471"
+                    ]
+                  },
+                  {
+                    "id": "HC-INC-99102",
+                    "label": "Incident Record",
+                    "node_type": "evidence",
+                    "trust_label": "Observed",
+                    "source_ids": [
+                      "HC-INC-99102"
+                    ]
+                  },
+                  {
+                    "id": "ChargeNurse",
+                    "label": "Charge Nurse",
+                    "node_type": "role",
+                    "trust_label": "Inferred",
+                    "source_ids": []
+                  },
+                  {
+                    "id": "PhysicianLead",
+                    "label": "Physician Lead",
+                    "node_type": "role",
+                    "trust_label": "Inferred",
+                    "source_ids": []
+                  },
+                  {
+                    "id": "Physician",
+                    "label": "Physician",
+                    "node_type": "role",
+                    "trust_label": "Inferred",
+                    "source_ids": []
+                  },
+                  {
+                    "id": "TriageStaff",
+                    "label": "Triage Staff",
+                    "node_type": "role",
+                    "trust_label": "Inferred",
+                    "source_ids": []
+                  }
+                ],
+                "edges": [
+                  {
+                    "source": "HC-POL-CTAS-ESC",
+                    "target": "ChargeNurse",
+                    "relationship": "contributes to",
+                    "weight": 1,
+                    "inferred": false
+                  },
+                  {
+                    "source": "HC-POL-CTAS-ESC",
+                    "target": "PhysicianLead",
+                    "relationship": "shifts pressure to",
+                    "weight": 1,
+                    "inferred": false
+                  },
+                  {
+                    "source": "HC-CMP-4471",
+                    "target": "Physician",
+                    "relationship": "contributes to",
+                    "weight": 1,
+                    "inferred": false
+                  },
+                  {
+                    "source": "HC-INC-99102",
+                    "target": "TriageStaff",
+                    "relationship": "contributes to",
+                    "weight": 1,
+                    "inferred": false
+                  },
+                  {
+                    "source": "HC-INC-99102",
+                    "target": "ChargeNurse",
+                    "relationship": "shifts pressure to",
+                    "weight": 1,
+                    "inferred": false
+                  },
+                  {
+                    "source": "Physician",
+                    "target": "PhysicianLead",
+                    "relationship": "shifts pressure to",
+                    "weight": 1,
+                    "inferred": false
+                  }
+                ]
+              }
+            },
+            "evidence": [
+              {
+                "evidence_id": "EV-HC-001",
+                "domain": "Healthcare",
+                "title": "PLACEHOLDER: Escalation huddles triggered by wait-time thresholds",
+                "source_type": "Expert consensus",
+                "strength": "Low",
+                "summary": "PLACEHOLDER. Replace with a two-to-four sentence curated summary of evidence about: escalation huddles triggered by wait-time thresholds. This placeholder states no findings.",
+                "applies_when": [
+                  "room-to-physician wait above threshold",
+                  "slow physician pace",
+                  "waiting room surge"
+                ],
+                "citation": "PLACEHOLDER: to be replaced by founder",
+                "added_by": "founder",
+                "synthetic_placeholder": true
+              },
+              {
+                "evidence_id": "EV-HC-002",
+                "domain": "Healthcare",
+                "title": "PLACEHOLDER: Protecting reserve monitored beds for acute arrivals",
+                "source_type": "Guideline",
+                "strength": "Low",
+                "summary": "PLACEHOLDER. Replace with a two-to-four sentence curated summary of evidence about: protecting reserve monitored beds for acute arrivals. This placeholder states no findings.",
+                "applies_when": [
+                  "no monitored bed for acute arrival",
+                  "high bed occupancy",
+                  "CTAS 1 or 2 arrival"
+                ],
+                "citation": "PLACEHOLDER: to be replaced by founder",
+                "added_by": "founder",
+                "synthetic_placeholder": true
+              },
+              {
+                "evidence_id": "EV-HC-003",
+                "domain": "Healthcare",
+                "title": "PLACEHOLDER: Matching rooming pace to clinician capacity",
+                "source_type": "Primary study",
+                "strength": "Low",
+                "summary": "PLACEHOLDER. Replace with a two-to-four sentence curated summary of evidence about: matching rooming pace to clinician capacity. This placeholder states no findings.",
+                "applies_when": [
+                  "rooming continues while physician pace slows",
+                  "bed occupancy above 90%",
+                  "room allocation"
+                ],
+                "citation": "PLACEHOLDER: to be replaced by founder",
+                "added_by": "founder",
+                "synthetic_placeholder": true
+              }
+            ],
+            "options": {
+              "vignette_id": "VIG-2026-09-20-1",
+              "options": [
+                {
+                  "option_id": "O1",
+                  "title": "Escalation huddles",
+                  "type": "Process adjustment",
+                  "description": "Trigger escalation huddles when room-to-physician wait times exceed thresholds. This approach aims to address the slowdown in physician pace and ensure that CTAS 2 patients have immediate access to monitored beds.",
+                  "evidence_ids": [
+                    "EV-HC-001"
+                  ],
+                  "evidence_strength": "Low",
+                  "local_fit": "This option leverages existing practices and can be tailored to local context. However, it may require careful calibration of wait-time thresholds to avoid excessive huddles.",
+                  "possible_pressure_transfer": "If implemented, pressure could shift from the charge nurse to the physician lead, who would need to attend the huddles and address any identified issues.",
+                  "roles_to_involve": [
+                    "Charge Nurse",
+                    "Physician Lead"
+                  ],
+                  "how_we_would_know": "Monitor the frequency of escalation huddles and assess if they effectively address the issue of monitored bed availability for CTAS 2 patients.",
+                  "revisit_or_stop_if": "If huddles become too frequent or fail to improve bed availability, consider alternative strategies.",
+                  "revisit_after_days": 14,
+                  "trust_label": "Suggested"
+                },
+                {
+                  "option_id": "O2",
+                  "title": "Protect reserve beds",
+                  "type": "Learn more",
+                  "description": "Explore the feasibility of protecting a certain number of monitored beds for acute arrivals, particularly CTAS 1 and 2 patients. This strategy aims to address the gap between policy and practice regarding immediate access to monitored beds.",
+                  "evidence_ids": [
+                    "EV-HC-002"
+                  ],
+                  "evidence_strength": "Low",
+                  "local_fit": "The effectiveness of this approach may vary based on local bed capacity and occupancy patterns. It may also require coordination with other departments to ensure the availability of reserve beds.",
+                  "possible_pressure_transfer": "Pressure may shift from the charge nurse to the physician lead, as they would need to be involved in determining the number and allocation of reserve beds.",
+                  "roles_to_involve": [
+                    "Charge Nurse",
+                    "Physician Lead"
+                  ],
+                  "how_we_would_know": "Monitor bed occupancy and the availability of monitored beds for acute arrivals. Assess if the protection of reserve beds improves CTAS 2 patient access.",
+                  "revisit_or_stop_if": "If bed protection proves challenging or ineffective, consider alternative methods to ensure immediate access.",
+                  "revisit_after_days": 21,
+                  "trust_label": "Suggested"
+                }
+              ],
+              "recommendation": {
+                "leading_option_id": "O1",
+                "rationale": "Triggering escalation huddles is a feasible initial step, leveraging existing practices and adaptable to local context.",
+                "would_change_if": "If the slowdown in physician pace is primarily due to complex cases or unexpected events, alternative strategies may be needed.",
+                "confidence": "Medium",
+                "trust_label": "Suggested"
+              },
+              "suggested_reviewers": [
+                {
+                  "role": "Charge Nurse",
+                  "why": "The charge nurse's insights into escalating monitored bed availability issues are crucial for evaluating solutions."
+                },
+                {
+                  "role": "Physician Lead",
+                  "why": "The physician lead's role in addressing physician pace and bed availability issues makes their input essential."
+                }
+              ]
+            },
+            "card": {
+              "card_title": "Possible pattern: Slow physician pace",
+              "noticed": "Threadline noticed that between 3:00 and 6:00 p.m., rooming continued while physician pace slowed, leading to long waits.",
+              "why_it_may_matter": "This may impact patient safety and satisfaction.",
+              "possible_options": [
+                "Escalation huddles",
+                "Protect reserve beds"
+              ],
+              "evidence_badge": "Based on 6 records: EMR flow export, complaint, incident report",
+              "confidence": "Medium",
+              "question": "Does this match what you see on shift?"
+            }
+          },
+          "log": [
+            {
+              "step": "pattern",
+              "type": "problems",
+              "detail": "HC-INC-99102: the finding mentions 1, which isn't in that record. Use the record's own numbers.",
+              "attempt": 1,
+              "time": "2026-11-05T00:00:18.205Z"
+            },
+            {
+              "step": "analysis",
+              "type": "problems",
+              "detail": "graph.nodes: \"Flow Record 1500\" mentions 1500, which isn't in the records it cites (HC-FLOW-20260920-1500).; graph.nodes: \"Flow Record 1600\" mentions 1600, which isn't in the records it cites (HC-FLOW-20260920-1600).; graph.nodes: \"Flow Record 1700\" mentions 1700, which isn't in the records it cites (HC-FLOW-20260920-1700).; graph.nodes: \"Flow Record 1800\" mentions 1800, which isn't in the records it cites (HC-FLOW-20260920-1800).; policy_practice_gap: HC-POL-CTAS-ESC: the quote \"immediate access\" is too short; quote at least 4 words copied exactly from the record.",
+              "attempt": 1,
+              "time": "2026-11-05T00:05:12.837Z"
+            },
+            {
+              "step": "analysis",
+              "type": "unverified_removed",
+              "detail": "graph.nodes: \"Flow Record 1500\": unverified, removed (graph.nodes: \"Flow Record 1500\" mentions 1500, which isn't in the records it cites (HC-FLOW-20260920-1500).)",
+              "time": "2026-11-05T00:08:29.986Z"
+            },
+            {
+              "step": "analysis",
+              "type": "unverified_removed",
+              "detail": "graph.nodes: \"Flow Record 1600\": unverified, removed (graph.nodes: \"Flow Record 1600\" mentions 1600, which isn't in the records it cites (HC-FLOW-20260920-1600).)",
+              "time": "2026-11-05T00:08:29.986Z"
+            },
+            {
+              "step": "analysis",
+              "type": "unverified_removed",
+              "detail": "graph.nodes: \"Flow Record 1700\": unverified, removed (graph.nodes: \"Flow Record 1700\" mentions 1700, which isn't in the records it cites (HC-FLOW-20260920-1700).)",
+              "time": "2026-11-05T00:08:29.986Z"
+            },
+            {
+              "step": "analysis",
+              "type": "unverified_removed",
+              "detail": "graph.nodes: \"Flow Record 1800\": unverified, removed (graph.nodes: \"Flow Record 1800\" mentions 1800, which isn't in the records it cites (HC-FLOW-20260920-1800).)",
+              "time": "2026-11-05T00:08:29.986Z"
+            },
+            {
+              "step": "analysis",
+              "type": "adjusted",
+              "detail": "removed 4 graph edge(s) pointing at missing nodes",
+              "time": "2026-11-05T00:08:29.986Z"
+            },
+            {
+              "step": "analysis",
+              "type": "adjusted",
+              "detail": "graph.nodes: \"Charge Nurse\": trust_label \"Experiential\" → \"Inferred\" (from the records it cites)",
+              "time": "2026-11-05T00:08:29.986Z"
+            },
+            {
+              "step": "analysis",
+              "type": "adjusted",
+              "detail": "graph.nodes: \"Physician Lead\": trust_label \"Experiential\" → \"Inferred\" (from the records it cites)",
+              "time": "2026-11-05T00:08:29.986Z"
+            },
+            {
+              "step": "analysis",
+              "type": "adjusted",
+              "detail": "graph.nodes: \"Physician\": trust_label \"Experiential\" → \"Inferred\" (from the records it cites)",
+              "time": "2026-11-05T00:08:29.986Z"
+            },
+            {
+              "step": "analysis",
+              "type": "adjusted",
+              "detail": "graph.nodes: \"Triage Staff\": trust_label \"Experiential\" → \"Inferred\" (from the records it cites)",
+              "time": "2026-11-05T00:08:29.986Z"
+            },
+            {
+              "step": "options",
+              "type": "problems",
+              "detail": "recommendation.rationale has 3 sentences; rule 4 allows two or fewer. Shorten it.",
+              "attempt": 1,
+              "time": "2026-11-05T00:10:05.378Z"
+            },
+            {
+              "step": "reviewCard",
+              "type": "adjusted",
+              "detail": "evidence_badge \"Based on 7 records: Observed\" → \"Based on 6 records: EMR flow export, complaint, incident report\"",
+              "time": "2026-11-05T00:12:07.659Z"
+            }
+          ],
+          "meta": {
+            "domain": "Healthcare",
+            "pattern_type": "Rooming during slow physician pace",
+            "location": "Synthetic UCC A",
+            "windows": [
+              {
+                "start": "2026-09-20T15:00",
+                "end": "2026-09-20T18:00"
+              }
+            ],
+            "source_ids": [
+              "HC-FLOW-20260920-1500",
+              "HC-FLOW-20260920-1600",
+              "HC-FLOW-20260920-1700",
+              "HC-FLOW-20260920-1800",
+              "HC-CMP-4471",
+              "HC-INC-99102",
+              "HC-CMP-4480",
+              "HC-INC-99110",
+              "HC-CMP-4475",
+              "HC-POL-CTAS-ESC"
+            ],
+            "verification": {
+              "findings_checked": 7,
+              "findings_verified": 7,
+              "findings_removed": [],
+              "fixed_on_retry": 1,
+              "findings_labels_corrected": 0,
+              "policy_quote": "verified",
+              "analysis": {
+                "claims_checked": 5,
+                "claims_verified": 5,
+                "claims_removed": [],
+                "labels_corrected": 0
+              },
+              "map": {
+                "nodes_checked": 11,
+                "nodes_verified": 7,
+                "nodes_removed": [
+                  {
+                    "id": "HC-FLOW-20260920-1500",
+                    "text": "Flow Record 1500",
+                    "problem": "graph.nodes: \"Flow Record 1500\" mentions 1500, which isn't in the records it cites (HC-FLOW-20260920-1500)."
+                  },
+                  {
+                    "id": "HC-FLOW-20260920-1600",
+                    "text": "Flow Record 1600",
+                    "problem": "graph.nodes: \"Flow Record 1600\" mentions 1600, which isn't in the records it cites (HC-FLOW-20260920-1600)."
+                  },
+                  {
+                    "id": "HC-FLOW-20260920-1700",
+                    "text": "Flow Record 1700",
+                    "problem": "graph.nodes: \"Flow Record 1700\" mentions 1700, which isn't in the records it cites (HC-FLOW-20260920-1700)."
+                  },
+                  {
+                    "id": "HC-FLOW-20260920-1800",
+                    "text": "Flow Record 1800",
+                    "problem": "graph.nodes: \"Flow Record 1800\" mentions 1800, which isn't in the records it cites (HC-FLOW-20260920-1800)."
+                  }
+                ],
+                "labels_corrected": 4
+              },
+              "card": "verified",
+              "wording": {
+                "checked": 10,
+                "replaced": [],
+                "removed": []
+              },
+              "windows": {
+                "total": 1,
+                "cited": 1,
+                "uncited": []
+              },
+              "rationale": "ok",
+              "learn_more": "not checked"
+            },
+            "safety_conditions": [
+              {
+                "id": "no_monitored_bed_acute",
+                "label": "No monitored bed for a CTAS 1 or 2 arrival",
+                "source_ids": [
+                  "HC-INC-99102"
+                ]
+              },
+              {
+                "id": "long_wait_after_rooming",
+                "label": "Waits after rooming over 60 minutes",
+                "source_ids": [
+                  "HC-FLOW-20260920-1500",
+                  "HC-FLOW-20260920-1600",
+                  "HC-FLOW-20260920-1700",
+                  "HC-FLOW-20260920-1800"
+                ]
+              }
+            ],
+            "placeholder_evidence": true
+          }
+        }
+      ],
+      "context_notes": [],
+      "rejections": [],
+      "information_requests": [],
+      "decision": null,
+      "outcome": null,
+      "notification": null,
+      "history": [
+        {
+          "time": "2026-11-05T00:12:07.660Z",
+          "status": "Inferred",
+          "by": "Threadline",
+          "note": "Noticed from EHR_Flow_2026-09-20.csv, Complaint_4471.json, RLDatix_Report_99102.json, HC_Eval_Extra_2026-09-20.json"
+        },
+        {
+          "time": "2026-11-05T00:12:07.660Z",
+          "status": "Flagged",
+          "by": "Threadline",
+          "note": "Medium or higher confidence with a safety-relevant condition"
+        }
+      ]
+    }
+  ]
+}
