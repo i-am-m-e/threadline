@@ -1,0 +1,17 @@
+{
+  "date": "2026-11-04",
+  "model": "command-r",
+  "temperatures": {
+    "pattern": 0.2,
+    "analysis": 0.2,
+    "options": 0.5,
+    "reviewCard": 0.2
+  },
+  "runs": 1,
+  "packs": [
+    "energy"
+  ],
+  "git_commit": "0613ca4",
+  "answer_key_status": "draft",
+  "numbers_by_reference": false
+}

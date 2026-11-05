@@ -916,6 +916,7 @@ function scrollToCitations(target) {
 
 // Work out which lines should show and where they start and end, then draw them.
 function refreshLines() {
+  if (!conversation) return; // still starting up: nothing to draw yet
   const traces = [];
   for (const cite of el.messages.querySelectorAll(".cite[data-key]")) {
     const { anchor, key } = cite.dataset;

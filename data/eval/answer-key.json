@@ -1,0 +1,173 @@
+{
+  "$comment": "DRAFT for founder review (2026-11-04). What a correct Signals result looks like for each evaluation pack. All data synthetic. 'hard' checks decide pass/fail; 'soft' checks are reported but don't fail a run.",
+  "status": "draft",
+  "packs": {
+    "healthcare": {
+      "files": [
+        "data/benchmarks/healthcare/*",
+        "data/eval/decoys/healthcare/*"
+      ],
+      "expected_windows": [
+        {
+          "pattern_type": "Rooming during slow physician pace",
+          "location": "Synthetic UCC A",
+          "start": "2026-09-20T15:00",
+          "end": "2026-09-20T18:00"
+        }
+      ],
+      "why_window": "14:00 has occupancy 0.88, below the 0.9 trigger, so the window starts at 15:00.",
+      "code_must_exclude_from_inputs": {
+        "HC-CMP-4462": "Outside the +/- 2 hour window (11:30; the window opens 13:00).",
+        "HC-CMP-5102": "Different site (Synthetic UCC B)."
+      },
+      "hard": {
+        "pattern_must_cite_all": [
+          "HC-INC-99102",
+          "HC-CMP-4471"
+        ],
+        "pattern_must_cite_at_least_one_of": [
+          "HC-FLOW-20260920-1500",
+          "HC-FLOW-20260920-1600",
+          "HC-FLOW-20260920-1700",
+          "HC-FLOW-20260920-1800"
+        ],
+        "must_not_cite_anywhere": [
+          "HC-INC-99110"
+        ],
+        "must_not_cite_as_support": [
+          "HC-CMP-4475",
+          "HC-CMP-4480"
+        ],
+        "analysis_policy_source_id": "HC-POL-CTAS-ESC",
+        "acceptable_pattern_confidence": [
+          "Medium"
+        ],
+        "expected_safety_conditions": [
+          "no_monitored_bed_acute",
+          "long_wait_after_rooming"
+        ]
+      },
+      "soft": {
+        "should_acknowledge_as_not_fitting": {
+          "HC-CMP-4475": [
+            "HC-CMP-4475",
+            "15 minutes",
+            "compliment"
+          ]
+        },
+        "may_mention_as_possible_confounder": {
+          "HC-CMP-4480": [
+            "HC-CMP-4480",
+            "parking"
+          ]
+        }
+      },
+      "why_confidence": "Three source types (flow, incident, complaint) agree, but in one window only. By the spec's definition that is Medium, not High.",
+      "reviewer_questions": [
+        "Would you, as a leader, call this pattern Medium confidence from one afternoon?"
+      ],
+      "why_decoys": "HC-INC-99110 (expired test strips) is unrelated and must never be cited. HC-CMP-4480 (parking machine) is a possible confounder of unknown significance: founder decision 2026-11-04. It must not be cited as support; mentioning it as possibly related but unclear is acceptable."
+    },
+    "healthcare_update": {
+      "runs_after": "healthcare",
+      "files": [
+        "data/test_incoming/EHR_Flow_2026-09-22.csv"
+      ],
+      "expected_windows": [
+        {
+          "pattern_type": "Rooming during slow physician pace",
+          "location": "Synthetic UCC A",
+          "start": "2026-09-22T14:00",
+          "end": "2026-09-22T16:00"
+        }
+      ],
+      "why_window": "13:00 (0.86) and 17:00 (exactly 0.9) don't pass the 'above 0.9' trigger.",
+      "hard": {
+        "updates_existing_thread": true,
+        "acceptable_pattern_confidence": [
+          "Medium"
+        ]
+      },
+      "soft": {
+        "pattern_text_mentions_second_window": [
+          "22",
+          "second",
+          "again",
+          "recur"
+        ]
+      },
+      "why_confidence": "The second window has flow records only (no incident or complaint), so only one window has two agreeing source types. Still Medium."
+    },
+    "energy": {
+      "files": [
+        "data/benchmarks/energy/*",
+        "data/eval/decoys/energy/*"
+      ],
+      "expected_windows": [
+        {
+          "pattern_type": "Permit issuance during inspector backlog",
+          "location": "Synthetic Site B",
+          "start": "2026-09-20T07:00",
+          "end": "2026-09-20T11:00"
+        }
+      ],
+      "code_must_exclude_from_inputs": {
+        "EN-NM-20260920-04": "Outside the +/- 2 hour window (14:30; the window closes 13:00). Note: this is a RELATED event that the current design deliberately cannot see. Known limitation for goal C.",
+        "EN-NM-20260920-07": "Different site (Synthetic Site C)."
+      },
+      "hard": {
+        "pattern_must_cite_all": [
+          "EN-NM-20260920-01"
+        ],
+        "pattern_must_cite_at_least_one_of": [
+          "EN-PERMIT-20260920-0700",
+          "EN-PERMIT-20260920-0800",
+          "EN-PERMIT-20260920-0900",
+          "EN-PERMIT-20260920-1000",
+          "EN-PERMIT-20260920-1100"
+        ],
+        "must_not_cite_anywhere": [
+          "EN-NM-20260920-02",
+          "EN-INC-20260920-05"
+        ],
+        "analysis_policy_source_id": "EN-POL-LOTO-VER",
+        "acceptable_pattern_confidence": [
+          "Medium"
+        ],
+        "expected_safety_conditions": [
+          "work_before_zero_energy",
+          "inspector_over_six_permits"
+        ]
+      },
+      "soft": {
+        "should_acknowledge_as_not_fitting": {
+          "EN-INC-20260920-06": [
+            "EN-INC-20260920-06",
+            "good catch",
+            "did not begin"
+          ]
+        }
+      },
+      "why_confidence": "Two source types (permit log, near miss) agree in one window: Medium.",
+      "reviewer_questions": []
+    }
+  },
+  "all_packs": {
+    "hard": {
+      "no_step_errors": true,
+      "no_person_names_or_blame_labels": true,
+      "status_never_past_flagged": true
+    },
+    "soft": {
+      "max_retries_per_run": 1,
+      "report_code_adjustments": true,
+      "report_seconds_per_run": true
+    }
+  },
+  "decisions": [
+    "2026-11-04: parking complaint treated as a possible confounder (not support, not forbidden to mention).",
+    "2026-11-04: compliment HC-CMP-4475 accepted as counter-evidence.",
+    "2026-11-04: good-catch EN-INC-20260920-06 may be cited for the wait or listed as not fitting.",
+    "2026-11-04: out-of-window near-miss EN-NM-20260920-04 recorded as a known limitation, not a failure."
+  ]
+}

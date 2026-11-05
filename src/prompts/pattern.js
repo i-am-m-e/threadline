@@ -2,7 +2,7 @@
 // Reads flow records and incident/complaint records; drafts a POSSIBLE vignette.
 // Output must match src/schemas/pattern.schema.json.
 
-import { assemble } from "./sharedRules.js";
+import { assemble, withReferenceRules } from "./sharedRules.js";
 
 const TEMPLATE = `SYSTEM PROMPT: PATTERN AND VIGNETTE DRAFTER
 
@@ -14,25 +14,52 @@ INSTRUCTIONS
 1. Find periods where downstream processing slowed while upstream flow
    continued, using the thresholds in DOMAIN_THRESHOLDS.
 2. Match qualitative records within +/- 2 hours of those periods.
+   Account for every record under INCIDENT AND COMPLAINT RECORDS, by
+   its source_id, in exactly one of two places:
+   - supporting_evidence, if it describes the same conditions or their
+     effects. A record describing one of the safety_relevant_conditions
+     in DOMAIN_THRESHOLDS is supporting evidence: cite it, even when it
+     describes a different part of the flow from the trigger conditions.
+   - evidence_that_does_not_fit, only if it contradicts the pattern
+     (for example, it shows the condition did not happen) or is
+     unrelated to it.
 3. Draft a plain-language vignette of what the records suggest.
    Describe conditions and flow, not what anyone did wrong.
-4. List any evidence that does not fit the pattern.
+4. List any evidence that does not fit the pattern. Begin each entry
+   with the record's source_id.
 5. Set confidence:
    High = at least two independent source types agree across more than
           one time window.
    Medium = two source types agree in one window.
    Low = one source type, or a single short window.
+6. For every supporting_evidence item, show where the finding comes from
+   in the record it cites:
+   - Incident, complaint and near-miss records: in "quote", at least 4
+     words copied exactly from that record's text, as one continuous
+     stretch (no "..."). Leave "record_values" empty.
+   - Flow records: in "record_values", each field the finding relies on
+     and its value, exactly as in the record, for example
+     { "field": "room_to_physician_minutes", "value": 90 }.
+     Leave "quote" empty.
+   Only use numbers in "finding" that appear in the record it cites or
+   in DOMAIN_THRESHOLDS.
 
 OUTPUT SCHEMA
 {
   "vignette_id": "VIG-[DATE]-[N]",
-  "domain": "Healthcare" | "Energy",
+  "domain": "",
   "pattern_type": "",
   "location": "",
   "time_window": "[start] to [end]",
   "pattern_statement": "One sentence beginning with 'Records suggest'",
   "supporting_evidence": [
-    { "source_id": "", "trust_label": "Observed", "finding": "" }
+    {
+      "source_id": "",
+      "trust_label": "Observed",
+      "finding": "",
+      "quote": "",
+      "record_values": [ { "field": "", "value": 0 } ]
+    }
   ],
   "possible_vignette": {
     "situation": "",
@@ -54,15 +81,15 @@ INCIDENT AND COMPLAINT RECORDS:
 {{QUALITATIVE_RECORDS}}`;
 
 /**
- * @param {object} inputs
+ * @param {object} inputs  (byReference: add the "numbers by reference" rules)
  * @param {object} inputs.thresholds  The domain's triggers from domain_rules.json.
  * @param {Array}  inputs.flowRecords  Quantitative records (each with source_id).
  * @param {Array}  inputs.qualitativeRecords  Incident and complaint records (each with source_id).
  */
-export function buildPatternPrompt({ thresholds, flowRecords, qualitativeRecords }) {
-  return assemble(TEMPLATE, {
+export function buildPatternPrompt({ thresholds, flowRecords, qualitativeRecords, byReference = false }) {
+  return withReferenceRules(assemble(TEMPLATE, {
     DOMAIN_THRESHOLDS: thresholds,
     QUANTITATIVE_RECORDS: flowRecords,
     QUALITATIVE_RECORDS: qualitativeRecords,
-  });
+  }), byReference);
 }

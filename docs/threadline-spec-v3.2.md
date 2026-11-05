@@ -39,6 +39,17 @@ number of supporting records.
 
 ## 6. Prompts
 
+> **Change, 2026-11-04 (step 2, founder-approved).** Two fields were added so findings can be
+> checked against their records in code (`src/verify.js`). Prompt 1: each `supporting_evidence`
+> item also has `"quote"` (exact words from an incident, complaint or near-miss record) and
+> `"record_values"` (`[{ "field", "value" }]` for flow records), with instruction 6 explaining
+> them. Prompt 2: `policy_practice_gap` also has `"policy_quote"` (exact words from the cited
+> policy). The prompt text below is as originally specified; the live prompts are in
+> `src/prompts/`. Details: `docs/specs/2026-11-04-step2-verify-findings.md`.
+>
+> **Change, 2026-11-04.** Prompt 1's `"domain"` is no longer limited to `"Healthcare" | "Energy"`
+> (code sets it from the trigger that fired), so domains added in House rules work in Signals.
+
 ### Shared rules (prepend to every prompt)
 
 ```

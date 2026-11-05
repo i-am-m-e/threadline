@@ -6,7 +6,9 @@
   "scripts": {
     "dev": "tauri dev",
     "build": "tauri build --bundles app",
-    "tauri": "tauri"
+    "tauri": "tauri",
+    "test": "node --test \"tests/*.test.js\"",
+    "eval": "node scripts/evaluate.js"
   },
   "devDependencies": {
     "@tauri-apps/cli": "^2.11.5",

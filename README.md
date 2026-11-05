@@ -12,7 +12,8 @@ lines back to their sources.
 
 ## Signals (system-signals monitor, v3.2)
 
-**Threadline notices, drafts and routes. People decide.** Spec: [docs/threadline-spec-v3.2.md](docs/threadline-spec-v3.2.md).
+**Threadline notices, drafts and routes. People decide.** Spec: [docs/threadline-spec-v3.2.md](docs/threadline-spec-v3.2.md). A one-page guide for
+the people who'd use it: [docs/guide-signals.md](docs/guide-signals.md).
 
 The **Signals** mode watches approved operational data for patterns in flows, queues and capacity
 (never individuals):
@@ -23,14 +24,30 @@ The **Signals** mode watches approved operational data for patterns in flows, qu
 2. Triggers from `domain_rules.json` are checked in code. If one fires, four prompts run (pattern →
    system analysis → options → review card), each constrained to a JSON Schema and checked in
    code: sources must exist, no names or behaviour labels, confidence can't exceed the evidence.
+   Each supporting finding must also show where it comes from (an exact quote from an incident,
+   complaint or near-miss, or the field values of a flow row), and code checks that the record
+   really says it; the policy-practice gap must quote the policy. See "Checking findings against
+   their records" below.
 3. A **Thread** appears with a front-line review card, a manager brief and a Thread map. A matching
    open Thread is updated instead of duplicated. If a step fails, the file stays in `incoming/`
    and the next Check now retries it.
 4. People act by role: a manager sends it for front-line validation; a front-line lead confirms it,
    adds context or says it doesn't match; only then can a manager record a decision (which applies
-   nothing) and later an outcome. Threadline itself can only mark Threads Inferred or Flagged.
+   nothing), later press **Start outcome review**, and record the outcome. Threadline itself can only mark Threads Inferred or Flagged.
 5. Flags (badge + local notification) only for Medium+ confidence with a safety-relevant
    condition, capped per day; everything else goes to the digest.
+6. **Recurrence** is shown beside confidence from the first occasion (one occasion = one
+   triggered time window): "Medium confidence, seen on 2 occasions". Bands come every 10 occasions
+   (10+, 20+, 30+…) and move a Thread up the list, and reaching 10 occasions flags a Thread for
+   review even at Low confidence (the daily cap still applies). Recurrence never changes the
+   confidence label. The interval and the flag point are `recurrenceEvery` (e.g. 5 or 10) and
+   `recurrenceFlagAt` in `src/config.js`.
+7. **Other domains** work too. A domain added in House rules ("Add domain") gets terms and rules for
+   chat straight away; for Signals it also needs `triggers` (and optionally
+   `safety_relevant_conditions`) in `domain_rules.json`, in the same form as Healthcare and Energy.
+   Its flow records can be any kind of log (`source_type`, e.g. `turnaround_log`): a record that
+   isn't a policy, incident, complaint or near-miss and has no text counts as a flow row. Text
+   records use `incident_report`, `complaint` or `near_miss`, and policies `policy`.
 
 The evidence library in `data/evidence/` holds **placeholders** to be replaced with curated
 summaries; recommendations relying on them are tagged "Placeholder evidence". Test results:
@@ -57,13 +74,104 @@ npm run dev        # opens the app window; edits to src/ reload it
 npm run build      # makes Threadline.app in src-tauri/target/release/bundle/macos/
 ```
 
+## Checking findings against their records
+
+The source guard removes record ids that don't exist. That alone would let a real id with an
+invented finding through, so `src/verify.js` also checks what each finding says:
+
+- **Incident, complaint and near-miss records:** the model gives a quote of at least 4 words,
+  copied as one continuous stretch from the record's text. Capitals, spacing, curly quotes and
+  dash types don't matter; other punctuation does; "..." joining pieces is refused.
+- **Flow records (CSV rows):** the model names each field and value it relies on
+  (`room_to_physician_minutes = 90`), and they must match the row.
+- **Numbers in the finding's wording** must be in the cited record. 0.93 may be written as 93%
+  (or rounded to a whole percent); hours and minutes may be converted, but only for a number the
+  record itself labels as hours or minutes ("2-hour wait" allows 120 minutes); the domain's own
+  thresholds (e.g. "above 45 minutes") are allowed. Numbers written as words aren't checked, and
+  units aren't compared.
+- **The policy-practice gap** quotes the policy it cites.
+
+A problem goes into the step's one retry, naming exactly what was wrong. If a finding still
+can't be verified, it is removed and logged as "unverified, removed" (the policy gap's id and
+quote are blanked instead), and confidence is worked out from what's left. Nothing unverified is
+kept silently. The manager brief shows them under **What the records say**: each finding with the exact quote
+or the flow row's field values it was checked against, a one-line summary of the checks (how many
+findings and analysis claims were verified, removed, fixed on retry or relabelled), what was
+removed and why, and the policy's own wording beside the policy-practice gap.
+**Analysis claims** (contributing conditions and pressure-map entries) get two checks: any number
+in them must be in the records they cite (retry, then removed as unverified, as above), and their
+trust label must fit what they cite. That label is corrected in code and logged: no sources →
+Inferred; Authoritative needs a policy; Observed needs a flow, incident, complaint or near-miss
+record; Experiential and Historical come only from people, so the model can't claim them. The
+**Thread map's nodes** get the same two checks (a node still unverified after the retry is
+removed, with its lines). The **review card**'s title, "noticed" and "why it may matter" may only
+use numbers from the records the run cites (or thresholds); wording still failing after the
+retry is replaced with a plain line written by code and logged. In the manager brief, the policy
+box shows "Authoritative" only when a policy is cited and "Observed" only when a finding was
+verified; otherwise "Inferred". The **rest of the text that describes the records** (the pattern
+statement, the vignette story, "evidence that does not fit", "where small variations combine",
+and the policy gap's "policy expects" and "records suggest") may only use numbers from the records
+given to that step: one retry, then a field's wording is replaced with a plain line (for "policy
+expects", the policy's own quoted words) and a list item removed, all logged. The options, "other
+explanations" and "open questions" aren't checked this way: they're proposals and questions, not
+claims about the records. Still not checked anywhere: the wording itself, only numbers and labels.
+A record's id, time and date
+are labels, not quantities: their digits only count when the text uses them as an id, time or date
+("HC-CMP-4471", "15:30" or "3:30 PM", "Sept 20"), so "15 patients" doesn't pass because a record is
+timestamped 15:00.
+
+**Numbers by reference** (off by default; `numbersByReference` in `src/config.js`, or
+`npm run eval -- --by-reference` for one scorecard): instead of typing figures from flow rows and
+any time or date, the model writes references like
+`{HC-FLOW-20260920-1600.room_to_physician_minutes}`, `{…bed_occupancy%}`, `{…time}` or `{…date}`.
+Code checks each one points to a real field of a record it may cite, then fills in the value after
+all the checks, so a misstated figure is impossible by construction. A typed flow figure, time or
+date is then a problem (one retry, then removed or replaced). Figures from an incident,
+complaint or near-miss's own text, and thresholds, may still be typed.
+
+Two more checks, for weaknesses Command R showed in the 2026-09-28 test runs: **every time window
+must have at least one cited record** (update runs used to describe only the first window), and
+**the recommendation's reasoning is two sentences or fewer** (Prompt 3, rule 4). Each gets the one
+retry; after it, an uncited window is accepted and noted in the brief and on the scorecard
+(confidence already counts only cited records), and a long rationale is cut to its first two
+sentences by code. Both are logged. Design: `docs/specs/2026-11-04-step2-verify-findings.md`.
+
+## Testing and the scorecard
+
+Two commands check the Signals engine. Neither touches the app's own data.
+
+**`npm test`** runs the saved tests in `tests/` in a few seconds, without Ollama. They check every
+rule Signals enforces in code: answers must match their schema, made-up record ids are removed,
+findings must match the records they cite, names and blame language are caught, confidence can't exceed what the evidence supports, only a
+person can move a Thread past Flagged, the daily flag cap, and that a second file updates the
+same Thread. A test marked TODO is a known issue that hasn't been fixed yet.
+
+**`npm run eval`** is the scorecard. It runs the real pipeline, on your local Ollama, on the
+evaluation packs in `data/eval/` (the benchmark files plus decoy records that should not be
+cited), several times, and scores each run against `data/eval/answer-key.json`.
+
+```bash
+npm run eval                        # both packs, 3 runs each (about 40 to 50 minutes with Command R)
+npm run eval -- --runs 1            # a quick check (about 15 minutes)
+npm run eval -- --pack healthcare   # one pack: healthcare, energy or all
+npm run eval -- --model qwen3:8b    # try another model
+npm run eval -- --by-reference      # numbers by reference on, for this run only
+```
+
+Results go to `docs/eval/<date>/` (a second run on the same day goes to `<date>-2/`, and so on): read `scorecard.md` (pass rates, decoys cited, how much repeated
+runs agree, retries, time per run, findings verified against their records and any removed as
+unverified, and every failed check); `runs/` has each run's full output.
+
+The answer key and decoy records hold the founder's clinical and operational judgement. Change
+them only with his approval. The design is in `docs/specs/2026-11-04-step1-tests-and-scorecard.md`.
+
 ## How it's organized
 
 | File | Job |
 | --- | --- |
 | `src/index.html`, `src/styles.css` | Layout and look (design tokens, light/dark, animations) |
 | `src/app.js` | Interface logic: thread, sidebar, Sources panel, message box |
-| `src/model.js` | **The only file that talks to the AI.** `getModelResponse(messages, { model, onProgress })`, plus the list of models |
+| `src/model.js` | **The only file that talks to the AI.** `getModelResponse(messages, { model, onProgress, format, temperature })`, plus the list of models |
 | `src/passages.js` | Splits documents into numbered passages, builds the "cite like [3]" instructions, finds citations in replies |
 | `src/lines.js` | Draws the lines: citation traces (one color + dash pattern per source), your links, the drag line |
 | `src/theme.js` | The Auto / Light / Dark switch |
@@ -73,12 +181,14 @@ npm run build      # makes Threadline.app in src-tauri/target/release/bundle/mac
 | `src/icons.js` | The Lucide icons and Threadline mark used in the UI |
 | `src/signals-ui.js` | Signals mode screen: toolbar, Thread list, review card, manager brief, digest |
 | `src/prompts/`, `src/schemas/` | The four Signals prompts (shared rules first) and their JSON Schemas |
-| `src/llm.js` | Runs each Signals prompt: schema check, source guard, name/behaviour scan, one retry |
+| `src/llm.js` | Runs each Signals prompt: schema check, source guard, name/behaviour scan, checks against the records, one retry |
+| `src/verify.js` | Checks that each finding is really in the record it cites (quotes, field values, numbers) |
 | `src/pipeline.js` | Prompt 1 → 2 → evidence selection → 3 → 4, with code checks after each |
 | `src/records.js` | Reads record files, checks triggers, time windows, safety conditions |
 | `src/monitor.js` | Check now / timer: new files, triggers, de-duplication into open Threads |
 | `src/threads.js` | Thread lifecycle: status rules and the human actions (by role) |
 | `src/notify.js` | Flags, daily cap, digest, alert volume, local notifications |
+| `src/recurrence.js` | Recurrence: occasions seen, bands (every 10: 10+, 20+, 30+…), list priority, recurrence flags |
 | `src/threadMap.js` | The Thread map (Cytoscape + dagre) |
 | `src/config.js` | Signals settings: model, temperatures, monitor interval, daily flag cap |
 | `data/` | Synthetic benchmark packs, placeholder evidence, domain rules (packaged with the app) |
@@ -166,11 +276,15 @@ handled comparisons best. Long document questions take Command R roughly 40 seco
 
 ## Switching to a cloud AI later
 
-Only `src/model.js` changes (including its `MODELS` list). Keep the same shape:
+Mostly `src/model.js` changes (including its `MODELS` list), but not only that: Signals relies
+on Ollama's schema-constrained `format`, which forces the model to answer with JSON of the right
+shape. A cloud provider needs its own equivalent (for example structured output or tool use), and
+`SIGNALS_CONFIG.model` in `src/config.js` names the Signals model separately. Keep the same shape:
 
 - **In:** a list like `[{ role: "system" | "user" | "assistant", content: "..." }]`.
   When a thread has documents, the first message is a `system` message with the numbered passages.
-- **Options:** `{ model, onProgress }` — which model to use, and an optional progress callback
+- **Options:** `{ model, onProgress, format, temperature }`: which model to use, an optional progress
+  callback, an optional JSON Schema the answer must match (Signals), and an optional temperature
 - **Out:** the reply as a string (or throw an `Error` with a readable message)
 - Call `onProgress(textSoFar)` as the reply streams in; `app.js` shows it sentence by sentence
 
@@ -202,3 +316,5 @@ Delete that folder to start fresh.
 - Scanned PDFs are images, so there's no text to extract.
 - Word files don't have reliable page numbers, so their passages are labeled by text only.
 - Review mode shows extracted text, not the original page layout.
+- If Ollama sends nothing for 5 minutes, a model call stops with "Ollama stopped responding"
+  (`IDLE_TIMEOUT_MS` in `src/model.js`). A long reply that keeps arriving is never cut off.

@@ -26,9 +26,9 @@ export const isOpen = (t) => !["Closed", "Not confirmed"].includes(t.status);
  * @param {Array}  info.windows  The triggered windows (with flowRecords).
  * @param {string[]} info.files  The record files that led to it.
  * @param {string[]} info.existingIds  Ids already used (to number this one).
- * @param {boolean} info.qualifiesForFlag  Medium+ confidence and a safety-relevant condition.
+ * @param {string|null} info.flagReason  Why it should be flagged (recurrence.js flagReason), or null.
  */
-export function createThread(result, { windows, files, existingIds, qualifiesForFlag, now = new Date() }) {
+export function createThread(result, { windows, files, existingIds, flagReason, now = new Date() }) {
   const day = now.toISOString().slice(0, 10).replace(/-/g, "");
   let n = 1;
   while (existingIds.includes(`THR-${day}-${n}`)) n++;
@@ -52,7 +52,7 @@ export function createThread(result, { windows, files, existingIds, qualifiesFor
     notification: null,          // "flag" or "digest" (step 8)
     history: [{ time, status: "Inferred", by: "Threadline", note: `Noticed from ${files.join(", ")}` }],
   };
-  if (qualifiesForFlag) pipelineStatus(thread, "Flagged", "Medium or higher confidence with a safety-relevant condition", now);
+  if (flagReason) pipelineStatus(thread, "Flagged", flagReason, now);
   return thread;
 }
 
@@ -61,7 +61,7 @@ export function createThread(result, { windows, files, existingIds, qualifiesFor
  * keep the new pipeline run, and record the update in the history. Status is only ever
  * raised Inferred → Flagged here; anything a person decided stays as it is.
  */
-export function updateThread(thread, result, { windows, files, qualifiesForFlag, now = new Date() }) {
+export function updateThread(thread, result, { windows, files, flagReason, now = new Date() }) {
   const time = now.toISOString();
   const before = current(thread).steps.pattern.confidence;
   thread.runs.push({ time, ...result });
@@ -73,9 +73,7 @@ export function updateThread(thread, result, { windows, files, qualifiesForFlag,
     time, status: thread.status, by: "Threadline", type: "update",
     note: `New records from ${files.join(", ")}; analysis re-run; confidence ${before} → ${after}`,
   });
-  if (qualifiesForFlag && thread.status === "Inferred") {
-    pipelineStatus(thread, "Flagged", "Medium or higher confidence with a safety-relevant condition", now);
-  }
+  if (flagReason && thread.status === "Inferred") pipelineStatus(thread, "Flagged", flagReason, now);
   return thread;
 }
 
@@ -169,9 +167,17 @@ export function recordDecision(thread, role, optionId, now = new Date()) {
     date: now.toISOString(),
     revisit_or_stop_if: option?.revisit_or_stop_if ?? "",
   };
-  humanStatus(thread, "Decision recorded", role, `Decision: ${thread.decision.option_title}`, now);
   thread.outcome_review_due = due.toISOString().slice(0, 10);
-  humanStatus(thread, "Outcome review due", role, `Outcome review due ${thread.outcome_review_due} (${days} days)`, now);
+  humanStatus(thread, "Decision recorded", role, `Decision: ${thread.decision.option_title}. Outcome review due ${thread.outcome_review_due} (${days} days)`, now);
+}
+
+/**
+ * The manager starts the outcome review (usually on or after the due date). A button press,
+ * never automatic: the date alone doesn't move a Thread.
+ */
+export function startOutcomeReview(thread, role, now = new Date()) {
+  requireRole(role, ["Manager"], "Start outcome review");
+  humanStatus(thread, "Outcome review due", role, `Outcome review started (due ${thread.outcome_review_due})`, now);
 }
 
 /** At outcome review: what happened and whether it helped, then close the Thread. */

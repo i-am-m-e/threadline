@@ -1,0 +1,57 @@
+[
+  {
+    "synthetic": true,
+    "eval_role": "possible_confounder",
+    "source_id": "HC-CMP-4480",
+    "source_type": "complaint",
+    "domain": "Healthcare",
+    "location": "Synthetic UCC A",
+    "timestamp": "2026-09-20T17:20",
+    "title": "Synthetic complaint 4480",
+    "text": "Visitor complained that the parking pay machine at the main entrance was out of order and would only accept coins."
+  },
+  {
+    "synthetic": true,
+    "eval_role": "decoy_unrelated",
+    "source_id": "HC-INC-99110",
+    "source_type": "incident_report",
+    "domain": "Healthcare",
+    "location": "Synthetic UCC A",
+    "timestamp": "2026-09-20T16:45",
+    "title": "Synthetic incident report 99110",
+    "text": "Expired glucometer test strips were found in the supply cabinet during a routine check and replaced from central supply. No patient affected. Reporter role: LPN."
+  },
+  {
+    "synthetic": true,
+    "eval_role": "counter_evidence",
+    "source_id": "HC-CMP-4475",
+    "source_type": "complaint",
+    "domain": "Healthcare",
+    "location": "Synthetic UCC A",
+    "timestamp": "2026-09-20T15:45",
+    "title": "Synthetic patient feedback 4475 (compliment)",
+    "text": "Patient feedback (compliment): was seen by a physician about 15 minutes after being placed in an exam room and felt well cared for."
+  },
+  {
+    "synthetic": true,
+    "eval_role": "excluded_outside_window",
+    "source_id": "HC-CMP-4462",
+    "source_type": "complaint",
+    "domain": "Healthcare",
+    "location": "Synthetic UCC A",
+    "timestamp": "2026-09-20T11:30",
+    "title": "Synthetic complaint 4462",
+    "text": "Patient frustrated about a 2-hour wait in the waiting room before being reassessed by triage."
+  },
+  {
+    "synthetic": true,
+    "eval_role": "excluded_other_location",
+    "source_id": "HC-CMP-5102",
+    "source_type": "complaint",
+    "domain": "Healthcare",
+    "location": "Synthetic UCC B",
+    "timestamp": "2026-09-20T16:20",
+    "title": "Synthetic complaint 5102",
+    "text": "Patient waited over an hour in an exam room before seeing a physician."
+  }
+]

@@ -7,9 +7,13 @@
 //   3. runs the SOURCE GUARD: any source_id or evidence_id that wasn't in this step's
 //      inputs is removed and logged; a claim left with no sources becomes "Inferred";
 //   4. scans for GUARDRAIL problems: people's names, or labels for individual behaviour;
-//   5. runs the step's own extra checks (e.g. "must begin with 'Threadline noticed'").
-// If anything in 2, 4 or 5 fails, the model gets ONE retry, told exactly what was wrong.
-// A second failure stops with a clear error the interface can show.
+//   5. runs the step's own extra checks (e.g. "must begin with 'Threadline noticed'");
+//   6. runs the step's VERIFY checks, if it has any: does each cited record really say what
+//      the model claims? (src/verify.js; wired up in pipeline.js)
+// If anything in 2, 4, 5 or 6 fails, the model gets ONE retry, told exactly what was wrong.
+// A second failure stops with a clear error the interface can show, with one exception:
+// if the only problems left are from 6, the unverified items are removed and logged as
+// "unverified, removed" instead. Nothing unverified is kept silently.
 //
 // Nothing here talks to the network directly: model.js does that (only to local Ollama).
 
@@ -36,10 +40,13 @@ export class StepError extends Error {
  * @param {Set<string>} [step.sourceIds]    source_ids that exist in this step's inputs
  * @param {Set<string>} [step.evidenceIds]  evidence_ids that exist in this step's inputs
  * @param {(output) => string[]} [step.checks]  Extra checks; return a list of problems (empty = fine).
+ * @param {(output) => Array<{problem: string, remove: () => string}>} [step.verify]
+ *        Checks against the source records. Each issue has a problem (for the retry) and a
+ *        remove() that takes the unverified item out of `output` and describes what it removed.
  * @param {Function} [step.ask]      Stand-in for getModelResponse (used by tests).
  * @returns {Promise<{ output: object, log: Array }>}
  */
-export async function runStep({ name, prompt, schema, model, temperature, sourceIds, evidenceIds, checks, ask = getModelResponse }) {
+export async function runStep({ name, prompt, schema, model, temperature, sourceIds, evidenceIds, checks, verify, ask = getModelResponse }) {
   const log = [];
   const messages = [
     { role: "system", content: prompt },
@@ -48,8 +55,15 @@ export async function runStep({ name, prompt, schema, model, temperature, source
 
   for (let attempt = 1; attempt <= 2; attempt++) {
     const raw = await ask(messages, { model, temperature, format: schema });
-    const { output, problems } = checkAnswer(raw, { name, schema, sourceIds, evidenceIds, checks, log });
+    const { output, problems, issues } = checkAnswer(raw, { name, schema, sourceIds, evidenceIds, checks, verify, log });
     if (problems.length === 0) return { output, log };
+
+    // After the retry, items that still can't be verified are removed, not kept, and the step
+    // carries on. (Only when nothing else is wrong: other problems still fail the step.)
+    if (attempt === 2 && issues.length === problems.length) {
+      for (const issue of issues) log.push(entry(name, "unverified_removed", `${issue.remove()} (${issue.problem})`));
+      return { output, log };
+    }
 
     log.push(entry(name, "problems", problems.join("; "), attempt));
     if (attempt === 2) throw new StepError(name, problems);
@@ -67,22 +81,24 @@ export async function runStep({ name, prompt, schema, model, temperature, source
   }
 }
 
-// Steps 2–5 for one answer. Returns the (guarded) output and any problems.
-function checkAnswer(raw, { name, schema, sourceIds, evidenceIds, checks, log }) {
+// Steps 2–6 for one answer. Returns the (guarded) output, all its problems, and the
+// verify issues among them (which can be removed after the retry).
+function checkAnswer(raw, { name, schema, sourceIds, evidenceIds, checks, verify, log }) {
   let output;
   try {
     output = JSON.parse(raw);
   } catch {
-    return { output: null, problems: ["The answer was not valid JSON."] };
+    return { output: null, problems: ["The answer was not valid JSON."], issues: [] };
   }
   const schemaProblems = validateAgainstSchema(output, schema);
-  if (schemaProblems.length > 0) return { output, problems: schemaProblems };
+  if (schemaProblems.length > 0) return { output, problems: schemaProblems, issues: [] };
 
   for (const removal of guardSources(output, { sourceIds, evidenceIds })) {
     log.push(entry(name, removal.kind, removal.detail));
   }
-  const problems = [...findGuardrailProblems(output), ...(checks ? checks(output) : [])];
-  return { output, problems };
+  const issues = verify ? verify(output) : [];
+  const problems = [...findGuardrailProblems(output), ...(checks ? checks(output) : []), ...issues.map((i) => i.problem)];
+  return { output, problems, issues };
 }
 
 const entry = (step, type, detail, attempt) => ({ step, type, detail, ...(attempt ? { attempt } : {}), time: new Date().toISOString() });
@@ -197,7 +213,8 @@ export function guardSources(output, { sourceIds, evidenceIds }) {
 //  • an initial and a surname on their own: "J. Miller"
 // Role words followed by a capitalised word ("Inspector Capacity", "Charge Nurse",
 // "Operator Workload") are NOT treated as names: they're normal in option titles.
-const HONORIFIC_NAME = /\b(?:Dr|Mr|Mrs|Ms|Miss|Mx|Prof|Professor|Doctor)\.?\s+(?:[A-Z]\.\s*)?[A-Z][a-z]{1,}/g;
+// ("Miss" right after "near" is the safety term "near miss", not a title: "Near Miss Report".)
+const HONORIFIC_NAME = /\b(?<![Nn]ear[\s-]+)(?:Dr|Mr|Mrs|Ms|Miss|Mx|Prof|Professor|Doctor)\.?\s+(?:[A-Z]\.\s*)?[A-Z][a-z]{1,}/g;
 const CREDENTIAL_NAME = /\b(?:RN|RPN|LPN|NP|PA|MD)\s+[A-Z]\.\s?[A-Z][a-z]+/g;
 // (not after another initial, so abbreviations like "U.S. Standards" are fine)
 const INITIAL_SURNAME = /(?<![A-Za-z]\.)\b[A-Z]\.\s?[A-Z][a-z]{2,}\b/g;

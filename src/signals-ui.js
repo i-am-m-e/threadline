@@ -15,10 +15,12 @@ import { checkForSignals, startMonitorTimer } from "./monitor.js";
 import {
   current, ROLES, isOpen, canMove, rejectionCounts,
   confirmPattern, addContext, doesNotMatch,
-  sendForValidation, notARealPattern, requestMoreInformation, recordDecision, closeWithOutcome,
+  sendForValidation, notARealPattern, requestMoreInformation, recordDecision, startOutcomeReview, closeWithOutcome,
 } from "./threads.js";
 import { SIGNALS_CONFIG } from "./config.js";
 import { routeAlerts, alertVolume, buildDigest, sendLocalNotification } from "./notify.js";
+import { confidenceText, byPriority, windowsText } from "./recurrence.js";
+import { evidenceLines, verificationSummary, removedLines, policyWording, gapLabels } from "./evidenceView.js";
 import { renderThreadMap, withApproaches, TRUST_COLORS, SHAPES } from "./threadMap.js";
 import { SOURCE_TYPE_NAMES } from "./records.js";
 
@@ -118,7 +120,7 @@ async function checkNow({ quiet = false } = {}) {
     const toNotify = routeAlerts(changes, alertState, SIGNALS_CONFIG.dailyFlagCap);
     for (const c of changes) await storage.saveSignalThread(c.thread); // records flag/digest on the Thread
     await storage.saveSignalsState(alertState);
-    for (const t of toNotify) await sendLocalNotification(t, current(t).steps.pattern.confidence);
+    for (const t of toNotify) await sendLocalNotification(t, SIGNALS_CONFIG.recurrenceEvery);
     if (changed.length) selectedId = changed[0];
     const parts = [];
     if (summary.files.length === 0 && summary.errors.length === 0) parts.push("No new files in the incoming folder");
@@ -163,8 +165,8 @@ function renderList() {
       "No Threads yet. Add record files to the incoming folder and press Check now, or run the benchmark packs."));
     return;
   }
-  for (const t of threads) {
-    const run = current(t);
+  // Threads seen on more occasions (10+, 50+, 70+) come first; otherwise newest first.
+  for (const t of byPriority(threads, SIGNALS_CONFIG.recurrenceEvery)) {
     const row = document.createElement("button");
     row.type = "button";
     row.className = "signals-row" + (t.id === selectedId ? " is-selected" : "");
@@ -174,7 +176,7 @@ function renderList() {
     );
     const facts = document.createElement("span");
     facts.className = "signals-row-facts";
-    facts.append(statusPill(t.status), text("span", "signals-conf", `${run.steps.pattern.confidence} confidence`), text("span", "signals-when", `updated ${shortWhen(t.updated_at)}`));
+    facts.append(statusPill(t.status), text("span", "signals-conf", confidenceText(t, SIGNALS_CONFIG.recurrenceEvery)), text("span", "signals-when", `updated ${shortWhen(t.updated_at)}`));
     row.append(facts);
     row.onclick = () => {
       selectedId = t.id;
@@ -222,10 +224,10 @@ function renderDetail() {
   facts.className = "signals-facts";
   facts.append(
     statusPill(thread.status),
-    text("span", "", `Pattern confidence: ${run.steps.pattern.confidence}`),
-    text("span", "", `Time window${thread.windows.length === 1 ? "" : "s"}: ${run.steps.pattern.time_window}`),
+    text("span", "", `Pattern confidence: ${confidenceText(thread, SIGNALS_CONFIG.recurrenceEvery)}`),
+    windowsSpan(thread.windows),
   );
-  if (thread.outcome_review_due && thread.status === "Outcome review due") facts.append(text("span", "signals-due", `Outcome review due ${thread.outcome_review_due}`));
+  if (thread.outcome_review_due && ["Decision recorded", "Outcome review due"].includes(thread.status)) facts.append(text("span", "signals-due", `Outcome review due ${thread.outcome_review_due}`));
   head.append(facts);
   const map = renderMapSection(thread);
   detail.append(head, renderCard(thread), map.section, renderBrief(thread));
@@ -251,7 +253,7 @@ function renderDigest() {
       row.className = "digest-row";
       row.append(
         text("span", "", `${thread.pattern_type} · ${thread.location}`),
-        text("span", "brief-small", ` ${kinds.join(" and ")} · ${current(thread).steps.pattern.confidence} confidence · ${thread.status}${over_cap ? " · over today's flag limit" : ""}`),
+        text("span", "brief-small", ` ${kinds.join(" and ")} · ${confidenceText(thread, SIGNALS_CONFIG.recurrenceEvery)} · ${thread.status}${over_cap ? " · over today's flag limit" : ""}`),
       );
       row.onclick = () => {
         selectedId = thread.id;
@@ -277,8 +279,7 @@ function renderCard(thread) {
   const ul = document.createElement("ul");
   for (const o of card.possible_options) ul.append(text("li", "", o));
   box.append(ul);
-  const windows = thread.windows.length === 1 ? "single time window" : `${thread.windows.length} time windows`;
-  box.append(text("div", "card-badge", card.evidence_badge), text("div", "card-confidence", `Confidence: ${card.confidence} (${windows})`));
+  box.append(text("div", "card-badge", card.evidence_badge), text("div", "card-confidence", `Confidence: ${confidenceText(thread, SIGNALS_CONFIG.recurrenceEvery)}`));
   if (run.meta.placeholder_evidence) box.append(placeholderTag());
   box.append(text("p", "card-question", card.question));
 
@@ -457,6 +458,21 @@ function renderBrief(thread) {
     box.append(text("div", "card-label", "Evidence that does not fit"), list(pattern.evidence_that_does_not_fit.filter(Boolean)));
   }
 
+  // What the records say: each finding with its proof (checked in code, src/verify.js)
+  const verification = current(thread).meta?.verification;
+  box.append(text("h4", "", "What the records say"));
+  const said = document.createElement("ul");
+  said.className = "brief-evidence";
+  for (const e of evidenceLines(pattern)) {
+    const li = text("li", "", `${e.finding} `);
+    li.append(trustChip(e.trust_label), sourceIds([e.source_id]));
+    if (e.proof) li.append(text("div", "brief-proof", e.proof));
+    said.append(li);
+  }
+  box.append(said, text("p", "brief-small", verificationSummary(verification)));
+  const removed = removedLines(verification);
+  if (removed.length) box.append(text("div", "card-label", "Removed or replaced as unverified"), list(removed));
+
   // Possible contributing factors
   box.append(text("h4", "", "Possible contributing factors"));
   const factors = document.createElement("ul");
@@ -470,10 +486,14 @@ function renderBrief(thread) {
   const gap = analysis.policy_practice_gap;
   const gapBox = document.createElement("div");
   gapBox.className = "brief-gap";
+  const gapTrust = gapLabels(gap, verification);
   gapBox.append(
-    labelled("Policy expects", gap.what_policy_expects, "Authoritative"),
-    labelled("Records suggest", gap.what_records_suggest, "Observed"),
+    labelled("Policy expects", gap.what_policy_expects, gapTrust.expects),
+    labelled("Records suggest", gap.what_records_suggest, gapTrust.suggests),
   );
+  if (gapTrust.note) gapBox.append(text("p", "brief-small", gapTrust.note));
+  const wording = policyWording(gap);
+  if (wording) gapBox.append(text("p", "brief-proof", wording));
   box.append(text("div", "card-label", "Policy and practice"), gapBox);
   if (analysis.pressure_map.length) {
     box.append(text("div", "card-label", "Pressure map"));
@@ -572,6 +592,11 @@ function managerActions(thread) {
       : "";
   if (why) box.append(text("p", "card-why-disabled", why));
 
+  if (thread.status === "Decision recorded") {
+    box.append(text("p", "brief-small", `Outcome review due ${thread.outcome_review_due}. Revisit or stop if: ${thread.decision?.revisit_or_stop_if || "not stated"}`));
+    actions.append(button("Start outcome review", "primary", !manager,
+      () => act(thread, () => startOutcomeReview(thread, role), "Outcome review started")));
+  }
   if (thread.status === "Outcome review due") {
     box.append(text("p", "brief-small", `Outcome review due ${thread.outcome_review_due}. Revisit or stop if: ${thread.decision?.revisit_or_stop_if || "not stated"}`));
     actions.append(button("Record outcome", "primary", !manager, () => openForm(thread, "outcome")));
@@ -753,6 +778,14 @@ export function updateBadge() {
 }
 
 // ---------- Small helpers ----------
+// The Thread's time windows: a short line, with the full list on hover.
+function windowsSpan(windows) {
+  const { short, full } = windowsText(windows);
+  const span = text("span", "", short);
+  span.title = full;
+  return span;
+}
+
 function text(tag, className, content) {
   const node = document.createElement(tag);
   if (className) node.className = className;
