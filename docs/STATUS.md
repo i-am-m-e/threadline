@@ -24,43 +24,58 @@ A one-page summary for picking the work back up. Branch: `verify-card-map` (draf
 - **Switches, off by default:** "numbers by reference" (the model writes figures as references and
   code fills in the values) and the stricter "Learn more" check.
 
-## Latest scorecard results (Command R, 3 runs per pack)
+## Latest scorecard results (Command R, 3 runs per pack, numbers by reference off)
 
-| | `2026-11-04-4` (switch off, commit 0613ca4) | `2026-11-04-6` (switch on, commit 6b3006b) |
+| | `2026-11-04-4` (before `2b7fbdf`) | `2026-11-05` and `2026-11-05-2` (after `2b7fbdf`) |
 | --- | --- | --- |
-| Healthcare pack: hard pass | 2 of 3 | 1 of 3 |
+| Healthcare pack: hard pass | 2 of 3 | 3 of 3 |
 | Healthcare update: hard pass | 2 of 3 (1 step error: no "Learn more" option) | 3 of 3 |
-| Energy pack: hard pass | 3 of 3 | 3 of 3 |
-| Time per run | about 12–17 minutes | about 14–21 minutes |
+| Energy pack: hard pass | 3 of 3 | 3 of 3, **but see issue 11** |
+| HC-INC-99102 cited | 2 of 3 | 6 of 6 (pack and update) |
+| Good-catch EN-INC-20260920-06 cited as support | 1 of 3 | **3 of 3** |
+| Time per run | about 12–17 minutes | about 13–22 minutes |
 
-Every healthcare-pack failure in those two scorecards was the same: **HC-INC-99102** (no monitored bed for a
-CTAS 2 arrival) was not cited. In most failing runs the model had read it and called it "not
-fitting". Commit `2b7fbdf` changes the pattern prompt to say that a record describing a
-safety-relevant condition supports the pattern. **It hasn't been scored yet.**
+Commit `2b7fbdf` changed the pattern prompt to say that a record describing a safety-relevant
+condition supports the pattern. It fixed HC-INC-99102 (issue 1), but made issue 11 happen in
+every energy run.
 
 ## Open issues
 
-1. **HC-INC-99102 not cited** (above). The fix in `2b7fbdf` is waiting to be scored.
+1. ~~**HC-INC-99102 not cited**~~ **Fixed** by `2b7fbdf` (cited in 6 of 6 healthcare runs in
+   `2026-11-05`). Side effects: (a) the model now often copies the condition's label ("No
+   monitored bed for a CTAS 1 or 2 arrival") into its own wording, which led to extra retries;
+   (b) in one update run the Sept 22 window had no cited record; (c) "evidence that does not fit"
+   entries are now bare record IDs, with no reason given. Also see issue 11.
 2. **"Learn more" options:** the model sometimes leaves one out, even after a retry, and the step
    stops. The file stays in the incoming folder and is retried.
-3. **Records that don't fit** (the compliment HC-CMP-4475, and EN-INC-20260920-06) are often not
-   mentioned. `2b7fbdf` asks for every such record by its ID; also unscored.
+3. **Records that don't fit:** the compliment HC-CMP-4475 is now named in every healthcare run
+   (`2026-11-05`). EN-INC-20260920-06 is named in none of the energy runs: see issue 11.
 4. **Update runs** usually describe only the first time window in the pattern text, though both
    windows are cited.
 5. **The leading option varies between runs** (33–67% agreement), while confidence agrees 100%.
-6. **Speed:** about 12–17 minutes per run, slower than the original 7–8 minutes, because of the
+6. **Speed:** about 12–22 minutes per run, slower than the original 7–8 minutes, because of the
    extra checks and retries.
 7. **The numbers check can be too strict:** it removed "Flow Record 1500" map labels and the year
-   in "September 20, 2026". Not yet looked into.
+   in "September 20, 2026" (again in `2026-11-05-2`, run 2). Not yet looked into.
 8. **Duplicate citation:** every healthcare run cites HC-FLOW-20260920-1500 twice. This is harmless,
    and the fix is deferred to its own change.
 9. **Numbers by reference:** not yet clearly better on this model. It stays off.
 10. **App walkthrough** (step 5 of `docs/TESTING-ON-MAC.md`) hasn't been done yet.
+11. **Good-catch report cited as support (new, `2026-11-05-2`).** In all 3 energy runs the model
+    cited EN-INC-20260920-06 as supporting evidence, with the finding "Work started before
+    zero-energy verification". The record says the opposite: the crew waited and did not begin
+    work until sign-off was complete. Before `2b7fbdf` this happened in 1 of 3 runs. The quote
+    check didn't catch it (the quote is copied exactly; the check doesn't read meaning), and the
+    scorecard passed it because the energy answer key didn't forbid it then. Founder decisions
+    (2026-11-05): the answer key now forbids citing it as support; a code check comes next (a
+    finding that claims a safety-relevant condition must cite a record that describes that
+    condition); a prompt-wording change only if the code check causes too many retries.
+    **Pull request #1 is not to be merged until this is fixed and re-scored.**
 
 ## Next steps
 
-1. Score `2b7fbdf` on the healthcare pack with the switch off: `npm run eval -- --pack healthcare`.
-2. Compare it with `docs/eval/2026-11-04-4`. Is HC-INC-99102 cited in all 3 runs, with no new
-   problems?
-3. The founder reviews that comparison before the new scorecard is committed or anything else
-   changes.
+1. Build the code check for issue 11, test-first, after the founder approves the design.
+2. Re-score both packs (`npm run eval -- --pack healthcare`, then `--pack energy`) and compare
+   with `2026-11-05` and `2026-11-05-2`. Wanted: HC-INC-99102 cited in every healthcare run, and
+   EN-INC-20260920-06 never cited as support.
+3. The founder reviews that comparison before anything is merged.
