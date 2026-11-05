@@ -183,6 +183,84 @@ test("Prompt 1 asks for a quote or record values; Prompt 2 asks for a policy quo
   assert.match(replay.prompts[1], /copied exactly/);
 });
 
+// ---------- Findings that claim a safety-relevant condition (issue 11, 2026-11-05) ----------
+// A finding whose wording matches one of the domain's word-based safety conditions must cite a
+// record that describes that same condition. The good-catch report EN-INC-20260920-06 says the
+// crew did NOT begin work before zero-energy sign-off; in 2026-11-05-2 the model cited it for
+// "Work started before zero-energy verification" in all 3 runs.
+
+const energyRecords = loadEvalPack("energy", loadAnswerKey()).files.flatMap((f) => parseRecordFile(f.name, f.text));
+const energyWindows = findTriggeredWindows(energyRecords, rules);
+const goodCatch = (finding) => ({
+  source_id: "EN-INC-20260920-06", trust_label: "Observed", finding,
+  quote: "waited 90 minutes for zero-energy verification", record_values: [],
+});
+const withGoodCatch = (pattern, finding = "Work started before zero-energy verification") =>
+  ({ ...pattern, supporting_evidence: [...pattern.supporting_evidence, goodCatch(finding)] });
+/** Energy run with the given pattern answers (the recorded options step is retried once: 3-sentence rationale). */
+async function runEnergy(patternAnswers) {
+  const s = fixtureSteps("energy");
+  const replay = replayAsk([...patternAnswers(s), s.analysis, s.options, s.options, s.card]);
+  const result = await runPipeline({ windows: energyWindows, records: energyRecords, rules,
+    evidenceLibrary: loadEvidenceLibrary(), schemas: loadSchemas(), config: SIGNALS_CONFIG, ask: replay.ask });
+  return { result, replay };
+}
+const cites = (result, id) => result.steps.pattern.supporting_evidence.some((e) => e.source_id === id);
+
+test("safety condition: a finding claiming one, citing a record that doesn't describe it, is named in the retry", async () => {
+  const { replay } = await runEnergy((s) => [withGoodCatch(s.pattern), s.pattern]);
+  const retry = lastMessage(replay, 1);
+  assert.match(retry, /EN-INC-20260920-06: the finding says "Work started before zero-energy verification"/);
+  assert.match(retry, /safety-relevant condition/);
+  assert.match(retry, /doesn't describe it/);
+  assert.match(retry, /list it under evidence_that_does_not_fit/);
+});
+
+test("safety condition: still claimed after the retry, the finding is removed and logged; nothing is added to 'does not fit'", async () => {
+  const { result } = await runEnergy((s) => [withGoodCatch(s.pattern), withGoodCatch(s.pattern)]);
+  assert.ok(!cites(result, "EN-INC-20260920-06"));
+  assert.ok(cites(result, "EN-NM-20260920-01"), "the near miss that does describe it is kept");
+  const removed = result.meta.verification.findings_removed;
+  assert.equal(removed.length, 1);
+  assert.equal(removed[0].source_id, "EN-INC-20260920-06");
+  assert.match(removed[0].problem, /safety-relevant condition/);
+  assert.match(removals(result, "pattern").map((l) => l.detail).join("\n"), /EN-INC-20260920-06: unverified, removed/);
+  assert.deepEqual(result.steps.pattern.evidence_that_does_not_fit, [], "code doesn't add it to 'does not fit' itself");
+});
+
+test("safety condition: if the retry moves the record to 'does not fit', nothing is removed", async () => {
+  const fixed = (s) => ({ ...s.pattern, evidence_that_does_not_fit: ["EN-INC-20260920-06: the crew did not begin work until sign-off."] });
+  const { result } = await runEnergy((s) => [withGoodCatch(s.pattern), fixed(s)]);
+  assert.ok(!cites(result, "EN-INC-20260920-06"));
+  assert.deepEqual(result.meta.verification.findings_removed, []);
+  assert.equal(result.meta.verification.fixed_on_retry, 1);
+  assert.match(result.steps.pattern.evidence_that_does_not_fit[0], /^EN-INC-20260920-06/);
+});
+
+test("safety condition: findings citing a record that does describe it are kept (EN-NM-20260920-01, HC-INC-99102)", async () => {
+  const energy = await runEnergy((s) => [s.pattern]);
+  assert.ok(cites(energy.result, "EN-NM-20260920-01"));
+  assert.deepEqual(energy.result.meta.verification.findings_removed, []);
+  const healthcare = await run();
+  assert.equal(healthcare.replay.calls.length, 4, "no retry");
+  assert.ok(cites(healthcare.result, "HC-INC-99102"));
+});
+
+test("safety condition: a finding that claims no safety condition isn't affected", async () => {
+  const { result, replay } = await runEnergy((s) => [withGoodCatch(s.pattern, "Crew waited for zero-energy verification.")]);
+  assert.equal(replay.calls.length, 5, "no pattern retry");
+  assert.ok(cites(result, "EN-INC-20260920-06"));
+});
+
+test("safety condition (known limit): matching is on words, so a negative finding is treated as a claim too", async () => {
+  // "not started before zero-energy" still contains "started", "before" and "zero-energy".
+  // Accepted by the founder (2026-11-05): it keeps the record out of support, which is right here.
+  const negative = "Work was not started before zero-energy verification";
+  const { result, replay } = await runEnergy((s) => [withGoodCatch(s.pattern, negative), withGoodCatch(s.pattern, negative)]);
+  assert.match(lastMessage(replay, 1), /EN-INC-20260920-06: the finding says "Work was not started before zero-energy verification"/);
+  assert.ok(!cites(result, "EN-INC-20260920-06"));
+});
+
 // ---------- Analysis claims: contributing conditions and the pressure map ----------
 
 const withCondition = (analysis, i, change) => ({ ...analysis, contributing_conditions: analysis.contributing_conditions.map((c, j) => (j === i ? { ...c, ...change } : c)) });

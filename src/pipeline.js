@@ -25,7 +25,7 @@ import { buildPatternPrompt } from "./prompts/pattern.js";
 import { buildAnalysisPrompt } from "./prompts/analysis.js";
 import { buildOptionsPrompt } from "./prompts/options.js";
 import { buildReviewCardPrompt } from "./prompts/reviewCard.js";
-import { qualitativeNear, policiesFor, safetyConditionsIn, maxConfidence, lowerOf, CONFIDENCE_ORDER, SOURCE_TYPE_NAMES, isPolicy } from "./records.js";
+import { qualitativeNear, policiesFor, safetyConditionsIn, safetyConditionsClaimedBy, maxConfidence, lowerOf, CONFIDENCE_ORDER, SOURCE_TYPE_NAMES, isPolicy } from "./records.js";
 import { words } from "./passages.js";
 import { windowLabel } from "./recurrence.js";
 import { evidenceProblems, policyQuoteProblem, thresholdsOf, claimNumberProblems, fittingTrustLabel, resolveReferences } from "./verify.js";
@@ -169,12 +169,22 @@ export async function runPipeline({ windows, records, rules, evidenceLibrary, sc
   // The analysis claims checked against their records: contributing conditions and the pressure map.
   const CLAIM_LISTS = [["contributing_conditions", (c) => [c.condition]], ["pressure_map", (p) => [p.pressure_carried, p.shifting_to]]];
   const citedBy = (claim) => claim.source_ids.map((id) => byId.get(id)).filter(Boolean);
+  // A finding that claims one of the domain's word-based safety-relevant conditions must cite a
+  // record that describes that same condition (issue 11: the good-catch report EN-INC-20260920-06,
+  // where work did NOT begin before sign-off, was cited for "Work started before zero-energy
+  // verification"). The quote check alone can't see this: the quote was copied exactly.
+  const describedBy = new Map(safetyConditionsIn(patternInputs, pack).map((h) => [h.id, new Set(h.source_ids)]));
+  const safetyClaimProblems = (e) => safetyConditionsClaimedBy(e.finding, pack)
+    .filter((c) => !describedBy.get(c.id)?.has(e.source_id))
+    .map((c) => `${e.source_id}: the finding says "${e.finding}", a safety-relevant condition ("${c.label}"), ` +
+      `but ${e.source_id} doesn't describe it. Cite a record that does. If this record contradicts the pattern, ` +
+      "list it under evidence_that_does_not_fit instead.");
   const failingPerAnswer = []; // how many findings failed on each answer checked
   const verifyFindings = (o) => {
     failingPerAnswer.push(0);
     return o.supporting_evidence.flatMap((e) => {
       const record = byId.get(e.source_id);
-      const problems = record ? evidenceProblems(e, record, thresholds, { byReference }) : [];
+      const problems = record ? [...evidenceProblems(e, record, thresholds, { byReference }), ...safetyClaimProblems(e)] : [];
       if (problems.length === 0) return [];
       failingPerAnswer[failingPerAnswer.length - 1] += 1;
       const problem = problems.join(" ");

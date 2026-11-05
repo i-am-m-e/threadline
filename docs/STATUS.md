@@ -16,10 +16,11 @@ A one-page summary for picking the work back up. Branch: `verify-card-map` (draf
 - **Checks against the records:** findings must quote or match the record they cite; numbers must
   appear in the records; map items and card wording are checked; unverified items are removed and
   listed. Also: no names of people, no behaviour labels, every time window cited, rationales of
-  two sentences or fewer.
+  two sentences or fewer, and a finding that claims a safety-relevant condition must cite a record
+  that describes it.
 - **Recurrence:** counts how often a pattern has been seen, and flags it for review at 10+
   occasions.
-- **Tests and scorecard:** 247 saved tests (`npm test`, no AI needed). `npm run eval` runs the
+- **Tests and scorecard:** 255 saved tests (`npm test`, no AI needed). `npm run eval` runs the
   benchmark packs through the real model and writes a scorecard to `docs/eval/<date>/`.
 - **Switches, off by default:** "numbers by reference" (the model writes figures as references and
   code fills in the values) and the stricter "Learn more" check.
@@ -67,15 +68,16 @@ every energy run.
     work until sign-off was complete. Before `2b7fbdf` this happened in 1 of 3 runs. The quote
     check didn't catch it (the quote is copied exactly; the check doesn't read meaning), and the
     scorecard passed it because the energy answer key didn't forbid it then. Founder decisions
-    (2026-11-05): the answer key now forbids citing it as support; a code check comes next (a
-    finding that claims a safety-relevant condition must cite a record that describes that
-    condition); a prompt-wording change only if the code check causes too many retries.
-    **Pull request #1 is not to be merged until this is fixed and re-scored.**
+    (2026-11-05): the answer key now forbids citing it as support; a code check now asks for a
+    retry, then removes the finding, when a finding claims a word-based safety-relevant condition
+    but cites a record that doesn't describe it (the matching is on words, so a negative finding
+    like "work was not started before…" counts as a claim too; accepted). A prompt-wording change
+    only if the code check causes too many retries. **Not yet re-scored. Pull request #1 is not
+    to be merged until it is.**
 
 ## Next steps
 
-1. Build the code check for issue 11, test-first, after the founder approves the design.
-2. Re-score both packs (`npm run eval -- --pack healthcare`, then `--pack energy`) and compare
+1. Re-score both packs (`npm run eval -- --pack healthcare`, then `--pack energy`) and compare
    with `2026-11-05` and `2026-11-05-2`. Wanted: HC-INC-99102 cited in every healthcare run, and
-   EN-INC-20260920-06 never cited as support.
-3. The founder reviews that comparison before anything is merged.
+   EN-INC-20260920-06 never cited as support (and whether it is named as not fitting).
+2. The founder reviews that comparison before anything is merged.

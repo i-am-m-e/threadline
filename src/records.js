@@ -173,12 +173,25 @@ export function safetyConditionsIn(records, pack) {
   for (const condition of pack.safety_relevant_conditions ?? []) {
     const matching = records.filter((r) => {
       if (condition.metric) return conditionHolds(r, condition);
-      const text = `${r.title ?? ""} ${r.text ?? ""}`.toLowerCase();
-      return (condition.text_groups ?? []).every((group) => group.some((w) => text.includes(w.toLowerCase())));
+      return textDescribes(`${r.title ?? ""} ${r.text ?? ""}`, condition);
     });
     if (matching.length > 0) hits.push({ id: condition.id, label: condition.label, source_ids: matching.map((r) => r.source_id) });
   }
   return hits;
+}
+
+/** Does this text use one word from each of the condition's word groups? (Words, not meaning.) */
+function textDescribes(text, condition) {
+  const lower = text.toLowerCase();
+  return (condition.text_groups ?? []).every((group) => group.some((w) => lower.includes(w.toLowerCase())));
+}
+
+/**
+ * The word-based safety-relevant conditions a finding's wording claims, matched the same way
+ * safetyConditionsIn matches records. Metric conditions are left to the numbers check.
+ */
+export function safetyConditionsClaimedBy(text, pack) {
+  return (pack.safety_relevant_conditions ?? []).filter((c) => !c.metric && c.text_groups?.length && textDescribes(text ?? "", c));
 }
 
 // ---------- Confidence, by the spec's own definition ----------

@@ -50,6 +50,24 @@ for (const name of ["healthcare", "energy", "healthcare_update"]) {
   }
 }
 
+test("safety conditions claimed by a finding's wording: word-based ones only", async () => {
+  const { safetyConditionsClaimedBy } = await import("../src/records.js");
+  const ids = (text, domain) => safetyConditionsClaimedBy(text, rules[domain]).map((c) => c.id);
+  assert.deepEqual(ids("Work started before zero-energy verification", "Energy"), ["work_before_zero_energy"]);
+  assert.deepEqual(ids("No monitored bed available for a CTAS 2 patient.", "Healthcare"), ["no_monitored_bed_acute"]);
+  assert.deepEqual(ids("Crew waited 90 minutes for zero-energy verification.", "Energy"), []);
+  // Metric conditions are left to the numbers check, even when the wording names them.
+  assert.deepEqual(ids("Inspector covering more than 6 permits", "Energy"), []);
+  assert.deepEqual(ids("Waits after rooming over 60 minutes", "Healthcare"), []);
+});
+
+test("the shared word matching gives safetyConditionsIn the same answers on the good-catch and near-miss records", () => {
+  const energy = recordsOf("energy");
+  const one = (id) => safetyConditionsIn(energy.filter((r) => r.source_id === id), rules.Energy).map((c) => c.id);
+  assert.deepEqual(one("EN-NM-20260920-01"), ["work_before_zero_energy"]);
+  assert.deepEqual(one("EN-INC-20260920-06"), [], "the good catch says work did not begin before sign-off");
+});
+
 test("no prompt in a full healthcare run contains eval_role", async () => {
   const records = recordsOf("healthcare");
   const windows = findTriggeredWindows(records, rules);
