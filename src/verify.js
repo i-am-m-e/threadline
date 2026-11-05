@@ -264,13 +264,23 @@ const MONTH_ABBR = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep
 function referenceValue(record, field, percent) {
   if (!record) return null;
   const ts = typeof record.timestamp === "string" && record.timestamp.match(/^\d{4}-(\d{2})-(\d{2})(?:T(\d{2}:\d{2}))?/);
+  const asDate = () => (ts ? `${MONTH_ABBR[Number(ts[1]) - 1]} ${Number(ts[2])}` : null);
   if (field === "time") return ts?.[3] ?? null;
-  if (field === "date") return ts ? `${MONTH_ABBR[Number(ts[1]) - 1]} ${Number(ts[2])}` : null;
+  if (field === "date") return asDate();
+  // Every record's own field is literally called "timestamp" (records.js requires it), so that is
+  // the name the model sees in the prompt and reaches for. Accept it as well as {ID.time}/{ID.date}:
+  // the time when the record has one, otherwise the date.
+  if (field === "timestamp") return ts ? (ts[3] ?? asDate()) : null;
   const v = record[field];
   if (typeof v !== "number" || SKIP_FIELDS.has(field)) return null;
   if (percent) return `${v > 0 && v <= 1 ? Math.round(v * 100) : v}%`;
   return String(v);
 }
+
+/** The fields of a record that a {ID.field} reference can actually resolve to. */
+const numberFieldsOf = (record) => Object.entries(record)
+  .filter(([field, v]) => typeof v === "number" && !SKIP_FIELDS.has(field))
+  .map(([field]) => field);
 
 /** Problems with a text's references (each must name a record it can cite, and a real field). */
 function checkReferences(text, records) {
@@ -278,7 +288,14 @@ function checkReferences(text, records) {
   const stripped = String(text ?? "").replace(REFERENCE, (whole, id, field, percent) => {
     const record = records.find((r) => r.source_id === id);
     if (!record) problems.push(`${whole}: ${id} isn't a record this can cite.`);
-    else if (referenceValue(record, field, percent) === null) problems.push(`${whole}: ${id} has no number field "${field}".`);
+    else if (referenceValue(record, field, percent) === null) {
+      // Name the forms that do work, and this record's own number fields: without them the model
+      // has nothing to correct towards and repeats the same reference on every retry.
+      const fields = numberFieldsOf(record);
+      problems.push(`${whole}: ${id} has no number field "${field}". ` +
+        `Write its time or date as {${id}.time} or {${id}.date}` +
+        (fields.length ? `; its number fields are ${fields.join(", ")}.` : "."));
+    }
     return " ";
   });
   return { stripped, problems };
