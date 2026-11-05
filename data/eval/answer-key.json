@@ -130,6 +130,9 @@
           "EN-NM-20260920-02",
           "EN-INC-20260920-05"
         ],
+        "must_not_cite_as_support": [
+          "EN-INC-20260920-06"
+        ],
         "analysis_policy_source_id": "EN-POL-LOTO-VER",
         "acceptable_pattern_confidence": [
           "Medium"
@@ -168,6 +171,7 @@
     "2026-11-04: parking complaint treated as a possible confounder (not support, not forbidden to mention).",
     "2026-11-04: compliment HC-CMP-4475 accepted as counter-evidence.",
     "2026-11-04: good-catch EN-INC-20260920-06 may be cited for the wait or listed as not fitting.",
-    "2026-11-04: out-of-window near-miss EN-NM-20260920-04 recorded as a known limitation, not a failure."
+    "2026-11-04: out-of-window near-miss EN-NM-20260920-04 recorded as a known limitation, not a failure.",
+    "2026-11-05: good-catch EN-INC-20260920-06 must not be cited as support (it shows work did not begin before zero-energy sign-off). This replaces the 2026-11-04 decision that allowed it as support for the wait; listing it as not fitting is still expected."
   ]
 }
