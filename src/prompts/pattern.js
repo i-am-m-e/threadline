@@ -14,9 +14,19 @@ INSTRUCTIONS
 1. Find periods where downstream processing slowed while upstream flow
    continued, using the thresholds in DOMAIN_THRESHOLDS.
 2. Match qualitative records within +/- 2 hours of those periods.
+   Account for every record under INCIDENT AND COMPLAINT RECORDS, by
+   its source_id, in exactly one of two places:
+   - supporting_evidence, if it describes the same conditions or their
+     effects. A record describing one of the safety_relevant_conditions
+     in DOMAIN_THRESHOLDS is supporting evidence: cite it, even when it
+     describes a different part of the flow from the trigger conditions.
+   - evidence_that_does_not_fit, only if it contradicts the pattern
+     (for example, it shows the condition did not happen) or is
+     unrelated to it.
 3. Draft a plain-language vignette of what the records suggest.
    Describe conditions and flow, not what anyone did wrong.
-4. List any evidence that does not fit the pattern.
+4. List any evidence that does not fit the pattern. Begin each entry
+   with the record's source_id.
 5. Set confidence:
    High = at least two independent source types agree across more than
           one time window.
