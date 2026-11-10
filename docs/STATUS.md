@@ -1,7 +1,7 @@
 # Threadline status (2026-11-09)
 
-A one-page summary for picking the work back up. Branch: `verify-card-map` (draft pull request
-<https://github.com/i-am-m-e/threadline/pull/1>). All data is synthetic.
+A one-page summary for picking the work back up. Pull request #1 (`verify-card-map`) was merged into `main` on 2026-11-09. Current branch:
+`safety-record-not-fit`, not merged. All data is synthetic.
 
 ## What's built
 
@@ -20,7 +20,7 @@ A one-page summary for picking the work back up. Branch: `verify-card-map` (draf
   that describes it.
 - **Recurrence:** counts how often a pattern has been seen, and flags it for review at 10+
   occasions.
-- **Tests and scorecard:** 255 saved tests (`npm test`, no AI needed). `npm run eval` runs the
+- **Tests and scorecard:** 264 saved tests (`npm test`, no AI needed). `npm run eval` runs the
   benchmark packs through the real model and writes a scorecard to `docs/eval/<date>/`.
 - **Switches, off by default:** "numbers by reference" (the model writes figures as references and
   code fills in the values) and the stricter "Learn more" check.
@@ -46,9 +46,13 @@ issue 11 happen in every energy run. Commit `f98c201` added a code check that fi
 1. **HC-INC-99102 not cited: mostly fixed** by `2b7fbdf`. Cited in 6 of 6 healthcare runs in
    `2026-11-05`, and in 5 of 6 in `2026-11-05-3`: in run 1 of the healthcare pack the model's
    first answer listed it under "evidence that does not fit" (the original problem, 1 run in 3).
-   The check from `f98c201` never fired in healthcare, so it didn't cause this. Next: a design
-   for a matching check (a record that describes a safety-relevant condition, listed as not
-   fitting, gets one retry). Side effects of `2b7fbdf`: (a) the model now often copies the
+   The check from `f98c201` never fired in healthcare, so it didn't cause this. On branch
+   `safety-record-not-fit` a matching check is built: a record that describes a safety-relevant
+   condition, listed as not fitting, gets one retry; if that doesn't fix it, the answer is
+   accepted as the model wrote it and noted in the brief and on the scorecard (code never moves
+   a record into support). Tried on all 41 saved pattern answers: it asks about HC-INC-99102 in
+   the 5 that listed it as not fitting, and about nothing else. **Not yet scored**, so it isn't
+   known whether the model moves the record when asked. Side effects of `2b7fbdf`: (a) the model now often copies the
    condition's label ("No monitored bed for a CTAS 1 or 2 arrival") into its own wording, which
    led to extra retries; (b) in one update run of `2026-11-05` the Sept 22 window had no cited
    record; (c) "evidence that does not fit" entries are now bare record IDs, with no reason given.
@@ -82,7 +86,6 @@ issue 11 happen in every energy run. Commit `f98c201` added a code check that fi
 
 ## Next steps
 
-1. The founder approved merging pull request #1 into `main` on 2026-11-09.
-2. On a new branch from `main`: a short design (no code) for the issue 1 check, tried on all
-   saved runs first, for the founder to approve.
-3. Later, when the founder asks: a design for issue 7.
+1. Score branch `safety-record-not-fit` on both packs (healthcare and energy, 3 runs each) and
+   compare with `2026-11-05-3` and `2026-11-05-4`. The founder reviews the result before any merge.
+2. Later, when the founder asks: a design for issue 7.
