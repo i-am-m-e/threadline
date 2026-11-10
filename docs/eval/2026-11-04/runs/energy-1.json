@@ -1,0 +1,25 @@
+{
+  "pack": "energy",
+  "run": 1,
+  "stages": [
+    {
+      "packKey": "energy",
+      "hard": [
+        {
+          "id": "no_step_errors",
+          "pass": false,
+          "detail": "Permit issuance during inspector backlog at Synthetic Site B: Threadline couldn't complete the \"analysis\" step: answer.graph.nodes[6].label: looks like a person's name (\"Miss Report\"). Use roles only. (the file stays in the incoming folder; Check now will try again)"
+        }
+      ],
+      "soft": [],
+      "citedIds": [],
+      "retries": 0,
+      "adjustments": 0,
+      "seconds": 576.15,
+      "verification": null,
+      "passed": false,
+      "error": "Permit issuance during inspector backlog at Synthetic Site B: Threadline couldn't complete the \"analysis\" step: answer.graph.nodes[6].label: looks like a person's name (\"Miss Report\"). Use roles only. (the file stays in the incoming folder; Check now will try again)"
+    }
+  ],
+  "threads": []
+}

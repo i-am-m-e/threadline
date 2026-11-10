@@ -35,3 +35,18 @@ export function assemble(template, values) {
   });
   return `${SHARED_RULES}\n\n${filled}`;
 }
+
+// Added to Prompts 1, 2 and 4 only when SIGNALS_CONFIG.numbersByReference is on (src/verify.js
+// checks the references, then fills them in after all the checks).
+export const REFERENCE_RULES = `NUMBERS BY REFERENCE
+Do not type figures from flow records, or any time or date. Write them as
+references, which Threadline fills in from the records:
+  {SOURCE_ID.field}    a flow record's value, e.g. {HC-FLOW-20260920-1600.room_to_physician_minutes}
+  {SOURCE_ID.field%}   the same value as a percent, e.g. {HC-FLOW-20260920-1600.bed_occupancy%}
+  {SOURCE_ID.time}     a record's time; {SOURCE_ID.date} its date
+Use only records you cite. Figures written in an incident, complaint or
+near-miss record's own text, and the thresholds you were given, may be
+written as they appear. Leave "quote" and "record_values" as they are.`;
+
+/** The prompt, with the reference rules added when they're switched on. */
+export const withReferenceRules = (prompt, byReference) => (byReference ? `${prompt}\n\n${REFERENCE_RULES}` : prompt);

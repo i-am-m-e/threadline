@@ -13,9 +13,13 @@ const QUALITATIVE_TYPES = new Set(["incident_report", "complaint", "near_miss"])
 const TWO_HOURS = 2 * 60 * 60 * 1000;
 const ONE_HOUR = 60 * 60 * 1000;
 
-export const isFlow = (r) => FLOW_TYPES.has(r.source_type);
 export const isQualitative = (r) => QUALITATIVE_TYPES.has(r.source_type);
 export const isPolicy = (r) => r.source_type === "policy";
+// Flow records are rows of numbers: the two known kinds, or (for a domain added later, with
+// its own kind of log) any record that isn't a policy, incident, complaint or near-miss and
+// has no text. Text records in every domain use incident_report, complaint or near_miss.
+export const isFlow = (r) =>
+  FLOW_TYPES.has(r.source_type) || (!isPolicy(r) && !isQualitative(r) && typeof r.text !== "string");
 
 // Plain-language names for source types (for cards and badges).
 export const SOURCE_TYPE_NAMES = {
@@ -88,6 +92,9 @@ function addDerivedMetrics(r) {
   }
 }
 
+/** A field name as words: "room_to_physician_minutes" → "Room to physician minutes". */
+export const fieldName = (key) => key.replace(/_/g, " ").replace(/^./, (c) => c.toUpperCase());
+
 /**
  * A record file as readable text (for "Discuss in a thread"): one paragraph per record,
  * naming each field, e.g. "Timestamp: 2026-09-20T15:00; Bed occupancy: 0.93; …".
@@ -95,10 +102,9 @@ function addDerivedMetrics(r) {
  */
 export function recordFileAsText(fileName, raw) {
   const records = parseRecordFile(fileName, raw);
-  const nice = (key) => key.replace(/_/g, " ").replace(/^./, (c) => c.toUpperCase());
   const skip = new Set(["file", "synthetic", "text", "title"]);
   const paragraphs = records.map((r) => {
-    const fields = Object.entries(r).filter(([k]) => !skip.has(k)).map(([k, v]) => `${nice(k)}: ${v}`).join("; ");
+    const fields = Object.entries(r).filter(([k]) => !skip.has(k)).map(([k, v]) => `${fieldName(k)}: ${v}`).join("; ");
     return [r.title, r.text, fields].filter(Boolean).join("\n");
   });
   return {
@@ -167,12 +173,25 @@ export function safetyConditionsIn(records, pack) {
   for (const condition of pack.safety_relevant_conditions ?? []) {
     const matching = records.filter((r) => {
       if (condition.metric) return conditionHolds(r, condition);
-      const text = `${r.title ?? ""} ${r.text ?? ""}`.toLowerCase();
-      return (condition.text_groups ?? []).every((group) => group.some((w) => text.includes(w.toLowerCase())));
+      return textDescribes(`${r.title ?? ""} ${r.text ?? ""}`, condition);
     });
     if (matching.length > 0) hits.push({ id: condition.id, label: condition.label, source_ids: matching.map((r) => r.source_id) });
   }
   return hits;
+}
+
+/** Does this text use one word from each of the condition's word groups? (Words, not meaning.) */
+function textDescribes(text, condition) {
+  const lower = text.toLowerCase();
+  return (condition.text_groups ?? []).every((group) => group.some((w) => lower.includes(w.toLowerCase())));
+}
+
+/**
+ * The word-based safety-relevant conditions a finding's wording claims, matched the same way
+ * safetyConditionsIn matches records. Metric conditions are left to the numbers check.
+ */
+export function safetyConditionsClaimedBy(text, pack) {
+  return (pack.safety_relevant_conditions ?? []).filter((c) => !c.metric && c.text_groups?.length && textDescribes(text ?? "", c));
 }
 
 // ---------- Confidence, by the spec's own definition ----------

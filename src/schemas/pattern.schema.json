@@ -6,7 +6,7 @@
                "supporting_evidence", "possible_vignette", "evidence_that_does_not_fit", "confidence", "confidence_reason"],
   "properties": {
     "vignette_id": { "type": "string" },
-    "domain": { "type": "string", "enum": ["Healthcare", "Energy"] },
+    "domain": { "type": "string" },
     "pattern_type": { "type": "string" },
     "location": { "type": "string" },
     "time_window": { "type": "string" },
@@ -16,11 +16,24 @@
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["source_id", "trust_label", "finding"],
+        "required": ["source_id", "trust_label", "finding", "quote", "record_values"],
         "properties": {
           "source_id": { "type": "string" },
           "trust_label": { "type": "string", "enum": ["Authoritative", "Observed", "Historical", "Experiential", "Inferred"] },
-          "finding": { "type": "string" }
+          "finding": { "type": "string" },
+          "quote": { "type": "string" },
+          "record_values": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["field", "value"],
+              "properties": {
+                "field": { "type": "string" },
+                "value": { "type": "number" }
+              }
+            }
+          }
         }
       }
     },

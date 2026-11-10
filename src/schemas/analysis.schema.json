@@ -9,9 +9,10 @@
     "policy_practice_gap": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["policy_source_id", "what_policy_expects", "what_records_suggest", "confidence"],
+      "required": ["policy_source_id", "policy_quote", "what_policy_expects", "what_records_suggest", "confidence"],
       "properties": {
         "policy_source_id": { "type": "string" },
+        "policy_quote": { "type": "string" },
         "what_policy_expects": { "type": "string" },
         "what_records_suggest": { "type": "string" },
         "confidence": { "type": "string", "enum": ["Low", "Medium", "High"] }

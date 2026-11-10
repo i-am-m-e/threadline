@@ -3,7 +3,7 @@
 // lead whether the pattern matches what they see. Output must match
 // src/schemas/reviewCard.schema.json.
 
-import { assemble } from "./sharedRules.js";
+import { assemble, withReferenceRules } from "./sharedRules.js";
 
 const TEMPLATE = `SYSTEM PROMPT: REVIEW CARD
 
@@ -34,11 +34,11 @@ VIGNETTE, ANALYSIS AND OPTIONS:
 {{COMBINED_JSON}}`;
 
 /**
- * @param {object} inputs
+ * @param {object} inputs  (byReference: add the "numbers by reference" rules)
  * @param {object} inputs.vignette  Prompt 1's output.
  * @param {object} inputs.analysis  Prompt 2's output.
  * @param {object} inputs.options   Prompt 3's output.
  */
-export function buildReviewCardPrompt({ vignette, analysis, options }) {
-  return assemble(TEMPLATE, { COMBINED_JSON: { vignette, analysis, options } });
+export function buildReviewCardPrompt({ vignette, analysis, options, byReference = false }) {
+  return withReferenceRules(assemble(TEMPLATE, { COMBINED_JSON: { vignette, analysis, options } }), byReference);
 }
