@@ -1,8 +1,9 @@
 # Threadline status (2026-11-10)
 
 A one-page summary for picking the work back up. Pull request #1 (`verify-card-map`) was merged
-into `main` on 2026-11-09. Current branch: `safety-record-not-fit`, pushed, **not merged** (the
-founder decides). All data is synthetic.
+into `main` on 2026-11-09, and branch `safety-record-not-fit` on 2026-11-10 (merge commit
+`693b354`). Current branch: `numbers-check-false-alarms`, pushed, **not merged** (the founder
+decides after seeing its scorecards). All data is synthetic.
 
 ## What's built
 
@@ -21,7 +22,7 @@ founder decides). All data is synthetic.
   that describes it.
 - **Recurrence:** counts how often a pattern has been seen, and flags it for review at 10+
   occasions.
-- **Tests and scorecard:** 272 saved tests (`npm test`, no AI needed). `npm run eval` runs the
+- **Tests and scorecard:** 293 saved tests (`npm test`, no AI needed). `npm run eval` runs the
   benchmark packs through the real model and writes a scorecard to `docs/eval/<date>/`.
 - **Switches, off by default:** "numbers by reference" (the model writes figures as references and
   code fills in the values) and the stricter "Learn more" check.
@@ -42,7 +43,7 @@ Commit `2b7fbdf` changed the pattern prompt to say that a record describing a sa
 condition supports the pattern. It made HC-INC-99102 cited far more often (issue 1), but made
 issue 11 happen in every energy run. Commit `f98c201` added a code check that fixed issue 11.
 
-On branch `safety-record-not-fit` (healthcare; energy re-scored once in `2026-11-09-2`, unchanged):
+From branch `safety-record-not-fit`, now merged (healthcare; energy re-scored once in `2026-11-09-2`, unchanged):
 
 | | `2026-11-09` (not-fit rule, `4c61cab`) | `2026-11-10` (plus the label fix, `43b0bfa`) |
 | --- | --- | --- |
@@ -57,7 +58,7 @@ On branch `safety-record-not-fit` (healthcare; energy re-scored once in `2026-11
 
 ## Open issues
 
-1. ~~**HC-INC-99102 not cited**~~ **Fixed on branch `safety-record-not-fit`** (cited in 6 of 6
+1. ~~**HC-INC-99102 not cited**~~ **Fixed** (branch `safety-record-not-fit`, merged; cited in 6 of 6
    healthcare runs in `2026-11-10`), in three steps. (i) `2b7fbdf`: the pattern prompt says a
    record describing a safety-relevant condition supports the pattern. (ii) `4c61cab`: when such
    a record is listed under "evidence that does not fit", the model gets one retry; if that
@@ -80,10 +81,26 @@ On branch `safety-record-not-fit` (healthcare; energy re-scored once in `2026-11
 5. **The leading option varies between runs** (33–67% agreement), while confidence agrees 100%.
 6. **Speed:** about 12–22 minutes per run, slower than the original 7–8 minutes, because of the
    extra checks and retries.
-7. **The numbers check can be too strict** on times, dates and labels: it removed "Flow Record
-   1500" and "Flow data 2026-09-20 1500" map labels (again in `2026-11-10`), the year in
-   "September 20, 2026", "3" in "between 3 and 6 pm", and "CTAS 1 or 2 patient" (a reworded
-   safety label; only the label word for word is allowed). Design to come when the founder asks.
+7. **The numbers check was too strict** on times, dates and labels. **Changed on branch
+   `numbers-check-false-alarms`; not yet scored with the model.** In the 44 saved runs every
+   numbers complaint about wording was a false alarm of one of six kinds, and none was a wrong
+   figure. Five are now allowed (design approved by the founder, 2026-11-10):
+   (i) a record's own year straight after its own date ("September 20, 2026");
+   (ii) a record's own timestamp written in full ("2026-09-20T15:00");
+   (iii) a time range ("between 3 and 6 pm" is read as 3 pm and 6 pm, which must still be cited
+   records' hours);
+   (iv) in map labels only, a label may end with its cited record's own ID numbers, date or time
+   ("Flow Record 1500", "Complaint 4471"; "4471 patients" is still refused);
+   (v) a safety condition's category phrase, listed in `data/domain_rules.json` ("CTAS 1 or 2"
+   only, so far), is skipped only in text about a record that was matched to that same
+   condition; for any other record it is still checked.
+   Still refused, on purpose: made-up serial numbers ("Permit Data 3"), which the model fixed on
+   its retry every time. Replaying the saved runs, all 20 items that were removed or replaced
+   for these reasons would have been kept. Known limits: a range with no "am" or "pm" ("between
+   3 and 6") is still refused; with numbers by reference on, nothing changes.
+   One reading to confirm with the founder: wording about the whole Thread (the pattern
+   statement, the vignette) may use the category phrase when one of the Thread's records was
+   matched to the condition.
 8. **Duplicate citation:** every healthcare run cites HC-FLOW-20260920-1500 twice. This is harmless,
    and the fix is deferred to its own change.
 9. **Numbers by reference:** not yet clearly better on this model. It stays off.
@@ -102,7 +119,7 @@ On branch `safety-record-not-fit` (healthcare; energy re-scored once in `2026-11
 
 ## Next steps
 
-1. The founder decides whether to merge `safety-record-not-fit` into `main` (no pull request
-   is open for it yet).
-2. Later, when the founder asks: a design for issue 7.
+1. Score both packs on branch `numbers-check-false-alarms` (scheduled for the night of
+   2026-11-10 to 11) and compare with `2026-11-10` and `2026-11-09-2`.
+2. The founder decides whether to merge `numbers-check-false-alarms` into `main`.
 3. Still not done: the app walkthrough (issue 10).
