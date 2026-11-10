@@ -27,7 +27,7 @@ test("writes the scorecard, settings and one file per run", async () => {
   await runEvaluation(options(replay.ask, dir));
   for (const f of ["scorecard.md", "settings.json", "runs/healthcare-1.json", "runs/healthcare-2.json"]) assert.ok(existsSync(join(dir, f)), f);
   const card = readFileSync(join(dir, "scorecard.md"), "utf8");
-  assert.match(card, /Answer key: draft/);
+  assert.match(card, /Answer key: approved/);
   assert.match(card, /\| Findings checked against their source \| 12 of 12 verified \(0 removed as unverified; 0 fixed or dropped on retry\) \|/);
   assert.match(card, /\| Policy quote verified \| 2 of 2 runs \|/);
   assert.match(card, /\| Analysis claims checked against their records \| 8 of 8 verified \(0 removed as unverified; 0 trust labels corrected\) \|/);
@@ -39,7 +39,7 @@ test("writes the scorecard, settings and one file per run", async () => {
   assert.match(card, /## Healthcare update[\s\S]*\| Recommendation rationale shortened to two sentences \| 2 of 2 runs \|/);
   assert.match(card, /abc1234/);
   const settings = JSON.parse(readFileSync(join(dir, "settings.json"), "utf8"));
-  assert.equal(settings.answer_key_status, "draft");
+  assert.equal(settings.answer_key_status, "approved");
   assert.equal(settings.runs, 2);
 });
 

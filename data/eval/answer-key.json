@@ -1,6 +1,7 @@
 {
-  "$comment": "DRAFT for founder review (2026-11-04). What a correct Signals result looks like for each evaluation pack. All data synthetic. 'hard' checks decide pass/fail; 'soft' checks are reported but don't fail a run.",
-  "status": "draft",
+  "$comment": "Approved by the founder on 2026-11-09 (first drafted 2026-11-04). Any change still needs the founder's sign-off. What a correct Signals result looks like for each evaluation pack. All data synthetic. 'hard' checks decide pass/fail; 'soft' checks are reported but don't fail a run.",
+  "status": "approved",
+  "approved_on": "2026-11-09",
   "packs": {
     "healthcare": {
       "files": [
@@ -172,6 +173,7 @@
     "2026-11-04: compliment HC-CMP-4475 accepted as counter-evidence.",
     "2026-11-04: good-catch EN-INC-20260920-06 may be cited for the wait or listed as not fitting.",
     "2026-11-04: out-of-window near-miss EN-NM-20260920-04 recorded as a known limitation, not a failure.",
-    "2026-11-05: good-catch EN-INC-20260920-06 must not be cited as support (it shows work did not begin before zero-energy sign-off). This replaces the 2026-11-04 decision that allowed it as support for the wait; listing it as not fitting is still expected."
+    "2026-11-05: good-catch EN-INC-20260920-06 must not be cited as support (it shows work did not begin before zero-energy sign-off). This replaces the 2026-11-04 decision that allowed it as support for the wait; listing it as not fitting is still expected.",
+    "2026-11-09: answer key approved by the founder. Changes to it still need the founder's sign-off."
   ]
 }
