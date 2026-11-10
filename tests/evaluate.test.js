@@ -112,3 +112,17 @@ test("without the option the scorecard says numbers by reference is off", async 
   assert.match(card, /- Numbers by reference: off/);
   assert.doesNotMatch(card, /References filled in/);
 });
+
+test("the scorecard says how often a safety record was listed as not fitting, and where it was left", async () => {
+  const dir = outDir();
+  const notFit = () => {
+    const p = fixtureSteps("rooming", 0).pattern;
+    return { ...p, supporting_evidence: p.supporting_evidence.filter((e) => e.source_id !== "HC-INC-99102"), evidence_that_does_not_fit: ["HC-INC-99102"] };
+  };
+  // Run 1: listed as not fitting on both answers (left). Run 2: listed, then fixed on the retry.
+  const replay = replayAsk([notFit(), notFit(), ...four(0).slice(1), ...update(), notFit(), ...four(0), ...update()]);
+  await runEvaluation(options(replay.ask, dir));
+  const card = readFileSync(join(dir, "scorecard.md"), "utf8");
+  assert.match(card, /## Healthcare pack[\s\S]*?\| Safety records listed as not fitting \| 2 asked about on a retry \(1 fixed; 1 left as the model wrote it: HC-INC-99102 in run 1\) \|/);
+  assert.match(card, /## Healthcare update[\s\S]*\| Safety records listed as not fitting \| none \|/);
+});

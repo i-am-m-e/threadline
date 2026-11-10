@@ -353,3 +353,41 @@ test("resolving references fills in the record's real values, formatted for peop
   assert.equal(out.resolved, 5);
   assert.equal(out.unresolved, 1);
 });
+
+// ---------- A safety condition's own label, quoted word for word (2026-11-09) ----------
+// The pattern prompt shows the model the safety-relevant conditions' labels. In 2026-11-09 the
+// model cited HC-INC-99102 for "No monitored bed for a CTAS 1 or 2 arrival" (the label itself),
+// and the finding was removed because the record says "CTAS 2" and has no "1".
+
+const noBed = {
+  source_id: "HC-INC-99102", source_type: "incident_report",
+  text: "Triage reported no available monitored bed when an EMS CTAS 2 chest pain patient arrived.",
+};
+const LABELS = ["No monitored bed for a CTAS 1 or 2 arrival", "Waits after rooming over 60 minutes"];
+
+test("numbers: a safety condition's label quoted word for word passes, whatever the capitals", () => {
+  assert.deepEqual(numberProblems("No monitored bed for a CTAS 1 or 2 arrival", noBed, [], { labels: LABELS }), []);
+  assert.deepEqual(numberProblems("no monitored bed for a  CTAS 1 or 2 arrival at 15:30.", { ...noBed, timestamp: "2026-09-20T15:30" }, [], { labels: LABELS }), []);
+  assert.deepEqual(evidenceProblems({ finding: "No monitored bed for a CTAS 1 or 2 arrival", quote: "no available monitored bed when an EMS CTAS 2 chest pain patient arrived", record_values: [] }, noBed, [], { labels: LABELS }), []);
+});
+
+test("numbers: without the labels, the same finding is still refused (the behaviour before)", () => {
+  assert.match(numberProblems("No monitored bed for a CTAS 1 or 2 arrival", noBed, [])[0], /mentions 1, which isn't in that record/);
+});
+
+test("numbers: other numbers beside a quoted label are still checked", () => {
+  const problems = numberProblems("No monitored bed for a CTAS 1 or 2 arrival; 3 patients waited", noBed, [], { labels: LABELS });
+  assert.match(problems[0], /mentions 3, which isn't in that record/);
+  assert.doesNotMatch(problems[0], /mentions 1/);
+});
+
+test("numbers: only the label word for word counts; a reworded one is still checked", () => {
+  assert.match(numberProblems("No monitored beds for CTAS 1 or 2 arrivals", noBed, [], { labels: LABELS })[0], /mentions 1/);
+});
+
+test("claims: a quoted label passes in other wording too (statement, vignette, map, card)", () => {
+  const text = "Records suggest long waits after rooming and no monitored bed for a CTAS 1 or 2 arrival.";
+  assert.deepEqual(claimNumberProblems(text, [noBed], [], { labels: LABELS }), []);
+  assert.match(claimNumberProblems(text, [noBed], [])[0], /mentions 1/);
+  assert.match(claimNumberProblems(`${text} 7 patients left.`, [noBed], [], { labels: LABELS })[0], /mentions 7, which/);
+});

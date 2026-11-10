@@ -131,10 +131,10 @@ function allowedNumbers(record, thresholds, { byReference = false } = {}) {
  * @param {number[]} thresholds  The domain's own thresholds (see thresholdsOf).
  * @returns {string[]} Problems (at most one per record), empty if all is well.
  */
-export function numberProblems(finding, record, thresholds, { byReference = false } = {}) {
+export function numberProblems(finding, record, thresholds, { byReference = false, labels = [] } = {}) {
   const { stripped, problems } = byReference ? checkReferences(finding, [record]) : { stripped: finding, problems: [] };
   const allowed = allowedNumbers(record, thresholds, { byReference });
-  const missing = [...new Set(numbersIn(withoutOwnReferences(stripped, [record], { timesAndDates: !byReference })))]
+  const missing = [...new Set(numbersIn(withoutOwnReferences(withoutLabels(stripped, labels), [record], { timesAndDates: !byReference })))]
     .filter((n) => !allowed.some((a) => same(a, n)));
   const out = problems.map((p) => `${record.source_id}: ${p}`);
   if (missing.length) {
@@ -143,6 +143,24 @@ export function numberProblems(finding, record, thresholds, { byReference = fals
   }
   return out;
 }
+
+/**
+ * The text with any of these labels, quoted word for word (capitals and spacing aside), taken
+ * out, so the numbers inside a label aren't checked as quantities. For the domain's
+ * safety-relevant condition labels, which the pattern prompt shows the model: "No monitored
+ * bed for a CTAS 1 or 2 arrival" names a category, not a count. Any other number is still checked.
+ */
+function withoutLabels(text, labels) {
+  let out = String(text ?? "");
+  for (const label of labels) {
+    if (!String(label ?? "").trim()) continue;
+    out = out.replace(new RegExp(label.trim().split(/\s+/).map(escapeRe).join("\\s+"), "gi"), " ");
+  }
+  return out;
+}
+
+/** The labels of a domain's safety-relevant conditions (see withoutLabels). */
+export const safetyLabelsOf = (pack) => (pack.safety_relevant_conditions ?? []).map((c) => c.label).filter(Boolean);
 
 /** The numbers in a domain's trigger and safety thresholds, e.g. 0.9, 45, 60. */
 export function thresholdsOf(pack) {
@@ -180,7 +198,7 @@ export function recordValueProblems(recordValues, record) {
  *  - either way, every number in the finding's wording is in the record.
  * @returns {string[]} Problems, empty if the item is verified.
  */
-export function evidenceProblems(item, record, thresholds, { byReference = false } = {}) {
+export function evidenceProblems(item, record, thresholds, { byReference = false, labels = [] } = {}) {
   const id = record.source_id;
   const values = item.record_values ?? [];
   const problems = [];
@@ -193,7 +211,7 @@ export function evidenceProblems(item, record, thresholds, { byReference = false
     if (quote) problems.push(quote);
     if (values.length > 0) problems.push(`${id}: this kind of record has no fields to check; leave record_values empty and quote its text.`);
   }
-  problems.push(...numberProblems(item.finding ?? "", record, thresholds, { byReference }));
+  problems.push(...numberProblems(item.finding ?? "", record, thresholds, { byReference, labels }));
   return problems;
 }
 
@@ -218,12 +236,12 @@ export function policyQuoteProblem(gap, policy) {
  * @param {{where?: string}} [options]  How to name those records in the message.
  * @returns {string[]}
  */
-export function claimNumberProblems(text, records, thresholds, { where = "the records it cites", byReference = false } = {}) {
+export function claimNumberProblems(text, records, thresholds, { where = "the records it cites", byReference = false, labels = [] } = {}) {
   const { stripped, problems } = byReference ? checkReferences(text, records) : { stripped: text, problems: [] };
   const refProblems = problems.map((p) => `"${text}": ${p}`);
   const allowed = [...thresholds, ...records.flatMap((r) => allowedNumbers(r, [], { byReference }))];
   const withPercents = [...allowed, ...thresholds.flatMap(asPercent)];
-  const missing = [...new Set(numbersIn(withoutOwnReferences(stripped, records, { timesAndDates: !byReference })))]
+  const missing = [...new Set(numbersIn(withoutOwnReferences(withoutLabels(stripped, labels), records, { timesAndDates: !byReference })))]
     .filter((n) => !withPercents.some((a) => same(a, n)));
   if (missing.length === 0) return refProblems;
   const all = records.map((r) => r.source_id);

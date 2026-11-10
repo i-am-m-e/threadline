@@ -53,6 +53,9 @@ export function verificationSummary(v) {
   }
   if (v.rationale === "shortened") parts.push("recommendation shortened to two sentences");
   if (v.learn_more === "relabelled") parts.push('a "Learn more" option that changed something was relabelled');
+  for (const s of v.safety_not_fit?.left ?? []) {
+    parts.push(`${s.source_id} describes a safety-relevant condition (${s.label}) but was listed as not fitting, even after a retry`);
+  }
   return parts.join("; ") + ".";
 }
 

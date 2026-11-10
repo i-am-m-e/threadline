@@ -122,3 +122,10 @@ test("the summary says when a 'Learn more' option was relabelled", () => {
   assert.match(verificationSummary({ ...okVerification, learn_more: "relabelled" }), /; a "Learn more" option that changed something was relabelled\.$/);
   assert.doesNotMatch(verificationSummary({ ...okVerification, learn_more: "ok" }), /Learn more/);
 });
+
+test("the summary notes a safety record still listed as not fitting after the retry", () => {
+  const v = { ...okVerification, safety_not_fit: { asked: 1, left: [{ source_id: "HC-INC-99102", label: "No monitored bed for a CTAS 1 or 2 arrival" }] } };
+  assert.match(verificationSummary(v), /; HC-INC-99102 describes a safety-relevant condition \(No monitored bed for a CTAS 1 or 2 arrival\) but was listed as not fitting, even after a retry\.$/);
+  assert.doesNotMatch(verificationSummary({ ...okVerification, safety_not_fit: { asked: 1, left: [] } }), /not fitting/);
+  assert.doesNotMatch(verificationSummary(okVerification), /not fitting/, "runs from before this check");
+});

@@ -110,6 +110,7 @@ test("findings that match their records pass, and the tally says so", async () =
     windows: { total: 1, cited: 1, uncited: [] },
     rationale: "ok",
     learn_more: "not checked",
+    safety_not_fit: { asked: 0, left: [] },
   });
 });
 
@@ -636,4 +637,98 @@ test("by reference on: the recorded first run (thresholds and incident/complaint
   const { replay, result } = await run({ config: refOn });
   assert.equal(replay.calls.length, 4);
   assert.deepEqual(result.meta.verification.findings_removed, []);
+});
+
+// ---------- A safety record listed under "evidence that does not fit" (issue 1, 2026-11-09) ----------
+// A record that safetyConditionsIn() matched to a safety-relevant condition, listed as not
+// fitting, gets one retry. If the retry doesn't fix it, the answer is accepted as the model
+// wrote it and noted (code never moves a record into support). In 2026-11-05-3 run 1 the model
+// listed HC-INC-99102 (no monitored bed for a CTAS 2 arrival) as not fitting.
+
+const MONITORED_BED = "No monitored bed for a CTAS 1 or 2 arrival";
+/** The pattern with one record taken out of support and an entry added to "does not fit". */
+const listedNotFit = (pattern, id, entry = id) => ({
+  ...pattern,
+  supporting_evidence: pattern.supporting_evidence.filter((e) => e.source_id !== id),
+  evidence_that_does_not_fit: [...pattern.evidence_that_does_not_fit, entry],
+});
+const withNotFit = (pattern, entry) => ({ ...pattern, evidence_that_does_not_fit: [...pattern.evidence_that_does_not_fit, entry] });
+
+test("safety record as not fitting: named in the retry with its condition; fixed on the retry, nothing is noted", async () => {
+  const { result, replay } = await run({ answers: (s) => [listedNotFit(s.pattern, "HC-INC-99102"), s.pattern, s.analysis, s.options, s.card] });
+  const retry = lastMessage(replay, 1);
+  assert.match(retry, /evidence_that_does_not_fit: HC-INC-99102 describes a safety-relevant condition \("No monitored bed for a CTAS 1 or 2 arrival"\)/);
+  assert.match(retry, /Cite it under supporting_evidence/);
+  assert.ok(cites(result, "HC-INC-99102"));
+  assert.deepEqual(result.meta.verification.safety_not_fit, { asked: 1, left: [] });
+});
+
+test("safety record as not fitting: still there after the retry, it is accepted as written and noted, and the run carries on", async () => {
+  const wrong = (s) => listedNotFit(s.pattern, "HC-INC-99102");
+  const { result } = await run({ answers: (s) => [wrong(s), wrong(s), s.analysis, s.options, s.card] });
+  assert.deepEqual(result.steps.pattern.evidence_that_does_not_fit, ["HC-INC-99102"], "the entry stays where the model put it");
+  assert.ok(!cites(result, "HC-INC-99102"), "code doesn't move the record into support");
+  assert.deepEqual(result.meta.verification.safety_not_fit, { asked: 1, left: [{ source_id: "HC-INC-99102", label: MONITORED_BED }] });
+  assert.match(logText(result, "pattern"), /HC-INC-99102 describes a safety-relevant condition .* still listed as not fitting after the retry \(accepted as the model wrote it\)/);
+  assert.deepEqual(result.meta.verification.findings_removed, []);
+  assert.ok(result.steps.card, "the later steps still ran");
+});
+
+test("safety record as not fitting: an entry with no record id is matched on its wording", async () => {
+  const wrong = (s) => listedNotFit(s.pattern, "HC-INC-99102", "A CTAS 2 patient arrived, but there was no monitored bed available.");
+  const { result, replay } = await run({ answers: (s) => [wrong(s), s.pattern, s.analysis, s.options, s.card] });
+  assert.match(lastMessage(replay, 1), /evidence_that_does_not_fit: "A CTAS 2 patient arrived, but there was no monitored bed available\." describes a safety-relevant condition \("No monitored bed for a CTAS 1 or 2 arrival"\), which HC-INC-99102 records/);
+  assert.deepEqual(result.meta.verification.safety_not_fit, { asked: 1, left: [] });
+});
+
+test("safety record as not fitting: number-based conditions count too (a flow row with a wait over 60 minutes)", async () => {
+  const { replay } = await run({ answers: (s) => [withNotFit(s.pattern, "HC-FLOW-20260920-1600: seems unrelated"), s.pattern, s.analysis, s.options, s.card] });
+  assert.match(lastMessage(replay, 1), /evidence_that_does_not_fit: HC-FLOW-20260920-1600 describes a safety-relevant condition \("Waits after rooming over 60 minutes"\)/);
+});
+
+test("safety record as not fitting: records that describe no safety condition can be listed freely", async () => {
+  const pattern = (s) => ({ ...s.pattern, evidence_that_does_not_fit: ["HC-CMP-4475", "HC-CMP-4480: the parking machine", "HC-INC-99110"] });
+  const { result, replay } = await run({ answers: (s) => [pattern(s), s.analysis, s.options, s.card] });
+  assert.equal(replay.calls.length, 4, "no retry");
+  assert.deepEqual(result.meta.verification.safety_not_fit, { asked: 0, left: [] });
+});
+
+test("safety record as not fitting: an entry that names another record is judged by that record, not its wording (the good catch)", async () => {
+  // Rightly listed as not fitting, with a reason that happens to use the condition's words.
+  const entry = "EN-INC-20260920-06: work was not started before zero-energy verification on Line A.";
+  const { result, replay } = await runEnergy((s) => [withNotFit(s.pattern, entry)]);
+  assert.equal(replay.calls.length, 5, "no pattern retry");
+  assert.deepEqual(result.meta.verification.safety_not_fit, { asked: 0, left: [] });
+});
+
+test("safety record as not fitting (known limit): with no record id, a negative entry is matched on its words too", async () => {
+  // Same limit as the finding check: words, not meaning. Entries have begun with an id since 2b7fbdf.
+  const entry = "A crew waited and work was not started before zero-energy verification.";
+  const { replay } = await runEnergy((s) => [withNotFit(s.pattern, entry), s.pattern]);
+  assert.match(lastMessage(replay, 1), /describes a safety-relevant condition \("Work started before zero-energy verification"\), which EN-NM-20260920-01 records/);
+});
+
+// ---------- The safety condition's label as the finding (2026-11-09) ----------
+
+test("a finding worded with the safety condition's own label is kept, with no retry (HC-INC-99102)", async () => {
+  const labelled = (s) => withEvidence(s.pattern, "HC-INC-99102", { finding: "No monitored bed for a CTAS 1 or 2 arrival" });
+  const { result, replay } = await run({ answers: (s) => [labelled(s), s.analysis, s.options, s.card] });
+  assert.equal(replay.calls.length, 4, "no retry");
+  assert.ok(cites(result, "HC-INC-99102"));
+  assert.deepEqual(result.meta.verification.findings_removed, []);
+});
+
+test("listed as not fitting, then moved into support with the label on the retry: kept (the 2026-11-09 failure)", async () => {
+  const moved = (s) => withEvidence(s.pattern, "HC-INC-99102", { finding: "no monitored bed for a CTAS 1 or 2 arrival" });
+  const { result } = await run({ answers: (s) => [listedNotFit(s.pattern, "HC-INC-99102"), moved(s), s.analysis, s.options, s.card] });
+  assert.ok(cites(result, "HC-INC-99102"));
+  assert.deepEqual(result.meta.verification.findings_removed, []);
+  assert.deepEqual(result.meta.verification.safety_not_fit, { asked: 1, left: [] });
+});
+
+test("the pattern statement may quote the label too, and isn't replaced", async () => {
+  const statement = "Records suggest long waits after rooming and no monitored bed for a CTAS 1 or 2 arrival.";
+  const { result, replay } = await run({ answers: (s) => [{ ...s.pattern, pattern_statement: statement }, s.analysis, s.options, s.card] });
+  assert.equal(replay.calls.length, 4, "no retry");
+  assert.equal(result.steps.pattern.pattern_statement, statement);
 });

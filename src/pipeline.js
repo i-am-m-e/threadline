@@ -28,7 +28,7 @@ import { buildReviewCardPrompt } from "./prompts/reviewCard.js";
 import { qualitativeNear, policiesFor, safetyConditionsIn, safetyConditionsClaimedBy, maxConfidence, lowerOf, CONFIDENCE_ORDER, SOURCE_TYPE_NAMES, isPolicy } from "./records.js";
 import { words } from "./passages.js";
 import { windowLabel } from "./recurrence.js";
-import { evidenceProblems, policyQuoteProblem, thresholdsOf, claimNumberProblems, fittingTrustLabel, resolveReferences } from "./verify.js";
+import { evidenceProblems, policyQuoteProblem, thresholdsOf, safetyLabelsOf, claimNumberProblems, fittingTrustLabel, resolveReferences } from "./verify.js";
 
 /**
  * @param {object} run
@@ -68,6 +68,8 @@ export async function runPipeline({ windows, records, rules, evidenceLibrary, sc
 
   // Checking findings against their records (src/verify.js). The tally ends up in meta.
   const thresholds = thresholdsOf(pack);
+  // A safety-relevant condition's label quoted word for word isn't checked for numbers ("CTAS 1 or 2").
+  const labels = safetyLabelsOf(pack);
   const byReference = Boolean(config.numbersByReference); // see src/verify.js
   const verification = {
     findings_checked: 0, findings_verified: 0, findings_removed: [], fixed_on_retry: 0, findings_labels_corrected: 0, policy_quote: "none cited",
@@ -78,6 +80,7 @@ export async function runPipeline({ windows, records, rules, evidenceLibrary, sc
     windows: { total: windows.length, cited: 0, uncited: [] },
     rationale: "ok",
     learn_more: config.learnMoreCheck ? "ok" : "not checked",
+    safety_not_fit: { asked: 0, left: [] },
   };
 
   // "Learn more" options must gather information (only when config.learnMoreCheck is on): the
@@ -137,7 +140,7 @@ export async function runPipeline({ windows, records, rules, evidenceLibrary, sc
   const wording = verification.wording;
   const PLAIN = "The drafted wording mentioned figures that aren't in the records, so the wording was removed.";
   const fieldIssues = (field, holder, key, records, fallback) => {
-    const problems = claimNumberProblems(holder[key] ?? "", records, thresholds, { where: "this Thread's records", byReference });
+    const problems = claimNumberProblems(holder[key] ?? "", records, thresholds, { where: "this Thread's records", byReference, labels });
     if (problems.length === 0) return [];
     const problem = `${field}: ${problems.join(" ")}`;
     return [{
@@ -150,7 +153,7 @@ export async function runPipeline({ windows, records, rules, evidenceLibrary, sc
     }];
   };
   const itemIssues = (list, holder, records) => holder[list].flatMap((text) => {
-    const problems = claimNumberProblems(text, records, thresholds, { where: "this Thread's records", byReference });
+    const problems = claimNumberProblems(text, records, thresholds, { where: "this Thread's records", byReference, labels });
     if (problems.length === 0) return [];
     const problem = `${list}: ${problems.join(" ")}`;
     return [{
@@ -179,12 +182,49 @@ export async function runPipeline({ windows, records, rules, evidenceLibrary, sc
     .map((c) => `${e.source_id}: the finding says "${e.finding}", a safety-relevant condition ("${c.label}"), ` +
       `but ${e.source_id} doesn't describe it. Cite a record that does. If this record contradicts the pattern, ` +
       "list it under evidence_that_does_not_fit instead.");
+  // The other way round (issue 1): a record that describes a safety-relevant condition, listed
+  // under "evidence that does not fit", gets one retry. An entry that names a record is judged by
+  // that record; an entry that names none, by its own wording. After the retry the answer is
+  // accepted as the model wrote it and noted: code never moves a record into support, because
+  // that would mean writing a finding and a quote the model didn't.
+  const labelOf = new Map((pack.safety_relevant_conditions ?? []).map((c) => [c.id, c.label]));
+  const namedIn = (entry) => patternInputs.map((r) => r.source_id)
+    .filter((id) => new RegExp(`${id.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?![\\w-])`).test(entry));
+  const safetyNotFit = (o) => o.evidence_that_does_not_fit.flatMap((entry) => {
+    const named = namedIn(entry);
+    if (named.length) {
+      return named.flatMap((id) => [...describedBy].filter(([, ids]) => ids.has(id))
+        .map(([conditionId]) => ({ entry, ids: [id], label: labelOf.get(conditionId), byWording: false })));
+    }
+    return safetyConditionsClaimedBy(entry, pack).filter((c) => describedBy.has(c.id))
+      .map((c) => ({ entry, ids: [...describedBy.get(c.id)], label: c.label, byWording: true }));
+  });
+  const notFitPerAnswer = []; // how many such entries each answer checked had
+  const verifySafetyNotFit = (o) => {
+    const hits = safetyNotFit(o);
+    notFitPerAnswer.push(hits.length);
+    return hits.map((h) => {
+      const ids = h.ids.join(", ");
+      const one = h.ids.length === 1;
+      return {
+        problem: h.byWording
+          ? `evidence_that_does_not_fit: "${h.entry}" describes a safety-relevant condition ("${h.label}"), which ${ids} record${one ? "s" : ""}. ` +
+            `A record that describes a safety-relevant condition supports the pattern. Cite ${ids} under supporting_evidence, with ` +
+            "its quote or values, and take this entry out of evidence_that_does_not_fit."
+          : `evidence_that_does_not_fit: ${ids} describes a safety-relevant condition ("${h.label}"), so it supports the pattern. ` +
+            "Cite it under supporting_evidence, with its quote or values, and take it out of evidence_that_does_not_fit. " +
+            "Keep it there only if it shows the condition did not happen, and say so in its entry.",
+        remove: () => `evidence_that_does_not_fit: ${ids} describe${one ? "s" : ""} a safety-relevant condition ("${h.label}") but ` +
+          `${one ? "is" : "are"} still listed as not fitting after the retry (accepted as the model wrote it)`,
+      };
+    });
+  };
   const failingPerAnswer = []; // how many findings failed on each answer checked
   const verifyFindings = (o) => {
     failingPerAnswer.push(0);
     return o.supporting_evidence.flatMap((e) => {
       const record = byId.get(e.source_id);
-      const problems = record ? [...evidenceProblems(e, record, thresholds, { byReference }), ...safetyClaimProblems(e)] : [];
+      const problems = record ? [...evidenceProblems(e, record, thresholds, { byReference, labels }), ...safetyClaimProblems(e)] : [];
       if (problems.length === 0) return [];
       failingPerAnswer[failingPerAnswer.length - 1] += 1;
       const problem = problems.join(" ");
@@ -214,6 +254,7 @@ export async function runPipeline({ windows, records, rules, evidenceLibrary, sc
     verify: (o) => [
       ...verifyFindings(o),
       ...verifyWindows(o),
+      ...verifySafetyNotFit(o),
       ...fieldIssues("pattern_statement", o, "pattern_statement", patternInputs, `Records suggest a possible pattern: ${pattern_type} at ${location}.`),
       ...VIGNETTE_PARTS.flatMap((key) =>
         fieldIssues(`possible_vignette.${key}`, o.possible_vignette, key, patternInputs, PLAIN)),
@@ -227,6 +268,11 @@ export async function runPipeline({ windows, records, rules, evidenceLibrary, sc
     verification.windows = { total: windows.length, cited: windows.length - uncited.length, uncited: uncited.map(windowLabel) };
   }
   verification.findings_checked = verification.findings_verified + verification.findings_removed.length;
+  {
+    // Safety records still listed as not fitting in the answer that was kept (one line per record and condition).
+    const left = new Map(safetyNotFit(pattern).flatMap((h) => h.ids.map((id) => [`${id}|${h.label}`, { source_id: id, label: h.label }])));
+    verification.safety_not_fit = { asked: notFitPerAnswer[0] ?? 0, left: [...left.values()] };
+  }
   // Findings that failed on the answer before the last and didn't need removing from the last
   // one: the model fixed them or dropped them (it can't tell which).
   verification.fixed_on_retry = failingPerAnswer.length >= 2
@@ -267,7 +313,7 @@ export async function runPipeline({ windows, records, rules, evidenceLibrary, sc
       // Numbers in each claim must be in the records it cites (any input record if it cites none).
       const claimIssues = CLAIM_LISTS.flatMap(([list, textsOf]) => o[list].flatMap((claim) => {
         const records = claim.source_ids.length ? citedBy(claim) : inputRecords;
-        const problems = textsOf(claim).filter(Boolean).flatMap((t) => claimNumberProblems(t, records, thresholds, { byReference }));
+        const problems = textsOf(claim).filter(Boolean).flatMap((t) => claimNumberProblems(t, records, thresholds, { byReference, labels }));
         if (problems.length === 0) return [];
         const problem = `${list}: ${problems.join(" ")}`;
         return [{
@@ -282,7 +328,7 @@ export async function runPipeline({ windows, records, rules, evidenceLibrary, sc
       // The Thread map's nodes: numbers in a label must be in the node's records too.
       const nodeIssues = o.graph.nodes.flatMap((node) => {
         const records = node.source_ids.length ? citedBy(node) : inputRecords;
-        const problems = claimNumberProblems(node.label, records, thresholds, { byReference });
+        const problems = claimNumberProblems(node.label, records, thresholds, { byReference, labels });
         if (problems.length === 0) return [];
         const problem = `graph.nodes: ${problems.join(" ")}`;
         return [{
@@ -414,7 +460,7 @@ export async function runPipeline({ windows, records, rules, evidenceLibrary, sc
   const cardCounts = [...thresholds, citedRecords.length, unique(citedRecords.map((r) => r.source_type)).length, windows.length];
   verification.card = "verified";
   const verifyCard = (o) => Object.keys(CARD_FALLBACK).flatMap((field) => {
-    const problems = claimNumberProblems(o[field], cardRecords, cardCounts, { byReference });
+    const problems = claimNumberProblems(o[field], cardRecords, cardCounts, { byReference, labels });
     if (problems.length === 0) return [];
     return [{
       problem: `card.${field}: ${problems.join(" ")}`,

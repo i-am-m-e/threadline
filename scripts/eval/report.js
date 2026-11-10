@@ -43,6 +43,7 @@ function mapAndCardLines(tallies, scored) {
       : "| Review card wording verified | n/a (runs from before this check) |",
     wordingLine(tallies),
     ...windowAndRationaleLines(scored),
+    safetyNotFitLine(scored),
     ...referenceLines(tallies),
   ];
 }
@@ -69,6 +70,19 @@ function windowAndRationaleLines(scored) {
     `| Time windows with a cited record | ${cited} of ${total}${detail} |`,
     `| Recommendation rationale shortened to two sentences | ${runs.filter((x) => x.r === "shortened").length} of ${runs.length} runs |`,
   ];
+}
+
+/** Records that describe a safety-relevant condition but were listed as not fitting. Run numbers count every run. */
+function safetyNotFitLine(scored) {
+  const runs = scored.map((s, i) => ({ t: s.verification?.safety_not_fit, run: i + 1 })).filter((x) => x.t);
+  if (runs.length === 0) return "| Safety records listed as not fitting | n/a (runs from before this check) |";
+  const asked = runs.reduce((n, x) => n + x.t.asked, 0);
+  if (asked === 0) return "| Safety records listed as not fitting | none |";
+  const left = new Map(); // record → runs
+  for (const x of runs) for (const id of new Set(x.t.left.map((l) => l.source_id))) left.set(id, [...(left.get(id) ?? []), x.run]);
+  const n = [...left.values()].reduce((sum, rs) => sum + rs.length, 0);
+  const detail = n ? `: ${[...left].map(([id, rs]) => `${id} in run${rs.length === 1 ? "" : "s"} ${rs.join(", ")}`).join("; ")}` : "";
+  return `| Safety records listed as not fitting | ${asked} asked about on a retry (${Math.max(0, asked - n)} fixed; ${n} left as the model wrote ${n === 1 ? "it" : "them"}${detail}) |`;
 }
 
 /** The rest of the text that describes the records (statement, vignette, lists, policy gap). */
