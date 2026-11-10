@@ -707,3 +707,28 @@ test("safety record as not fitting (known limit): with no record id, a negative 
   const { replay } = await runEnergy((s) => [withNotFit(s.pattern, entry), s.pattern]);
   assert.match(lastMessage(replay, 1), /describes a safety-relevant condition \("Work started before zero-energy verification"\), which EN-NM-20260920-01 records/);
 });
+
+// ---------- The safety condition's label as the finding (2026-11-09) ----------
+
+test("a finding worded with the safety condition's own label is kept, with no retry (HC-INC-99102)", async () => {
+  const labelled = (s) => withEvidence(s.pattern, "HC-INC-99102", { finding: "No monitored bed for a CTAS 1 or 2 arrival" });
+  const { result, replay } = await run({ answers: (s) => [labelled(s), s.analysis, s.options, s.card] });
+  assert.equal(replay.calls.length, 4, "no retry");
+  assert.ok(cites(result, "HC-INC-99102"));
+  assert.deepEqual(result.meta.verification.findings_removed, []);
+});
+
+test("listed as not fitting, then moved into support with the label on the retry: kept (the 2026-11-09 failure)", async () => {
+  const moved = (s) => withEvidence(s.pattern, "HC-INC-99102", { finding: "no monitored bed for a CTAS 1 or 2 arrival" });
+  const { result } = await run({ answers: (s) => [listedNotFit(s.pattern, "HC-INC-99102"), moved(s), s.analysis, s.options, s.card] });
+  assert.ok(cites(result, "HC-INC-99102"));
+  assert.deepEqual(result.meta.verification.findings_removed, []);
+  assert.deepEqual(result.meta.verification.safety_not_fit, { asked: 1, left: [] });
+});
+
+test("the pattern statement may quote the label too, and isn't replaced", async () => {
+  const statement = "Records suggest long waits after rooming and no monitored bed for a CTAS 1 or 2 arrival.";
+  const { result, replay } = await run({ answers: (s) => [{ ...s.pattern, pattern_statement: statement }, s.analysis, s.options, s.card] });
+  assert.equal(replay.calls.length, 4, "no retry");
+  assert.equal(result.steps.pattern.pattern_statement, statement);
+});

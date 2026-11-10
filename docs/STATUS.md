@@ -20,7 +20,7 @@ A one-page summary for picking the work back up. Pull request #1 (`verify-card-m
   that describes it.
 - **Recurrence:** counts how often a pattern has been seen, and flags it for review at 10+
   occasions.
-- **Tests and scorecard:** 264 saved tests (`npm test`, no AI needed). `npm run eval` runs the
+- **Tests and scorecard:** 272 saved tests (`npm test`, no AI needed). `npm run eval` runs the
   benchmark packs through the real model and writes a scorecard to `docs/eval/<date>/`.
 - **Switches, off by default:** "numbers by reference" (the model writes figures as references and
   code fills in the values) and the stricter "Learn more" check.
@@ -51,8 +51,15 @@ issue 11 happen in every energy run. Commit `f98c201` added a code check that fi
    condition, listed as not fitting, gets one retry; if that doesn't fix it, the answer is
    accepted as the model wrote it and noted in the brief and on the scorecard (code never moves
    a record into support). Tried on all 41 saved pattern answers: it asks about HC-INC-99102 in
-   the 5 that listed it as not fitting, and about nothing else. **Not yet scored**, so it isn't
-   known whether the model moves the record when asked. Side effects of `2b7fbdf`: (a) the model now often copies the
+   the 5 that listed it as not fitting, and about nothing else. Scored in `2026-11-09`
+   (healthcare) and `2026-11-09-2` (energy, unchanged): in 2 of 3 healthcare-pack runs the first
+   answer listed HC-INC-99102 as not fitting, the rule asked, and the model moved it into
+   support both times. But it worded the finding with the condition's label, "No monitored bed
+   for a CTAS 1 or 2 arrival", and the numbers check removed it (the record says "CTAS 2" and
+   has no "1"), with no retry left: cited in only 1 of 3 pack runs. The prompt shows the model
+   those labels, so the check was refusing what the prompt allows. Fix on the same branch: a
+   safety-relevant condition's label quoted word for word is no longer checked for numbers (any
+   other number still is; a reworded label still is). **The fix is not yet scored.** Side effects of `2b7fbdf`: (a) the model now often copies the
    condition's label ("No monitored bed for a CTAS 1 or 2 arrival") into its own wording, which
    led to extra retries; (b) in one update run of `2026-11-05` the Sept 22 window had no cited
    record; (c) "evidence that does not fit" entries are now bare record IDs, with no reason given.
@@ -86,6 +93,7 @@ issue 11 happen in every energy run. Commit `f98c201` added a code check that fi
 
 ## Next steps
 
-1. Score branch `safety-record-not-fit` on both packs (healthcare and energy, 3 runs each) and
-   compare with `2026-11-05-3` and `2026-11-05-4`. The founder reviews the result before any merge.
+1. Score the label fix on the healthcare pack (3 runs) and compare with `2026-11-09`. Energy
+   isn't affected: the only number in its labels (6) is a threshold the check already allows.
+   The founder reviews the result before any merge of `safety-record-not-fit`.
 2. Later, when the founder asks: a design for issue 7.

@@ -46,7 +46,7 @@ npm install
 npm test
 ```
 
-**Expected:** `# pass 264`, `# fail 0`, `# todo 0`. Report the three numbers. If anything fails,
+**Expected:** `# pass 272`, `# fail 0`, `# todo 0`. Report the three numbers. If anything fails,
 copy the failing test names and their error lines.
 
 ## 2. Check Ollama is ready
