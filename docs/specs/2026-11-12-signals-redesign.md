@@ -165,7 +165,7 @@ Left over:
   stage 2 number tiles.
 - Older parts of the page (review card, brief) still use their old layout until stage 2.
 
-### Stage 2: Thread page — done (2026-11-12), one check left over
+### Stage 2: Thread page — done (2026-11-12)
 
 What was built:
 
@@ -202,9 +202,8 @@ Decisions made where the spec was silent or didn't fit the data:
 
 Left over:
 
-- **Hover help was not confirmed in the browser.** The "i" marks are there, with the wording, and
-  are reachable by keyboard, but the tooltip itself wasn't seen on screen in the preview. Check
-  `.help:hover::after` in `src/styles.css` first in the next session.
-- Dark mode and both roles were checked on the Summary; the other tabs were checked in light mode.
+- Checked later the same day in the preview: the hover help appears on hover, and the Evidence
+  and Options tabs read well in dark mode. Not checked: the Detail tab in dark mode, and the
+  hover help by keyboard focus (it uses the same style rule as hover).
 - Stages 3 (map), 4 (overview) and 5 (corrections: storage design first, wait for the founder's
   OK) are not started.
