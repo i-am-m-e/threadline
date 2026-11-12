@@ -1,8 +1,10 @@
 // signals-ui.js — the Signals mode screen (system signals / operational patterns).
 //
 // Layout: a toolbar (role, Check now, Digest, alert volume), the Thread list on the left,
-// and the selected Thread on the right: the front-line review card, the manager brief,
-// the Thread map and the history.
+// and the selected Thread on the right: a header (what it is, and what this role can do),
+// then tabs: Summary · Evidence · Map · Options · Detail
+// (docs/specs/2026-11-12-signals-redesign.md). Numbers, charts and dates come from
+// signalsData.js and signalsFormat.js, worked out by code from the records.
 //
 // Guardrails in the interface:
 //  • Every button records the ROLE that pressed it (never a name).
@@ -13,7 +15,7 @@
 import * as storage from "./storage.js";
 import { checkForSignals, startMonitorTimer } from "./monitor.js";
 import {
-  current, ROLES, isOpen, canMove, rejectionCounts,
+  current, ROLES, rejectionCounts,
   confirmPattern, addContext, doesNotMatch,
   sendForValidation, notARealPattern, requestMoreInformation, recordDecision, startOutcomeReview, closeWithOutcome,
 } from "./threads.js";
@@ -24,7 +26,8 @@ import { whenText } from "./signalsFormat.js";
 import { evidenceLines, verificationSummary, removedLines, policyWording, gapLabels } from "./evidenceView.js";
 import { renderThreadMap, withApproaches, TRUST_COLORS, SHAPES } from "./threadMap.js";
 import { SOURCE_TYPE_NAMES } from "./records.js";
-import { contextLine, titleLine, whenTag, updatedNote, statusPill, confidenceMeter, occasionMarks, trustTag, reference } from "./signals-parts.js";
+import { contextLine, titleLine, whenTag, updatedNote, statusPill, confidenceMeter, occasionMarks, trustTag, reference, measure, actionButton } from "./signals-parts.js";
+import { numberTiles, chartData, keyQuotes, recordsThatDontFit, headerActions, historySummary } from "./signalsData.js";
 
 const $ = (id) => document.getElementById(id);
 let threads = [];          // all Signals Threads, newest first
@@ -37,7 +40,9 @@ let alertState = {};       // flags and digest items (signals/state.json)
 let mapDirection = readSetting("signalsMapDirection", "TB"); // "TB" top-to-bottom or "LR" left-to-right
 let cy = null;             // the map currently drawn (Cytoscape)
 let tappedNode = null;     // the map node whose sources are shown in the side panel
-let recordCache = null;    // processed records, by source_id (for the side panel)
+let records = [];          // processed records: the tiles, chart, quotes and side panel are worked out from these
+let tab = readSetting("signalsTab", "summary"); // the open tab on the Thread page
+const openOptions = new Set(); // options whose full reasoning is open
 let rules, schemas, evidenceLibrary, toast, discussInThread;
 
 // ---------- Setup ----------
@@ -54,6 +59,7 @@ export async function initSignals({ domainRules, showToast, discuss }) {
     evidenceLibrary = []; // no library found: options will say "No library evidence"
   }
   threads = await storage.listSignalThreads();
+  records = await loadRecords();
   selectedId = threads[0]?.id ?? null;
   alertState = await storage.loadSignalsState();
   $("signals-digest").onclick = async () => {
@@ -102,6 +108,15 @@ export async function initSignals({ domainRules, showToast, discuss }) {
   updateBadge();
 }
 
+// The processed records. If they can't be read, the page still opens and says what is missing.
+async function loadRecords() {
+  try {
+    return await storage.monitorIO.loadProcessedRecords();
+  } catch {
+    return [];
+  }
+}
+
 // ---------- Check now ----------
 async function checkNow({ quiet = false } = {}) {
   if (busy) return;
@@ -113,7 +128,7 @@ async function checkNow({ quiet = false } = {}) {
       io: storage.monitorIO, rules, schemas, config: SIGNALS_CONFIG, evidenceLibrary, onProgress: showProgress,
     });
     threads = await storage.listSignalThreads();
-    recordCache = null; // new records may have arrived
+    records = await loadRecords(); // new records may have arrived
     const changed = [...summary.created, ...summary.updated];
     const changes = [
       ...summary.created.map((id) => ({ thread: threads.find((t) => t.id === id), kind: "new" })),
@@ -208,25 +223,451 @@ function renderDetail() {
   if (showingDigest) detail.append(renderDigest());
   const thread = threads.find((t) => t.id === selectedId);
   if (!thread) {
-    detail.append(text("p", "signals-empty", "Select a Thread to see its review card, manager brief and map."));
+    detail.append(text("p", "signals-empty", "Select a Thread to see its summary, evidence, map and options."));
     return;
   }
+  detail.append(renderHeader(thread), renderTabs());
+  const openForm_ = renderOpenForm(thread);
+  if (openForm_) detail.append(openForm_);
+  if (tab === "map") {
+    const map = renderMapSection(thread);
+    detail.append(map.section);
+    drawMap(thread, map.canvas, map.panel);
+    return;
+  }
+  const parts = {
+    summary: () => [role === "Front-line lead" ? renderCard(thread) : null, noticedSection(thread), contextNotes(thread), tilesSection(thread), chartAndQuotes(thread), optionsSection(thread)],
+    evidence: () => [chartAndQuotes(thread), policySection(thread), dontFitSection(thread)],
+    options: () => [optionsSection(thread)],
+    detail: () => [detailSection(thread)],
+  };
+  detail.append(...(parts[tab] ?? parts.summary)().filter(Boolean));
+}
+
+// ---------- Thread header: what it is on the left, what this role can do on the right ----------
+function renderHeader(thread) {
   const run = current(thread);
   const head = document.createElement("header");
   head.className = "signals-detail-head";
-  head.append(contextLine(thread.domain, thread.location), titleLine(thread.pattern_type), whenTags(thread.windows));
+  const about = document.createElement("div");
+  about.className = "tp-about";
   const facts = document.createElement("div");
   facts.className = "signals-facts";
-  facts.append(statusPill(thread.status), confidenceMeter(run.steps.pattern.confidence), occasionMarks(thread.windows.length));
+  const status = statusPill(thread.status);
+  status.title = ["Inferred", "Flagged"].includes(thread.status) ? "Threadline drafted this; a manager decides what happens next." : "Set by a person, with their role. Threadline never moves a Thread past Flagged.";
+  facts.append(
+    status,
+    withHelp(confidenceMeter(run.steps.pattern.confidence), "How sure Threadline is that the pattern is real. Medium: two kinds of records agree on one occasion. High needs agreement on more than one."),
+    withHelp(occasionMarks(thread.windows.length), "How many times the pattern has happened. Raises priority; never changes confidence."),
+  );
   if (thread.outcome_review_due && ["Decision recorded", "Outcome review due"].includes(thread.status)) facts.append(text("span", "signals-due", `Outcome review due ${whenText(thread.outcome_review_due)}`));
   const foot = document.createElement("div");
   foot.className = "signals-facts";
   foot.append(updatedNote(thread.updated_at), reference(thread.id));
-  head.append(facts, foot);
-  const map = renderMapSection(thread);
-  detail.append(head, renderCard(thread), map.section, renderBrief(thread));
-  detail.append(renderHistory(thread));
-  drawMap(thread, map.canvas, map.panel);
+  about.append(contextLine(thread.domain, thread.location), titleLine(thread.pattern_type), whenTags(thread.windows), facts, foot);
+
+  // The current role's actions (signalsData.js decides which; threads.js still checks each press).
+  const side = document.createElement("div");
+  side.className = "tp-actions";
+  const { actions, note } = headerActions(thread, role);
+  const opts = run.steps.options;
+  const press = {
+    send: () => act(thread, () => sendForValidation(thread, role), "Sent for front-line validation"),
+    accept: () => act(thread, () => recordDecision(thread, role, opts.recommendation.leading_option_id), "Decision recorded (nothing is applied automatically)"),
+    review: () => act(thread, () => startOutcomeReview(thread, role), "Outcome review started"),
+    confirm: () => act(thread, () => confirmPattern(thread, role), "Pattern confirmed"),
+    choose: () => openForm(thread, "choose"),
+    outcome: () => openForm(thread, "outcome"),
+    info: () => openForm(thread, "info"),
+    notreal: () => openForm(thread, "notreal"),
+    context: () => openForm(thread, "context"),
+    mismatch: () => openForm(thread, "mismatch"),
+  };
+  if (actions.length) {
+    const row = document.createElement("div");
+    row.className = "card-actions";
+    for (const a of actions) row.append(actionButton(a.label, { primary: a.primary, onClick: press[a.id] }));
+    side.append(row);
+  }
+  if (note) side.append(text("p", "card-why-disabled", note));
+  head.append(about, side);
+
+  if (thread.decision) {
+    head.append(text("div", "brief-decision", `Decision recorded: ${thread.decision.option_title}${thread.decision.was_recommended ? " (the recommendation)" : ""} · ${thread.decision.role} · ${whenText(thread.decision.date.slice(0, 10))}. Nothing is applied by Threadline; carrying it out is up to the team.`));
+    if (["Decision recorded", "Outcome review due"].includes(thread.status)) head.append(text("p", "brief-small", `Revisit or stop if: ${thread.decision.revisit_or_stop_if || "not stated"}`));
+  }
+  if (thread.outcome) head.append(text("div", "brief-decision", `Outcome: ${thread.outcome.helped}. ${thread.outcome.what_happened} (${thread.outcome.role}, ${whenText(thread.outcome.date.slice(0, 10))})`));
+  return head;
+}
+
+// The form a header button opened, shown in place under the tabs (no pop-up windows).
+function renderOpenForm(thread) {
+  if (form?.threadId !== thread.id) return null;
+  const forms = {
+    context: () => inlineForm({
+      label: "What context should reviewers know? (It will be saved as Experiential, with your role.)", multiline: true, submit: "Save context",
+      onSubmit: (value) => act(thread, () => addContext(thread, role, value), "Context added"),
+    }),
+    mismatch: () => inlineForm({
+      label: "In one line: what doesn't match what you see on shift?", submit: "Submit",
+      onSubmit: (value) => act(thread, () => doesNotMatch(thread, role, value), "Marked as not confirmed"),
+    }),
+    info: () => inlineForm({ label: "What information would help?", submit: "Add request",
+      onSubmit: (v) => act(thread, () => requestMoreInformation(thread, role, v), "Request added") }),
+    notreal: () => inlineForm({ label: "Why isn't this a real pattern? (Saved to help tune the trigger.)", submit: "Mark not confirmed",
+      onSubmit: (v) => act(thread, () => notARealPattern(thread, role, v), "Marked as not a real pattern") }),
+    choose: () => chooseOptionForm(thread),
+    outcome: () => outcomeForm(thread),
+  };
+  const box = forms[form.kind]?.();
+  if (box) box.classList.add("tp-form");
+  return box ?? null;
+}
+
+// ---------- Tabs: Summary · Evidence · Map · Options · Detail (flat: they navigate) ----------
+const TABS = [
+  ["summary", "Summary", "The decision view: what was noticed, the key numbers and quotes"],
+  ["evidence", "Evidence", "The chart, the policy and the records that don't fit"],
+  ["map", "Map", "How the conditions connect"],
+  ["options", "Options", "Possible approaches and the decision"],
+  ["detail", "Detail", "System analysis, what was checked and the history"],
+];
+function renderTabs() {
+  const nav = document.createElement("nav");
+  nav.className = "tp-tabs";
+  nav.setAttribute("role", "tablist");
+  nav.setAttribute("aria-label", "Thread sections");
+  for (const [id, label, about] of TABS) {
+    const b = text("button", "tp-tab", label);
+    b.type = "button";
+    b.title = about;
+    b.setAttribute("role", "tab");
+    b.setAttribute("aria-selected", String(tab === id));
+    b.onclick = () => {
+      tab = id;
+      saveSetting("signalsTab", id);
+      renderSignals();
+    };
+    nav.append(b);
+  }
+  return nav;
+}
+
+// ---------- The pieces of the tabs ----------
+// A small "i" with a one-line explanation, shown on hover and on keyboard focus.
+function helpDot(words) {
+  const dot = text("span", "help", "i");
+  dot.tabIndex = 0;
+  dot.setAttribute("role", "img");
+  dot.setAttribute("aria-label", words);
+  dot.dataset.tip = words;
+  return dot;
+}
+function withHelp(node, words) {
+  const wrap = document.createElement("span");
+  wrap.className = "tp-with-help";
+  wrap.append(node, helpDot(words));
+  return wrap;
+}
+function section(className, heading, help, ...children) {
+  const box = document.createElement("section");
+  box.className = `tp-section ${className}`;
+  if (heading) {
+    const h = text("h3", "tp-heading", heading);
+    if (help) h.append(helpDot(help));
+    box.append(h);
+  }
+  box.append(...children.filter(Boolean));
+  return box;
+}
+
+// "What Threadline noticed": the checked pattern statement, labelled as a draft.
+function noticedSection(thread) {
+  const run = current(thread);
+  return section("tp-noticed", "What Threadline noticed", "A draft summary for you to judge. It only uses facts from the cited records.",
+    text("p", "tp-statement", run.steps.pattern.pattern_statement),
+    text("p", "brief-small", `A draft for you to judge. ${verificationSummary(run.meta?.verification)}`));
+}
+
+// Four number tiles, each worked out by code from the records (signalsData.js).
+function tilesSection(thread) {
+  const grid = document.createElement("section");
+  grid.className = "tp-tiles";
+  for (const t of numberTiles(thread, records, rules)) {
+    const tile = document.createElement("div");
+    tile.className = "tp-tile";
+    const label = text("div", "meta-context", t.label);
+    label.append(helpDot(t.help));
+    tile.append(label, measure(t.value, t.unit, t.under));
+    grid.append(tile);
+  }
+  return grid;
+}
+
+const BAR_HEIGHT = 124; // pixels for the tallest bar
+
+// The chart (bars by hour, trigger line, darker where every trigger was crossed) and the key quotes.
+function chartAndQuotes(thread) {
+  const chart = chartData(thread, records, rules);
+  const box = document.createElement("section");
+  box.className = "tp-section tp-evidence";
+
+  const left = document.createElement("div");
+  left.className = "tp-chart";
+  if (chart.occasions.length === 0) {
+    left.append(text("h3", "tp-heading", "Flow data by hour"), text("p", "brief-small", "The flow records for this chart weren't found in the processed folder."));
+  } else {
+    const head = document.createElement("div");
+    head.className = "tp-chart-head";
+    const h = text("h3", "tp-heading", chart.title);
+    h.append(helpDot("Each bar is one hour of flow data. Darker bars crossed every trigger."));
+    head.append(h, text("span", "tp-chart-key", chart.trigger.text));
+    const groups = document.createElement("div");
+    groups.className = "tp-chart-groups";
+    for (const o of chart.occasions) {
+      const group = document.createElement("div");
+      group.className = "tp-chart-group";
+      group.setAttribute("role", "img");
+      group.setAttribute("aria-label", `${o.day}: ${o.hours.map((x) => `${x.label} ${x.value}${x.crossed ? " (crossed)" : ""}`).join(", ")}`);
+      const plot = document.createElement("div");
+      plot.className = "tp-chart-plot";
+      const line = document.createElement("div");
+      line.className = "tp-chart-line";
+      line.style.bottom = `${Math.round((chart.trigger.value / chart.max) * BAR_HEIGHT)}px`;
+      plot.append(line);
+      const axis = document.createElement("div");
+      axis.className = "tp-chart-axis";
+      for (const x of o.hours) {
+        const col = document.createElement("div");
+        col.className = "tp-chart-col";
+        const bar = document.createElement("div");
+        bar.className = `tp-chart-bar${x.crossed ? " is-crossed" : ""}`;
+        bar.style.height = `${Math.max(2, Math.round((x.value / chart.max) * BAR_HEIGHT))}px`;
+        bar.title = x.source_id;
+        col.append(text("span", "tp-chart-value", String(x.value)), bar);
+        plot.append(col);
+        const tick = document.createElement("div");
+        tick.className = "tp-chart-tick";
+        tick.append(text("span", "tp-chart-hour", x.label), ...x.others.map((v) => text("span", "tp-chart-other", v)));
+        axis.append(tick);
+      }
+      group.append(text("div", "tp-chart-day", o.day), plot, axis);
+      groups.append(group);
+    }
+    left.append(head, groups, text("p", "brief-small", chart.note));
+  }
+
+  const right = document.createElement("div");
+  right.className = "tp-quotes";
+  const qh = text("h3", "tp-heading", "In the records' own words");
+  qh.append(helpDot("Exact quotes. Code checked that each appears word for word in its record."));
+  right.append(qh);
+  const quotes = keyQuotes(thread, records, rules);
+  if (quotes.length === 0) right.append(text("p", "brief-small", "No verified quotes from incident or complaint records."));
+  for (const q of quotes) {
+    const card = document.createElement("div");
+    card.className = "tp-quote";
+    const top = document.createElement("div");
+    top.className = "tp-quote-top";
+    top.append(text("span", "tp-quote-kind", q.kind), text("span", "tp-quote-when", q.when));
+    if (q.safety) {
+      const tag = text("span", "tag tag-inferred", "Safety-relevant");
+      tag.title = "Matches a safety condition in the domain rules, checked by code.";
+      top.append(tag);
+    } else top.append(trustTag(q.trust_label));
+    card.append(top, text("p", "tp-quote-words", `“${q.quote}”`), reference(`${q.source_id} · quote verified`));
+    right.append(card);
+  }
+  box.append(left, right);
+  return box;
+}
+
+// Policy and practice, side by side.
+function policySection(thread) {
+  const run = current(thread);
+  const gap = run.steps.analysis.policy_practice_gap;
+  const trust = gapLabels(gap, run.meta?.verification);
+  const side = (label, words, ...rest) => {
+    const card = document.createElement("div");
+    card.className = "tp-card";
+    const top = document.createElement("div");
+    top.append(trustTag(label));
+    card.append(top, text("p", "", words), ...rest.filter(Boolean));
+    return card;
+  };
+  const wording = policyWording(gap);
+  const verified = run.meta?.verification?.policy_quote === "verified";
+  const row = document.createElement("div");
+  row.className = "tp-pair";
+  row.append(
+    side(trust.expects, gap.what_policy_expects, wording ? text("p", "brief-proof", wording) : null,
+      gap.policy_source_id ? reference(`${gap.policy_source_id}${wording && verified ? " · wording verified" : ""}`) : null),
+    side(trust.suggests, gap.what_records_suggest),
+  );
+  return section("", "Policy and practice", "What the policy expects, beside what the records show happened.", row, trust.note ? text("p", "brief-small", trust.note) : null);
+}
+
+// Records the draft listed as not fitting: the record's own title, words and time, never a bare ID.
+function dontFitSection(thread) {
+  const rows = recordsThatDontFit(thread, records);
+  const grid = document.createElement("div");
+  grid.className = "tp-pair";
+  for (const r of rows) {
+    const card = document.createElement("div");
+    card.className = "tp-card";
+    const top = document.createElement("div");
+    top.className = "tp-quote-top";
+    const tag = text("span", "tag", r.tag);
+    tag.title = "Threadline's draft listed this record as not fitting the pattern. Code can't tell which way a record points, so it doesn't say.";
+    top.append(tag);
+    if (r.source_id) top.append(reference(r.source_id));
+    card.append(top);
+    if (r.title) card.append(text("div", "tp-card-title", r.title));
+    if (r.text) card.append(text("p", "", r.text));
+    if (r.kind || r.when) card.append(text("p", "brief-small", [r.kind, r.when].filter(Boolean).join(" · ")));
+    if (r.note) card.append(text("p", "brief-small", `Draft note: ${r.note}`));
+    grid.append(card);
+  }
+  return section("", "Records that don't fit, or may not matter", "Records Threadline saw but did not count as support.",
+    rows.length ? grid : text("p", "brief-small", "The draft listed no records as not fitting."));
+}
+
+// Options: cards in a row on a light purple panel; the recommended one outlined in purple.
+function optionsSection(thread) {
+  const { evidence, options } = current(thread).steps;
+  const rec = options.recommendation;
+  const leading = options.options.find((o) => o.option_id === rec.leading_option_id);
+  const ordered = [...(leading ? [leading] : []), ...options.options.filter((o) => o !== leading)];
+  const row = document.createElement("div");
+  row.className = "tp-options";
+  for (const o of ordered) {
+    const card = document.createElement("div");
+    card.className = `tp-option${o === leading ? " is-suggested" : ""}`;
+    const top = document.createElement("div");
+    top.append(text("span", `tag ${o === leading ? "tag-suggested" : ""}`, o === leading ? "Threadline's suggestion" : o.type === "Learn more" ? "Learn more first" : o.type));
+    const facts = document.createElement("div");
+    facts.className = "tp-option-facts";
+    facts.append(labelled("Trade-off", o.local_fit), labelled("Review", `after ${o.revisit_after_days} days`));
+    const more = actionButton(openOptions.has(o.option_id) ? "Hide full reasoning" : "See full reasoning", {
+      onClick: () => {
+        if (!openOptions.delete(o.option_id)) openOptions.add(o.option_id);
+        renderSignals();
+      },
+    });
+    more.setAttribute("aria-expanded", String(openOptions.has(o.option_id)));
+    card.append(top, text("div", "tp-option-title", o.title), text("p", "tp-option-about", o.description), facts, more);
+    if (openOptions.has(o.option_id)) {
+      if (o === leading) card.append(labelled("Why this one", rec.rationale), labelled("What would change it", rec.would_change_if), text("p", "brief-small", `Recommendation confidence: ${rec.confidence}`));
+      card.append(optionDetails(o, evidence));
+    }
+    row.append(card);
+  }
+  const strength = text("span", "brief-small", `Evidence strength: ${leading?.evidence_strength ?? "None"}.${current(thread).meta.placeholder_evidence ? " The evidence library still holds placeholders." : ""}`);
+  const cited = [...new Set(options.options.flatMap((o) => o.evidence_ids))].map((id) => evidence.find((e) => e.evidence_id === id)).filter(Boolean);
+  const library = document.createElement("details");
+  library.className = "tp-row";
+  library.append(text("summary", "", `Library evidence (${cited.length})`));
+  if (cited.length === 0) library.append(text("p", "brief-small", "No library evidence. Options rely on the records and local judgment."));
+  for (const e of cited) {
+    const item = text("div", "brief-evidence", `${e.evidence_id} · ${e.title} `);
+    item.append(text("span", "brief-small", `(${e.source_type}, strength ${e.strength}). ${e.citation}`));
+    if (e.synthetic_placeholder) item.append(placeholderTag());
+    library.append(item);
+  }
+  const note = role === "Manager" ? headerActions(thread, role).note : "";
+  return section("tp-approaches", "Possible approaches", "Drafts for a person to decide on. Nothing is applied automatically.",
+    strength, row, note ? text("p", "brief-small", note) : null, library);
+}
+
+// Detail: the full findings, analysis, checks and history, each in a row that opens.
+function detailSection(thread) {
+  const run = current(thread);
+  const { pattern, analysis, options } = run.steps;
+  const verification = run.meta?.verification;
+  const row = (title, summary, ...children) => {
+    const d = document.createElement("details");
+    d.className = "tp-row";
+    const s = text("summary", "", title);
+    if (summary) s.append(text("span", "tp-row-summary", summary));
+    d.append(s, ...children.filter(Boolean));
+    return d;
+  };
+
+  const lines = evidenceLines(pattern);
+  const findings = document.createElement("ul");
+  findings.className = "brief-evidence";
+  for (const e of lines) {
+    const li = text("li", "", `${e.finding} `);
+    li.append(trustChip(e.trust_label), sourceIds([e.source_id]));
+    if (e.proof) li.append(text("div", "brief-proof", e.proof));
+    findings.append(li);
+  }
+
+  const vignette = document.createElement("dl");
+  vignette.className = "brief-vignette";
+  for (const [label, value] of [
+    ["Situation", pattern.possible_vignette.situation],
+    ["What appears to happen", pattern.possible_vignette.what_appears_to_happen],
+    ["Observed effects", pattern.possible_vignette.observed_effects],
+  ]) vignette.append(text("dt", "", label), text("dd", "", value));
+  const factors = document.createElement("ul");
+  for (const c of analysis.contributing_conditions) {
+    const li = text("li", "", `${c.condition} `);
+    li.append(trustChip(c.trust_label), sourceIds(c.source_ids));
+    factors.append(li);
+  }
+  const pressure = document.createElement("ul");
+  for (const p of analysis.pressure_map) {
+    const li = text("li", "", `${p.role}: ${p.pressure_carried}${p.shifting_to ? ` (appears to shift to ${p.shifting_to})` : ""} `);
+    li.append(trustChip(p.trust_label));
+    pressure.append(li);
+  }
+  const analysisParts = [
+    text("div", "card-label", "The draft, in more detail"), vignette,
+    text("div", "card-label", "Possible contributing factors"), factors,
+    analysis.compounding_factors.length ? text("div", "card-label", "Where small variations combine") : null,
+    analysis.compounding_factors.length ? list(analysis.compounding_factors) : null,
+    analysis.pressure_map.length ? text("div", "card-label", "Pressure map") : null,
+    analysis.pressure_map.length ? pressure : null,
+    text("div", "card-label", "Other explanations to rule out"), list(analysis.alternative_explanations),
+    text("div", "card-label", "Questions a reviewer would need answered"), list(analysis.open_questions),
+    text("p", "brief-small", `Pattern confidence: ${pattern.confidence} (${pattern.confidence_reason}) · Front-line validation: ${validationStatus(thread)}`),
+    options.suggested_reviewers.length ? text("div", "card-label", "Suggested reviewers (roles)") : null,
+    options.suggested_reviewers.length ? list(options.suggested_reviewers.map((r) => `${r.role}: ${r.why}`)) : null,
+  ];
+
+  const removed = removedLines(verification);
+  const checks = [
+    text("p", "brief-small", verificationSummary(verification)),
+    removed.length ? text("div", "card-label", "Removed or replaced as unverified") : null,
+    removed.length ? list(removed) : null,
+    run.log.length ? text("div", "card-label", `Code checks on the latest run (${run.log.length})`) : null,
+    ...run.log.map((l) => text("div", "history-row history-log", `${l.step}: ${l.detail}`)),
+  ];
+
+  const history = [...thread.history].reverse().map((h) => {
+    const item = text("div", "history-row", h.note);
+    item.prepend(text("span", "history-when", `${shortWhen(h.time)} · ${h.by} · ${h.status}`));
+    return item;
+  });
+
+  const rows = [
+    row("All findings", `${lines.length} verified, each with its record`, findings),
+    row("System analysis", "contributing factors, other explanations, reviewer questions", ...analysisParts),
+    row("What was checked", removed.length ? `${removed.length} removed or replaced as unverified` : "nothing removed", ...checks),
+    row("History", historySummary(thread), ...history),
+  ];
+  if (role !== "Front-line lead") rows.push(row("Front-line review card", "what a front-line lead is asked", renderCard(thread)));
+  if (thread.information_requests.length) {
+    rows.push(row("Information requested", String(thread.information_requests.length), list(thread.information_requests.map((r) => `${r.text} (${r.role}, ${shortWhen(r.time)})`))));
+  }
+  const box = section("", "The full detail, when you want it", "", ...rows);
+  if (discussInThread) {
+    const discuss = actionButton("Discuss in a thread", { onClick: () => discussSignal(thread) });
+    discuss.title = "Open these records in a chat thread, with citations and Find gaps";
+    box.append(discuss);
+  }
+  return box;
 }
 
 // ---------- Digest (the default way Threads are shared) ----------
@@ -277,50 +718,23 @@ function renderCard(thread) {
   if (run.meta.placeholder_evidence) box.append(placeholderTag());
   box.append(text("p", "card-question", card.question));
 
-  // Buttons: active only while Under review, for the Front-line lead role.
-  const frontLine = role === "Front-line lead";
-  const reviewable = thread.status === "Under review";
-  const why2 = !reviewable
-    ? thread.status === "Inferred" || thread.status === "Flagged"
-      ? "Waiting for a manager to send this for front-line validation."
-      : `This Thread is "${thread.status}".`
-    : !frontLine ? "Switch your role to Front-line lead to respond." : "";
-  const actions = document.createElement("div");
-  actions.className = "card-actions";
-  actions.append(
-    button("Confirm pattern", "primary", !(reviewable && frontLine), () => act(thread, () => confirmPattern(thread, role), "Pattern confirmed")),
-    button("Add context", "", !(isOpen(thread) && role), () => openForm(thread, "context")),
-    button("Doesn't match what I see", "", !(reviewable && frontLine), () => openForm(thread, "mismatch")),
-  );
-  box.append(actions);
-  if (why2) box.append(text("p", "card-why-disabled", why2));
-
-  if (form?.threadId === thread.id && form.kind === "context") {
-    box.append(inlineForm({
-      label: "What context should reviewers know? (It will be saved as Experiential, with your role.)",
-      multiline: true, submit: "Save context",
-      onSubmit: (value) => act(thread, () => addContext(thread, role, value), "Context added"),
-    }));
-  }
-  if (form?.threadId === thread.id && form.kind === "mismatch") {
-    box.append(inlineForm({
-      label: "In one line: what doesn't match what you see on shift?", submit: "Submit",
-      onSubmit: (value) => act(thread, () => doesNotMatch(thread, role, value), "Marked as not confirmed"),
-    }));
-  }
-
-  if (thread.context_notes.length) {
-    const notes = document.createElement("div");
-    notes.className = "context-notes";
-    notes.append(text("div", "card-label", "Context from front-line roles"));
-    for (const n of thread.context_notes) {
-      const note = text("div", "context-note", n.text);
-      note.append(text("span", "context-meta", `${n.role} · ${shortWhen(n.time)} · Experiential`));
-      notes.append(note);
-    }
-    box.append(notes);
-  }
   return box;
+}
+
+// Context added by people (staff input, Experiential): shown to every role, in amber.
+function contextNotes(thread) {
+  if (!thread.context_notes.length) return null;
+  const notes = document.createElement("section");
+  notes.className = "tp-section context-notes";
+  notes.append(text("h3", "tp-heading", "Context from staff"));
+  for (const n of thread.context_notes) {
+    const note = text("div", "context-note", n.text);
+    const meta = text("span", "context-meta", `${n.role} · ${shortWhen(n.time)} `);
+    meta.append(trustTag("Experiential"));
+    note.append(meta);
+    notes.append(note);
+  }
+  return notes;
 }
 
 // ---------- Thread map ----------
@@ -420,9 +834,9 @@ async function fillPanel(panel, node, thread) {
     panel.append(text("p", "brief-small", "No source record: this is proposed by Threadline and unconfirmed."));
     return;
   }
-  recordCache ??= new Map((await storage.monitorIO.loadProcessedRecords()).map((r) => [r.source_id, r]));
+  const byId = new Map(records.map((r) => [r.source_id, r]));
   for (const id of node.source_ids) {
-    const r = recordCache.get(id);
+    const r = byId.get(id);
     const row = text("div", "map-record", r ? `${id} · ${SOURCE_TYPE_NAMES[r.source_type] ?? r.source_type} · ${String(r.timestamp).replace("T", " ")}` : id);
     if (!r) row.append(text("span", "brief-small", " (record not found in the processed folder)"));
     else if (r.text) row.append(text("p", "", r.text));
@@ -431,189 +845,7 @@ async function fillPanel(panel, node, thread) {
   }
 }
 
-// ---------- Manager brief (assembled in code from the pipeline's outputs: no extra AI call) ----------
-function renderBrief(thread) {
-  const { pattern, analysis, evidence, options } = current(thread).steps;
-  const box = document.createElement("section");
-  box.className = "brief";
-  box.append(text("div", "card-kicker", "Manager brief"));
-
-  // What Threadline noticed
-  box.append(text("h4", "", "What Threadline noticed"), text("p", "", pattern.pattern_statement));
-  const vignette = document.createElement("dl");
-  vignette.className = "brief-vignette";
-  for (const [label, value] of [
-    ["Situation", pattern.possible_vignette.situation],
-    ["What appears to happen", pattern.possible_vignette.what_appears_to_happen],
-    ["Observed effects", pattern.possible_vignette.observed_effects],
-  ]) vignette.append(text("dt", "", label), text("dd", "", value));
-  box.append(vignette);
-  if (pattern.evidence_that_does_not_fit.filter(Boolean).length) {
-    box.append(text("div", "card-label", "Evidence that does not fit"), list(pattern.evidence_that_does_not_fit.filter(Boolean)));
-  }
-
-  // What the records say: each finding with its proof (checked in code, src/verify.js)
-  const verification = current(thread).meta?.verification;
-  box.append(text("h4", "", "What the records say"));
-  const said = document.createElement("ul");
-  said.className = "brief-evidence";
-  for (const e of evidenceLines(pattern)) {
-    const li = text("li", "", `${e.finding} `);
-    li.append(trustChip(e.trust_label), sourceIds([e.source_id]));
-    if (e.proof) li.append(text("div", "brief-proof", e.proof));
-    said.append(li);
-  }
-  box.append(said, text("p", "brief-small", verificationSummary(verification)));
-  const removed = removedLines(verification);
-  if (removed.length) box.append(text("div", "card-label", "Removed or replaced as unverified"), list(removed));
-
-  // Possible contributing factors
-  box.append(text("h4", "", "Possible contributing factors"));
-  const factors = document.createElement("ul");
-  for (const c of analysis.contributing_conditions) {
-    const li = text("li", "", `${c.condition} `);
-    li.append(trustChip(c.trust_label), sourceIds(c.source_ids));
-    factors.append(li);
-  }
-  box.append(factors);
-  if (analysis.compounding_factors.length) box.append(text("div", "card-label", "Where small variations combine"), list(analysis.compounding_factors));
-  const gap = analysis.policy_practice_gap;
-  const gapBox = document.createElement("div");
-  gapBox.className = "brief-gap";
-  const gapTrust = gapLabels(gap, verification);
-  gapBox.append(
-    labelled("Policy expects", gap.what_policy_expects, gapTrust.expects),
-    labelled("Records suggest", gap.what_records_suggest, gapTrust.suggests),
-  );
-  if (gapTrust.note) gapBox.append(text("p", "brief-small", gapTrust.note));
-  const wording = policyWording(gap);
-  if (wording) gapBox.append(text("p", "brief-proof", wording));
-  box.append(text("div", "card-label", "Policy and practice"), gapBox);
-  if (analysis.pressure_map.length) {
-    box.append(text("div", "card-label", "Pressure map"));
-    const pm = document.createElement("ul");
-    for (const p of analysis.pressure_map) {
-      const li = text("li", "", `${p.role}: ${p.pressure_carried}${p.shifting_to ? ` (appears to shift to ${p.shifting_to})` : ""} `);
-      li.append(trustChip(p.trust_label));
-      pm.append(li);
-    }
-    box.append(pm);
-  }
-  box.append(text("div", "card-label", "Other explanations to rule out"), list(analysis.alternative_explanations));
-  box.append(text("div", "card-label", "Questions a reviewer would need answered"), list(analysis.open_questions));
-
-  // Recommendation (Suggested)
-  const rec = options.recommendation;
-  const leading = options.options.find((o) => o.option_id === rec.leading_option_id);
-  const recBox = document.createElement("div");
-  recBox.className = "brief-recommendation";
-  const recHead = text("h4", "", "Recommendation ");
-  recHead.append(trustChip("Suggested"));
-  recBox.append(recHead, text("div", "brief-option-title", leading ? leading.title : rec.leading_option_id), text("p", "", rec.rationale));
-  recBox.append(text("p", "brief-small", `Evidence strength: ${leading?.evidence_strength ?? "None"} · Recommendation confidence: ${rec.confidence}`));
-  recBox.append(labelled("What would change it", rec.would_change_if));
-  if (leading) recBox.append(optionDetails(leading, evidence));
-  box.append(recBox);
-
-  // Other options
-  const others = options.options.filter((o) => o.option_id !== rec.leading_option_id);
-  if (others.length) {
-    box.append(text("h4", "", "Other options"));
-    for (const o of others) {
-      const item = document.createElement("div");
-      item.className = "brief-option";
-      item.append(text("div", "brief-option-title", `${o.title} · ${o.type}`), optionDetails(o, evidence));
-      box.append(item);
-    }
-  }
-
-  // Evidence list
-  const cited = [...new Set(options.options.flatMap((o) => o.evidence_ids))].map((id) => evidence.find((e) => e.evidence_id === id)).filter(Boolean);
-  box.append(text("h4", "", "Evidence"));
-  if (cited.length === 0) {
-    box.append(text("p", "brief-small", "No library evidence. Options rely on the records and local judgment."));
-  } else {
-    for (const e of cited) {
-      const row = text("div", "brief-evidence", `${e.evidence_id} · ${e.title} `);
-      row.append(text("span", "brief-small", `(${e.source_type}, strength ${e.strength}). ${e.citation}`));
-      if (e.synthetic_placeholder) row.append(placeholderTag());
-      box.append(row);
-    }
-  }
-
-  // Confidence and validation, reviewers
-  box.append(text("p", "brief-small", `Pattern confidence: ${pattern.confidence} (${pattern.confidence_reason}) · Front-line validation: ${validationStatus(thread)}`));
-  if (options.suggested_reviewers.length) {
-    box.append(text("div", "card-label", "Suggested reviewers (roles)"), list(options.suggested_reviewers.map((r) => `${r.role}: ${r.why}`)));
-  }
-  if (thread.information_requests.length) {
-    box.append(text("div", "card-label", "Information requested"), list(thread.information_requests.map((r) => `${r.text} (${r.role}, ${shortWhen(r.time)})`)));
-  }
-  if (thread.decision) {
-    box.append(text("div", "brief-decision", `Decision recorded: ${thread.decision.option_title}${thread.decision.was_recommended ? " (the recommendation)" : ""} · ${thread.decision.role} · ${thread.decision.date.slice(0, 10)}. Nothing is applied by Threadline; carrying it out is up to the team.`));
-  }
-  if (thread.outcome) {
-    box.append(text("div", "brief-decision", `Outcome: ${thread.outcome.helped}. ${thread.outcome.what_happened} (${thread.outcome.role}, ${thread.outcome.date.slice(0, 10)})`));
-  }
-
-  box.append(managerActions(thread));
-  return box;
-}
-
-// The manager's buttons, each active only where the spec allows.
-function managerActions(thread) {
-  const box = document.createElement("div");
-  const manager = role === "Manager";
-  const validated = thread.status === "Validated pattern";
-  const actions = document.createElement("div");
-  actions.className = "card-actions";
-  const opts = current(thread).steps.options;
-  actions.append(
-    button("Send for front-line validation", "primary", !(manager && canMove(thread, "Under review")),
-      () => act(thread, () => sendForValidation(thread, role), "Sent for front-line validation")),
-    button("Accept recommendation", "primary", !(manager && validated),
-      () => act(thread, () => recordDecision(thread, role, opts.recommendation.leading_option_id), "Decision recorded (nothing is applied automatically)")),
-    button("Choose another option", "", !(manager && validated), () => openForm(thread, "choose")),
-    button("Request more information", "", !(manager && isOpen(thread)), () => openForm(thread, "info")),
-    button("Not a real pattern", "", !(manager && canMove(thread, "Not confirmed")), () => openForm(thread, "notreal")),
-  );
-  box.append(actions);
-
-  const why = !manager
-    ? "Switch your role to Manager to act on the brief."
-    : !validated && ["Inferred", "Flagged", "Under review"].includes(thread.status)
-      ? "Accept and Choose another option unlock once a front-line lead confirms the pattern."
-      : "";
-  if (why) box.append(text("p", "card-why-disabled", why));
-
-  if (thread.status === "Decision recorded") {
-    box.append(text("p", "brief-small", `Outcome review due ${thread.outcome_review_due}. Revisit or stop if: ${thread.decision?.revisit_or_stop_if || "not stated"}`));
-    actions.append(button("Start outcome review", "primary", !manager,
-      () => act(thread, () => startOutcomeReview(thread, role), "Outcome review started")));
-  }
-  if (thread.status === "Outcome review due") {
-    box.append(text("p", "brief-small", `Outcome review due ${thread.outcome_review_due}. Revisit or stop if: ${thread.decision?.revisit_or_stop_if || "not stated"}`));
-    actions.append(button("Record outcome", "primary", !manager, () => openForm(thread, "outcome")));
-  }
-  if (discussInThread) {
-    const discuss = button("Discuss in a thread", "", false, () => discussSignal(thread));
-    discuss.title = "Open these records in a chat thread, with citations and Find gaps";
-    actions.append(discuss);
-  }
-
-  if (form?.threadId === thread.id && form.kind === "info") {
-    box.append(inlineForm({ label: "What information would help?", submit: "Add request",
-      onSubmit: (v) => act(thread, () => requestMoreInformation(thread, role, v), "Request added") }));
-  }
-  if (form?.threadId === thread.id && form.kind === "notreal") {
-    box.append(inlineForm({ label: "Why isn't this a real pattern? (Saved to help tune the trigger.)", submit: "Mark not confirmed",
-      onSubmit: (v) => act(thread, () => notARealPattern(thread, role, v), "Marked as not a real pattern") }));
-  }
-  if (form?.threadId === thread.id && form.kind === "choose") box.append(chooseOptionForm(thread));
-  if (form?.threadId === thread.id && form.kind === "outcome") box.append(outcomeForm(thread));
-  return box;
-}
-
+// ---------- Forms opened from the header ----------
 function chooseOptionForm(thread) {
   const { options, recommendation } = current(thread).steps.options;
   const box = document.createElement("div");
@@ -696,24 +928,6 @@ async function discussSignal(thread) {
   } catch (err) {
     toast(`Couldn't open the records: ${err.message}`);
   }
-}
-
-// ---------- History ----------
-function renderHistory(thread) {
-  const box = document.createElement("details");
-  box.className = "signals-history";
-  box.append(text("summary", "", `History (${thread.history.length})`));
-  for (const h of [...thread.history].reverse()) {
-    const row = text("div", "history-row", h.note);
-    row.prepend(text("span", "history-when", `${shortWhen(h.time)} · ${h.by} · ${h.status}`));
-    box.append(row);
-  }
-  const log = current(thread).log;
-  if (log.length) {
-    box.append(text("div", "card-label", `Code checks on the latest run (${log.length})`));
-    for (const l of log) box.append(text("div", "history-row history-log", `${l.step}: ${l.detail}`));
-  }
-  return box;
 }
 
 // ---------- Acting on a Thread ----------

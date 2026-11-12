@@ -164,3 +164,47 @@ Left over:
 - The measure style (big number, unit, trigger underneath) is built but not used until the
   stage 2 number tiles.
 - Older parts of the page (review card, brief) still use their old layout until stage 2.
+
+### Stage 2: Thread page — done (2026-11-12), one check left over
+
+What was built:
+
+- `src/signalsData.js` (tested in `tests/signalsData.test.js`, 17 tests): number tiles, chart data,
+  key quotes, records that don't fit, the header's actions for each role and status, and the
+  history line. All worked out by code from the records and the Thread.
+- `src/signals-ui.js`: the Thread page is now a header (actions for the current role at top
+  right) and tabs Summary · Evidence · Map · Options · Detail. The Map tab still shows the old
+  map until stage 3.
+- `src/styles.css`, section "Signals: the Thread page".
+
+Decisions made where the spec was silent or didn't fit the data:
+
+1. **Records that don't fit have no direction tag.** The engine gives only record IDs, and code
+   can't tell whether a record "points the other way", is "possibly related" or "unrelated".
+   Each card shows the record's own title, words and time, with the tag "Not counted as
+   support". The three tags in the spec can come from people in stage 5 (mark relevance).
+   The test files' scoring labels (`eval_role`) are never shown.
+2. The chart shows the trigger metric measured in minutes (the first one, if there are several),
+   with the other trigger metrics as small figures under each hour. The hour before and after
+   each window is drawn when the records have it.
+3. Tile labels come from the record field names ("Room to physician", "Bed occupancy"); the
+   occasions tile says "occasions", not "afternoons".
+4. The header offers only the actions open in the current status, with at most one blue
+   button. "Request more information" is worded "Need more information", as in the mockup.
+   "Add context" is offered to front-line leads only (the mockup's manager header has three
+   buttons); the status rules in `threads.js` are unchanged.
+5. The review card's own buttons were removed: the header carries them. Front-line leads see
+   the card first on Summary; managers find it under Detail.
+6. Staff context notes show on Summary for every role, in amber, tagged Experiential.
+7. "See full reasoning" opens in place on the option card. Library evidence is a row that opens
+   under the options. "Discuss in a thread" moved to the Detail tab.
+8. The open tab is remembered between visits.
+
+Left over:
+
+- **Hover help was not confirmed in the browser.** The "i" marks are there, with the wording, and
+  are reachable by keyboard, but the tooltip itself wasn't seen on screen in the preview. Check
+  `.help:hover::after` in `src/styles.css` first in the next session.
+- Dark mode and both roles were checked on the Summary; the other tabs were checked in light mode.
+- Stages 3 (map), 4 (overview) and 5 (corrections: storage design first, wait for the founder's
+  OK) are not started.

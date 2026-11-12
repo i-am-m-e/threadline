@@ -1884,3 +1884,138 @@ body[data-mode="signals"] .signals {
 
 /* 10. Reference: grey monospace, always last */
 .meta-ref { font: 400 11px/1.4 var(--mono); color: var(--ink-meta); }
+
+/* ==========================================================================
+   Signals: the Thread page (spec section 3): header, tabs, tiles, chart, quotes, options.
+   Reading is flat; only .signals-button is raised.
+   ========================================================================== */
+.signals-detail-head { flex-direction: row; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 14px 24px; }
+.tp-about { display: flex; flex-direction: column; gap: 10px; min-width: 280px; flex: 1 1 380px; }
+.tp-actions { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; max-width: 680px; }
+.tp-actions .card-actions { justify-content: flex-end; margin-top: 0; }
+.tp-actions .card-why-disabled { text-align: right; }
+.signals-detail-head .brief-decision { flex-basis: 100%; margin-top: 0; }
+.tp-with-help { display: inline-flex; align-items: center; gap: 2px; }
+.tp-form { max-width: 640px; padding: 14px 16px; border: 1px solid var(--line); border-radius: 12px; background: var(--raised); }
+
+/* Hover help: a small "i", with one line shown on hover and on keyboard focus */
+.help {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  margin-left: 6px;
+  border-radius: 50%;
+  background: var(--chip);
+  color: var(--ink2);
+  font: 600 10px/1 var(--sans);
+  letter-spacing: 0;
+  text-transform: none;
+  vertical-align: middle;
+  cursor: help;
+}
+.help:hover::after, .help:focus::after {
+  content: attr(data-tip);
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  width: max-content;
+  max-width: 260px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: var(--ink);
+  color: var(--bg);
+  font: 400 12px/1.4 var(--sans);
+  text-align: left;
+  white-space: normal;
+  box-shadow: var(--shadow-action);
+  pointer-events: none;
+}
+
+/* Tabs: flat, because they navigate */
+.tp-tabs { display: flex; flex-wrap: wrap; gap: 2px; border-bottom: 1px solid var(--line); }
+.tp-tab {
+  min-height: 44px;
+  padding: 0 14px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  border-radius: 6px 6px 0 0;
+  background: transparent;
+  color: var(--ink2);
+  font: 500 14px var(--sans);
+}
+.tp-tab:hover { background: var(--hover); color: var(--ink); }
+.tp-tab[aria-selected="true"] { border-bottom-color: var(--accent); color: var(--accent-ink); font-weight: 600; }
+
+.tp-section { display: flex; flex-direction: column; gap: 10px; max-width: 1100px; padding: 18px 20px; border: 1px solid var(--line); border-radius: 12px; background: var(--raised); font-size: 14px; line-height: 1.5; }
+.tp-section p { margin: 0; }
+.tp-section ul { margin: 2px 0 6px; padding-left: 20px; }
+.tp-heading { margin: 0; display: flex; align-items: center; font: 600 15px/1.3 var(--sans); color: var(--ink); }
+.tp-statement { font-size: 16px; line-height: 1.5; max-width: 780px; }
+
+/* Number tiles */
+.tp-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 14px; max-width: 1100px; }
+.tp-tile { display: flex; flex-direction: column; gap: 6px; min-width: 0; padding: 16px; border: 1px solid var(--line); border-radius: 12px; background: var(--raised); }
+.tp-tile .meta-measure-value { font-size: 30px; }
+.tp-tile .meta-measure-unit { font-size: 15px; font-weight: 500; }
+.tp-tile .meta-measure-under { font-size: 13px; color: var(--ink2); }
+
+/* Chart and quotes, side by side when there is room */
+.tp-evidence { flex-direction: row; flex-wrap: wrap; gap: 20px 32px; }
+.tp-chart { flex: 1.4 1 420px; min-width: 0; display: flex; flex-direction: column; gap: 12px; }
+.tp-quotes { flex: 1 1 300px; min-width: 0; display: flex; flex-direction: column; gap: 10px; }
+.tp-chart-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 6px 16px; }
+.tp-chart-key { font-size: 12px; color: var(--accent-ink); }
+.tp-chart-groups { display: flex; flex-wrap: wrap; gap: 20px 40px; }
+.tp-chart-group { display: flex; flex-direction: column; gap: 8px; }
+.tp-chart-day { font: 600 13px var(--sans); color: var(--ink); }
+.tp-chart-plot { position: relative; display: flex; align-items: flex-end; gap: 6px; height: 150px; }
+.tp-chart-line { position: absolute; left: 0; right: 0; border-top: 1.5px dashed var(--accent-ink); }
+.tp-chart-col { display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 4px; width: 44px; }
+.tp-chart-value { font: 600 12px var(--sans); color: var(--ink); }
+.tp-chart-bar { width: 28px; border-radius: 4px 4px 0 0; background: color-mix(in srgb, var(--thread) 40%, var(--raised)); }
+.tp-chart-bar.is-crossed { background: var(--thread-ink); }
+.tp-chart-axis { display: flex; gap: 6px; }
+.tp-chart-tick { display: flex; flex-direction: column; align-items: center; gap: 2px; width: 44px; }
+.tp-chart-hour { font: 400 11px var(--mono); color: var(--ink-meta); }
+.tp-chart-other { font-size: 11px; color: var(--ink2); }
+
+/* Key quotes: a light copper card */
+.tp-quote { display: flex; flex-direction: column; gap: 8px; padding: 14px; border: 1px solid color-mix(in srgb, var(--thread) 30%, var(--line)); border-radius: 10px; background: color-mix(in srgb, var(--thread-soft) 45%, var(--raised)); }
+.tp-quote-top { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.tp-quote-top .tag { margin-left: 0; }
+.tp-quote-kind { font: 600 13px var(--sans); color: var(--ink); }
+.tp-quote-when { font-size: 12px; color: var(--ink2); }
+.tp-quote-words { font-size: 14px; line-height: 1.45; color: var(--ink); }
+
+/* Cards that sit side by side: policy and practice, records that don't fit */
+.tp-pair { display: flex; flex-wrap: wrap; gap: 12px; }
+.tp-card { flex: 1 1 260px; min-width: 0; display: flex; flex-direction: column; gap: 6px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 10px; font-size: 13.5px; }
+.tp-card .tag { margin-left: 0; }
+.tp-card-title { font: 600 13.5px var(--sans); color: var(--ink); }
+
+/* Options: on a light purple panel; the suggestion outlined in purple */
+.tp-approaches { background: color-mix(in srgb, var(--tone-purple-bg) 55%, var(--raised)); border-color: color-mix(in srgb, var(--tone-purple-ink) 22%, var(--line)); }
+.tp-options { display: flex; flex-wrap: wrap; gap: 14px; align-items: stretch; }
+.tp-option { flex: 1 1 260px; min-width: 0; display: flex; flex-direction: column; gap: 10px; padding: 16px; border: 1px solid var(--line); border-radius: 12px; background: var(--raised); }
+.tp-option.is-suggested { border: 2px solid var(--tone-purple-ink); }
+.tp-option .tag { margin-left: 0; }
+.tp-option-title { font: 600 16px/1.3 var(--sans); color: var(--ink); }
+.tp-option-about { font-size: 13px; line-height: 1.45; color: var(--ink2); }
+.tp-option-facts { display: flex; flex-direction: column; gap: 4px; }
+.tp-option-facts .brief-labelled, .tp-option .brief-labelled { font-size: 13px; }
+.tp-option .signals-button { align-self: flex-start; color: var(--accent-ink); }
+
+/* Detail: rows that open */
+.tp-row { border-top: 1px solid var(--line); padding: 4px 0; }
+.tp-row > summary { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; min-height: 44px; padding: 10px 4px; cursor: pointer; font: 600 14px var(--sans); color: var(--ink); border-radius: 8px; }
+.tp-row > summary:hover { background: var(--hover); }
+.tp-row-summary { font: 400 13px var(--sans); color: var(--ink2); }
+.tp-row[open] { padding-bottom: 12px; }
+.tp-row .review-card { margin-top: 6px; }
+.context-notes.tp-section { border-color: color-mix(in srgb, var(--tone-amber-ink) 30%, var(--line)); }
+.context-meta { display: flex; align-items: center; gap: 4px; margin-top: 4px; }
