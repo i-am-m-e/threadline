@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Signals overview</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#2b5078}a:hover{color:#15181c}
+button{cursor:pointer;box-shadow:0 1px 2px rgba(20,30,50,0.10),0 3px 8px -2px rgba(20,30,50,0.16);transition:box-shadow .15s ease,transform .15s ease}
+button:hover{box-shadow:0 2px 4px rgba(20,30,50,0.12),0 10px 20px -8px rgba(20,30,50,0.28);transform:translateY(-1px)}
+button:focus-visible{outline:2px solid #3d6a96;outline-offset:2px}
+button[data-flat]{box-shadow:none}
+button[data-flat]:hover{box-shadow:none;transform:none;background:#f1f3f6}
+</style>
+</helmet>
+<div style="min-height:100vh; background:#f5f6f8; font-family:'Geist',system-ui,sans-serif; color:#15181c">
+<header style="display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:12px; padding:12px 24px; background:#ffffff; border-bottom:1px solid #dfe3e8">
+<div style="display:flex; align-items:center; gap:10px"><span aria-hidden="true" style="width:10px; height:10px; border-radius:50%; border:2px solid #b87a4b"></span><span style="font-size:16px; font-weight:600">Threadline</span>
+<nav aria-label="Signals views" style="display:flex; gap:4px; margin-left:12px"><a href="#" style="padding:8px 12px; border-radius:8px; background:#e3ecf5; color:#2b5078; font-size:13px; font-weight:600; text-decoration:none">Overview</a><a href="Main.dc.html" style="padding:8px 12px; border-radius:8px; color:#4a5260; font-size:13px; font-weight:500; text-decoration:none">Threads</a></nav></div>
+<div style="display:flex; flex-wrap:wrap; align-items:center; gap:12px"><span style="display:inline-flex; align-items:center; gap:5px; font-size:12px; color:#5f6773"><svg aria-hidden="true" width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="#5f6773" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="flex:none"><circle cx="8" cy="8" r="5.5"></circle><path d="M8 5v3l2 1.5"></path></svg>Last checked 6:10 am</span><span style="padding:6px 12px; border:1px solid #dfe3e8; border-radius:8px; font-size:13px; font-weight:500">Manager</span><button type="button" style="min-height:40px; padding:0 12px; border:1px solid #dfe3e8; border-radius:8px; background:#ffffff; color:#15181c; font:500 13px 'Geist',system-ui,sans-serif">Check now</button></div>
+</header>
+<main style="box-sizing:border-box; max-width:1240px; margin:0 auto; padding:28px 32px 48px; display:flex; flex-direction:column; gap:20px">
+<div style="display:flex; flex-wrap:wrap; justify-content:space-between; align-items:flex-end; gap:12px">
+<div style="display:flex; flex-direction:column; gap:6px"><span style="font-family:'Geist Mono',ui-monospace,monospace; font-size:11px; letter-spacing:0.06em; text-transform:uppercase; color:#5f6773">Overview</span><h1 style="margin:0; font-size:26px; font-weight:600">Two patterns need your review</h1></div>
+<span style="display:inline-flex; align-items:center; gap:6px; padding:3px 9px; border-radius:6px; background:#e3ecf5; color:#2b5078; font-size:12px; font-weight:500"><svg aria-hidden="true" width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="#2b5078" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="flex:none"><rect x="2.5" y="3.5" width="11" height="10" rx="1.5"></rect><path d="M2.5 6.5h11M5.5 2v3M10.5 2v3"></path></svg>Week of Sep 16 to 22</span>
+</div>
+<section style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:14px">
+<div style="background:#ffffff; border:1px solid #dfe3e8; border-radius:12px; padding:16px; display:flex; flex-direction:column; gap:6px; min-width:0">
+<span style="font-family:'Geist Mono',ui-monospace,monospace; font-size:11px; letter-spacing:0.06em; text-transform:uppercase; color:#5f6773">Needs your review</span><span style="font-size:32px; font-weight:600; line-height:1.1; color:#8a2c12">2</span><span style="font-size:13px; color:#4a5260">Flagged and not yet sent on</span></div>
+<div style="background:#ffffff; border:1px solid #dfe3e8; border-radius:12px; padding:16px; display:flex; flex-direction:column; gap:6px; min-width:0">
+<span style="font-family:'Geist Mono',ui-monospace,monospace; font-size:11px; letter-spacing:0.06em; text-transform:uppercase; color:#5f6773">Flags today</span><span style="font-size:32px; font-weight:600; line-height:1.1; color:#15181c">2 of 3</span><span style="font-size:13px; color:#4a5260">Daily limit keeps alerts few</span></div>
+<div style="background:#ffffff; border:1px solid #dfe3e8; border-radius:12px; padding:16px; display:flex; flex-direction:column; gap:6px; min-width:0">
+<span style="font-family:'Geist Mono',ui-monospace,monospace; font-size:11px; letter-spacing:0.06em; text-transform:uppercase; color:#5f6773">Safety-relevant</span><span style="font-size:32px; font-weight:600; line-height:1.1; color:#15181c">2</span><span style="font-size:13px; color:#4a5260">Both involve a safety condition</span></div>
+<div style="background:#ffffff; border:1px solid #dfe3e8; border-radius:12px; padding:16px; display:flex; flex-direction:column; gap:6px; min-width:0">
+<span style="font-family:'Geist Mono',ui-monospace,monospace; font-size:11px; letter-spacing:0.06em; text-transform:uppercase; color:#5f6773">Recurring</span><span style="font-size:32px; font-weight:600; line-height:1.1; color:#15181c">1</span><span style="font-size:13px; color:#4a5260">Seen on 2 or more occasions</span></div>
+</section>
+<section style="background:#ffffff; border:1px solid #dfe3e8; border-radius:12px; overflow:hidden">
+<div style="display:flex; justify-content:space-between; gap:8px; padding:16px; align-items:baseline"><span style="font-size:15px; font-weight:600">Needs your attention</span><a href="Main.dc.html" style="font-size:13px">Open all threads</a></div>
+<div style="display:flex; flex-wrap:wrap; align-items:center; gap:18px; padding:16px; border-top:1px solid #dfe3e8">
+<div style="flex:3 1 300px; min-width:0; display:flex; flex-direction:column; gap:6px">
+<span style="display:inline-flex; align-items:center; gap:8px; font-family:'Geist Mono',ui-monospace,monospace; font-size:11px; letter-spacing:0.06em; text-transform:uppercase; color:#5f6773">Healthcare<span aria-hidden="true" style="width:3px; height:3px; border-radius:50%; background:#5f6773"></span><span style="display:inline-flex; align-items:center; gap:4px"><svg aria-hidden="true" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="#5f6773" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="flex:none"><path d="M8 14s4.5-4.2 4.5-7.5a4.5 4.5 0 0 0-9 0C3.5 9.8 8 14 8 14z"></path><circle cx="8" cy="6.5" r="1.5"></circle></svg>Synthetic UCC A</span></span>
+<span style="font-size:16px; font-weight:600; color:#15181c">Rooming during slow physician pace</span>
+<span style="display:flex; flex-wrap:wrap; gap:8px; align-items:center"><span style="display:inline-flex; align-items:center; gap:6px; padding:3px 10px; border-radius:999px; font-size:12px; font-weight:500; color:#8a2c12; background:#fbe4dc; ">Flagged</span><span style="display:inline-flex; align-items:center; gap:6px; font-size:12px; color:#15181c"><span aria-hidden="true" style="display:inline-flex; gap:2px"><span style="width:14px; height:6px; border-radius:2px; background:#3d6a96"></span><span style="width:14px; height:6px; border-radius:2px; background:#3d6a96"></span><span style="width:14px; height:6px; border-radius:2px; background:#cfd6de"></span></span>Medium</span><span style="display:inline-flex; align-items:center; gap:6px; font-size:12px; color:#15181c"><span aria-hidden="true" style="display:inline-flex; gap:3px"><span style="width:7px; height:7px; border-radius:50%; background:#b87a4b"></span><span style="width:7px; height:7px; border-radius:50%; background:#b87a4b"></span></span>2 occasions</span></span>
+</div>
+<div style="flex:1 1 150px; display:flex; flex-direction:column; gap:4px"><span style="display:inline-flex; align-items:center; gap:6px; padding:3px 9px; border-radius:6px; background:#e3ecf5; color:#2b5078; font-size:12px; font-weight:500"><svg aria-hidden="true" width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="#2b5078" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="flex:none"><rect x="2.5" y="3.5" width="11" height="10" rx="1.5"></rect><path d="M2.5 6.5h11M5.5 2v3M10.5 2v3"></path></svg>Sep 20 and 22</span></div>
+<div style="flex:1 1 170px; display:flex; flex-direction:column; gap:4px"><span style="font-size:12px; color:#4a5260">Rooming to physician, minutes</span><svg role="img" aria-label="trend" width="150" height="40" viewBox="0 0 150 40" style="flex:none; overflow:visible"><line x1="0" y1="36.7" x2="150" y2="36.7" stroke="#2b5078" stroke-width="1" stroke-dasharray="3 3"></line><polyline points="0.0,28.0 16.7,16.0 33.3,6.7 50.0,2.7 66.7,6.7 83.3,32.0 100.0,22.7 116.7,14.7 133.3,10.7 150.0,16.7" fill="none" stroke="#b87a4b" stroke-width="2" stroke-linejoin="round"></polyline></svg></div>
+<div style="flex:1 1 200px; display:flex; justify-content:flex-end"><button type="button" style="min-height:40px; padding:0 14px; border:0; border-radius:8px; background:#3d6a96; color:#ffffff; font:600 13px 'Geist',system-ui,sans-serif">Review pattern</button></div>
+</div>
+<div style="display:flex; flex-wrap:wrap; align-items:center; gap:18px; padding:16px; border-top:1px solid #dfe3e8">
+<div style="flex:3 1 300px; min-width:0; display:flex; flex-direction:column; gap:6px">
+<span style="display:inline-flex; align-items:center; gap:8px; font-family:'Geist Mono',ui-monospace,monospace; font-size:11px; letter-spacing:0.06em; text-transform:uppercase; color:#5f6773">Energy<span aria-hidden="true" style="width:3px; height:3px; border-radius:50%; background:#5f6773"></span><span style="display:inline-flex; align-items:center; gap:4px"><svg aria-hidden="true" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="#5f6773" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="flex:none"><path d="M8 14s4.5-4.2 4.5-7.5a4.5 4.5 0 0 0-9 0C3.5 9.8 8 14 8 14z"></path><circle cx="8" cy="6.5" r="1.5"></circle></svg>Synthetic Site B</span></span>
+<span style="font-size:16px; font-weight:600; color:#15181c">Permit issuance during inspector backlog</span>
+<span style="display:flex; flex-wrap:wrap; gap:8px; align-items:center"><span style="display:inline-flex; align-items:center; gap:6px; padding:3px 10px; border-radius:999px; font-size:12px; font-weight:500; color:#8a2c12; background:#fbe4dc; ">Flagged</span><span style="display:inline-flex; align-items:center; gap:6px; font-size:12px; color:#15181c"><span aria-hidden="true" style="display:inline-flex; gap:2px"><span style="width:14px; height:6px; border-radius:2px; background:#3d6a96"></span><span style="width:14px; height:6px; border-radius:2px; background:#3d6a96"></span><span style="width:14px; height:6px; border-radius:2px; background:#cfd6de"></span></span>Medium</span><span style="display:inline-flex; align-items:center; gap:6px; font-size:12px; color:#15181c"><span aria-hidden="true" style="display:inline-flex; gap:3px"><span style="width:7px; height:7px; border-radius:50%; background:#b87a4b"></span></span>1 occasion</span></span>
+</div>
+<div style="flex:1 1 150px; display:flex; flex-direction:column; gap:4px"><span style="display:inline-flex; align-items:center; gap:6px; padding:3px 9px; border-radius:6px; background:#e3ecf5; color:#2b5078; font-size:12px; font-weight:500"><svg aria-hidden="true" width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="#2b5078" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="flex:none"><rect x="2.5" y="3.5" width="11" height="10" rx="1.5"></rect><path d="M2.5 6.5h11M5.5 2v3M10.5 2v3"></path></svg>Sep 20, 7 to 11 am</span></div>
+<div style="flex:1 1 170px; display:flex; flex-direction:column; gap:4px"><span style="font-size:12px; color:#4a5260">Inspection wait, minutes</span><svg role="img" aria-label="trend" width="150" height="40" viewBox="0 0 150 40" style="flex:none; overflow:visible"><line x1="0" y1="35.6" x2="150" y2="35.6" stroke="#2b5078" stroke-width="1" stroke-dasharray="3 3"></line><polyline points="0.0,26.7 37.5,17.8 75.0,11.1 112.5,4.4 150.0,6.7" fill="none" stroke="#b87a4b" stroke-width="2" stroke-linejoin="round"></polyline></svg></div>
+<div style="flex:1 1 200px; display:flex; justify-content:flex-end"><button type="button" style="min-height:40px; padding:0 14px; border:0; border-radius:8px; background:#3d6a96; color:#ffffff; font:600 13px 'Geist',system-ui,sans-serif">Review pattern</button></div>
+</div>
+</section>
+<section style="display:flex; flex-wrap:wrap; gap:14px; align-items:stretch"><div style="background:#ffffff; border:1px solid #dfe3e8; border-radius:12px; padding:20px; display:flex; flex-direction:column; gap:10px; flex:3 1 520px; min-width:0">
+<span style="font-size:15px; font-weight:600; color:#15181c">When patterns occurred</span>
+<div style="display:grid; grid-template-columns:200px repeat(7, minmax(0, 1fr)); align-items:center"><span></span><span style="text-align:center; font-family:'Geist Mono',ui-monospace,monospace; font-size:11px; color:#5f6773">Sep 16</span><span style="text-align:center; font-family:'Geist Mono',ui-monospace,monospace; font-size:11px; color:#5f6773">Sep 17</span><span style="text-align:center; font-family:'Geist Mono',ui-monospace,monospace; font-size:11px; color:#5f6773">Sep 18</span><span style="text-align:center; font-family:'Geist Mono',ui-monospace,monospace; font-size:11px; color:#5f6773">Sep 19</span><span style="text-align:center; font-family:'Geist Mono',ui-monospace,monospace; font-size:11px; color:#5f6773">Sep 20</span><span style="text-align:center; font-family:'Geist Mono',ui-monospace,monospace; font-size:11px; color:#5f6773">Sep 21</span><span style="text-align:center; font-family:'Geist Mono',ui-monospace,monospace; font-size:11px; color:#5f6773">Sep 22</span></div>
+<div style="display:grid; grid-template-columns:200px repeat(7, minmax(0, 1fr)); align-items:center; font-size:13px; color:#15181c"><span style="padding-right:8px">Rooming, UCC A</span><div style="display:flex; justify-content:center; align-items:center; height:28px; border-left:1px solid #dfe3e8"></div><div style="display:flex; justify-content:center; align-items:center; height:28px; border-left:1px solid #dfe3e8"></div><div style="display:flex; justify-content:center; align-items:center; height:28px; border-left:1px solid #dfe3e8"></div><div style="display:flex; justify-content:center; align-items:center; height:28px; border-left:1px solid #dfe3e8"></div><div style="display:flex; justify-content:center; align-items:center; height:28px; border-left:1px solid #dfe3e8"><span style="width:12px; height:12px; border-radius:50%; background:#b87a4b"></span></div><div style="display:flex; justify-content:center; align-items:center; height:28px; border-left:1px solid #dfe3e8"></div><div style="display:flex; justify-content:center; align-items:center; height:28px; border-left:1px solid #dfe3e8"><span style="width:12px; height:12px; border-radius:50%; background:#b87a4b"></span></div></div>
+<div style="display:grid; grid-template-columns:200px repeat(7, minmax(0, 1fr)); align-items:center; font-size:13px; color:#15181c"><span style="padding-right:8px">Permit backlog, Site B</span><div style="display:flex; justify-content:center; align-items:center; height:28px; border-left:1px solid #dfe3e8"></div><div style="display:flex; justify-content:center; align-items:center; height:28px; border-left:1px solid #dfe3e8"></div><div style="display:flex; justify-content:center; align-items:center; height:28px; border-left:1px solid #dfe3e8"></div><div style="display:flex; justify-content:center; align-items:center; height:28px; border-left:1px solid #dfe3e8"></div><div style="display:flex; justify-content:center; align-items:center; height:28px; border-left:1px solid #dfe3e8"><span style="width:12px; height:12px; border-radius:50%; background:#b87a4b"></span></div><div style="display:flex; justify-content:center; align-items:center; height:28px; border-left:1px solid #dfe3e8"></div><div style="display:flex; justify-content:center; align-items:center; height:28px; border-left:1px solid #dfe3e8"></div></div>
+<span style="font-size:12px; color:#4a5260">One dot per occasion. A pattern seen 10 or more times is flagged for review whatever its confidence.</span>
+</div><div style="background:#ffffff; border:1px solid #dfe3e8; border-radius:12px; padding:20px; display:flex; flex-direction:column; gap:12px; flex:2 1 320px; min-width:0">
+<span style="font-size:15px; font-weight:600; color:#15181c">Decisions and follow-ups</span>
+<div style="display:flex; flex-direction:column; gap:8px">
+<div style="display:flex; justify-content:space-between; gap:8px; font-size:13px"><span>Waiting for front-line validation</span><span style="font-weight:600">0</span></div>
+<div style="display:flex; justify-content:space-between; gap:8px; font-size:13px"><span>Decisions recorded</span><span style="font-weight:600">0</span></div>
+<div style="display:flex; justify-content:space-between; gap:8px; font-size:13px"><span>Outcome reviews due in 14 days</span><span style="font-weight:600">0</span></div>
+<div style="display:flex; justify-content:space-between; gap:8px; font-size:13px"><span>Closed, with outcome recorded</span><span style="font-weight:600">0</span></div>
+</div>
+<span style="font-size:12px; color:#4a5260">When a decision is made, its review date shows here so nothing is left open.</span>
+</div></section>
+<span style="font-size:12px; color:#4a5260">Sample data from the evaluation packs. Every number on this page is counted by code from the records; none is written by the AI.</span>
+</main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1080}}'>
+class Component extends DCLogic {
+renderVals() {
+return {};
+}
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,296 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Thread page, proposed</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#2b5078}a:hover{color:#15181c}
+button{cursor:pointer;box-shadow:0 1px 2px rgba(20,30,50,0.10),0 3px 8px -2px rgba(20,30,50,0.16);transition:box-shadow .15s ease,transform .15s ease}
+button:hover{box-shadow:0 2px 4px rgba(20,30,50,0.12),0 10px 20px -8px rgba(20,30,50,0.28);transform:translateY(-1px)}
+button:focus-visible{outline:2px solid #3d6a96;outline-offset:2px}
+button[data-flat]{box-shadow:none}
+button[data-flat]:hover{box-shadow:none;transform:none;background:#f1f3f6}
+</style>
+</helmet>
+<div style="min-height:100vh; background:#f5f6f8; font-family:'Geist',system-ui,sans-serif; color:#15181c">
+<header style="display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:12px; padding:12px 24px; background:#ffffff; border-bottom:1px solid #dfe3e8">
+<div style="display:flex; align-items:center; gap:10px"><span aria-hidden="true" style="width:10px; height:10px; border-radius:50%; border:2px solid #b87a4b"></span><span style="font-size:16px; font-weight:600">Threadline</span><span style="font-size:14px; color:#4a5260">System signals</span></div>
+<div style="display:flex; flex-wrap:wrap; align-items:center; gap:12px"><span style="font-size:13px; color:#4a5260">Viewing as</span><span style="padding:6px 12px; border:1px solid #dfe3e8; border-radius:8px; font-size:13px; font-weight:500">Manager</span><button type="button" style="min-height:44px; padding:0 14px; border:1px solid #dfe3e8; border-radius:8px; background:#ffffff; color:#15181c; font:500 14px 'Geist',system-ui,sans-serif">Check now</button></div>
+</header>
+<div style="display:flex; flex-wrap:wrap; align-items:flex-start">
+<nav aria-label="Threads" style="flex:1 1 260px; max-width:300px; box-sizing:border-box; padding:16px; display:flex; flex-direction:column; gap:10px">
+<span style="font-family:'Geist Mono',ui-monospace,monospace; font-size:11px; letter-spacing:0.06em; text-transform:uppercase; color:#5f6773">Needs review · 2</span>
+<button type="button" style="display:flex; flex-direction:column; gap:6px; width:100%; padding:12px; background:#ffffff; border:2px solid #3d6a96; border-radius:10px; text-align:left; font-family:'Geist',system-ui,sans-serif">
+<span style="font-size:14px; font-weight:600; color:#15181c">Rooming during slow physician pace</span><span style="font-size:12px; color:#4a5260">Synthetic UCC A · Healthcare</span>
+<span style="display:flex; flex-wrap:wrap; gap:6px; align-items:center"><span style="display:inline-flex; align-items:center; padding:2px 8px; border-radius:999px; font-size:12px; font-weight:500; color:#8a2c12; background:#fbe4dc; ">Flagged</span><span style="font-size:12px; color:#4a5260">Medium · 2 occasions</span></span></button>
+<button type="button" style="display:flex; flex-direction:column; gap:6px; width:100%; padding:12px; background:#ffffff; border:1px solid #dfe3e8; border-radius:10px; text-align:left; font-family:'Geist',system-ui,sans-serif">
+<span style="font-size:14px; font-weight:600; color:#15181c">Permit issuance during inspector backlog</span><span style="font-size:12px; color:#4a5260">Synthetic Site B · Energy</span>
+<span style="display:flex; flex-wrap:wrap; gap:6px; align-items:center"><span style="display:inline-flex; align-items:center; padding:2px 8px; border-radius:999px; font-size:12px; font-weight:500; color:#8a2c12; background:#fbe4dc; ">Flagged</span><span style="font-size:12px; color:#4a5260">Medium · 1 occasion</span></span></button>
+</nav>
+<main style="flex:999 1 560px; min-width:0; box-sizing:border-box; padding:24px 32px 48px; display:flex; flex-direction:column; gap:20px; max-width:1140px">
+
+<section style="display:flex; flex-wrap:wrap; justify-content:space-between; gap:16px; align-items:flex-start">
+<div style="display:flex; flex-direction:column; gap:10px; min-width:0; flex:1 1 420px">
+<span style="font-family:'Geist Mono',ui-monospace,monospace; font-size:11px; letter-spacing:0.06em; text-transform:uppercase; color:#5f6773">Healthcare · Synthetic UCC A · Sep 20, 3 to 6 pm · Sep 22, 2 to 4 pm</span>
+<h1 style="margin:0; font-size:26px; font-weight:600; line-height:1.2">Rooming during slow physician pace</h1>
+<div style="display:flex; flex-wrap:wrap; gap:14px; align-items:center"><span style="display:inline-flex; align-items:center; padding:2px 8px; border-radius:999px; font-size:12px; font-weight:500; color:#8a2c12; background:#fbe4dc; " title="Threadline drafted this; a manager decides what happens next.">Flagged for review</span><span style="display:inline-flex; align-items:center; gap:8px; font-size:13px; color:#15181c"><span aria-hidden="true" style="display:inline-flex; gap:3px"><span style="width:18px; height:8px; border-radius:2px; background:#3d6a96"></span><span style="width:18px; height:8px; border-radius:2px; background:#3d6a96"></span><span style="width:18px; height:8px; border-radius:2px; background:#cfd6de"></span></span>Medium confidence<span role="img" aria-label="How sure Threadline is that the pattern is real. Medium: two kinds of records agree on one occasion. High needs agreement on more than one." title="How sure Threadline is that the pattern is real. Medium: two kinds of records agree on one occasion. High needs agreement on more than one." style="display:inline-flex; align-items:center; justify-content:center; width:16px; height:16px; margin-left:6px; border-radius:50%; background:#e9ecf0; color:#4a5260; font:600 10px Geist,system-ui,sans-serif; text-transform:none; letter-spacing:0; vertical-align:middle; cursor:help">i</span></span><span style="display:inline-flex; align-items:center; gap:8px; font-size:13px; color:#15181c"><span aria-hidden="true" style="display:inline-flex; gap:4px"><span style="width:8px; height:8px; border-radius:50%; background:#8a5530"></span><span style="width:8px; height:8px; border-radius:50%; background:#8a5530"></span></span>Seen on 2 occasions<span role="img" aria-label="How many times the pattern has happened. Raises priority; never changes confidence." title="How many times the pattern has happened. Raises priority; never changes confidence." style="display:inline-flex; align-items:center; justify-content:center; width:16px; height:16px; margin-left:6px; border-radius:50%; background:#e9ecf0; color:#4a5260; font:600 10px Geist,system-ui,sans-serif; text-transform:none; letter-spacing:0; vertical-align:middle; cursor:help">i</span></span></div>
+</div>
+<div style="display:flex; flex-wrap:wrap; gap:8px">
+<button type="button" style="min-height:44px; padding:0 16px; border:0; border-radius:8px; background:#3d6a96; color:#ffffff; font:600 14px 'Geist',system-ui,sans-serif">Send for front-line validation</button>
+<button type="button" style="min-height:44px; padding:0 14px; border:1px solid #dfe3e8; border-radius:8px; background:#ffffff; color:#15181c; font:500 14px 'Geist',system-ui,sans-serif">Need more information</button>
+<button type="button" style="min-height:44px; padding:0 14px; border:1px solid #dfe3e8; border-radius:8px; background:#ffffff; color:#15181c; font:500 14px 'Geist',system-ui,sans-serif">Not a real pattern</button>
+</div>
+</section>
+<nav aria-label="Thread sections" role="tablist" style="display:flex; flex-wrap:wrap; gap:4px; border-bottom:1px solid #dfe3e8">
+<button type="button" data-flat="true" role="tab" title="The decision view: what was noticed, the key numbers and quotes" onClick="{{ tabs.summary.pick }}" style="{{ tabs.summary.style }}">Summary</button>
+<button type="button" data-flat="true" role="tab" title="The chart, the policy and the records that don't fit" onClick="{{ tabs.evidence.pick }}" style="{{ tabs.evidence.style }}">Evidence</button>
+<button type="button" data-flat="true" role="tab" title="How the conditions connect, as a timeline or driver diagram" onClick="{{ tabs.map.pick }}" style="{{ tabs.map.style }}">Map</button>
+<button type="button" data-flat="true" role="tab" title="Possible approaches and the decision" onClick="{{ tabs.options.pick }}" style="{{ tabs.options.style }}">Options</button>
+<button type="button" data-flat="true" role="tab" title="System analysis, what was checked and the history" onClick="{{ tabs.detail.pick }}" style="{{ tabs.detail.style }}">Detail</button>
+</nav>
+
+<sc-if value="{{ showNoticed }}" hint-placeholder-val="{{ true }}">
+<section style="background:#ffffff; border:1px solid #dfe3e8; border-radius:12px; padding:20px; display:flex; flex-direction:column; gap:8px">
+<span style="font-family:'Geist Mono',ui-monospace,monospace; font-size:11px; letter-spacing:0.06em; text-transform:uppercase; color:#5f6773">What Threadline noticed<span role="img" aria-label="A draft summary for you to judge. It only uses facts from the cited records." title="A draft summary for you to judge. It only uses facts from the cited records." style="display:inline-flex; align-items:center; justify-content:center; width:16px; height:16px; margin-left:6px; border-radius:50%; background:#e9ecf0; color:#4a5260; font:600 10px Geist,system-ui,sans-serif; text-transform:none; letter-spacing:0; vertical-align:middle; cursor:help">i</span></span>
+<p style="margin:0; font-size:19px; line-height:1.45; font-weight:500">Rooms kept filling while physician pace slowed. On two afternoons, patients waited well over an hour after being roomed, and on one of them no monitored bed was free for a CTAS 2 arrival.</p>
+<span style="font-size:13px; color:#4a5260">A draft for you to judge. Every figure and quote below was checked against its record: 33 of 34 checks verified, 1 item removed.</span>
+</section>
+</sc-if>
+
+<sc-if value="{{ showTiles }}" hint-placeholder-val="{{ true }}">
+<section style="display:grid; grid-template-columns:repeat(auto-fit, minmax(210px, 1fr)); gap:14px">
+<div style="background:#ffffff; border:1px solid #dfe3e8; border-radius:12px; padding:16px; display:flex; flex-direction:column; gap:6px; min-width:0">
+<span style="font-family:'Geist Mono',ui-monospace,monospace; font-size:11px; letter-spacing:0.06em; text-transform:uppercase; color:#5f6773">Rooming to physician<span role="img" aria-label="Minutes from being placed in a room to first being seen by a physician, at the worst hour. From the flow records." title="Minutes from being placed in a room to first being seen by a physician, at the worst hour. From the flow records." style="display:inline-flex; align-items:center; justify-content:center; width:16px; height:16px; margin-left:6px; border-radius:50%; background:#e9ecf0; color:#4a5260; font:600 10px Geist,system-ui,sans-serif; text-transform:none; letter-spacing:0; vertical-align:middle; cursor:help">i</span></span>
+<span style="font-size:30px; font-weight:600; color:#15181c; line-height:1.1">96<span style="font-size:15px; font-weight:500; color:#4a5260"> min at peak</span></span>
+<span style="font-size:13px; color:#4a5260">Trigger is above 45 min</span></div>
+<div style="background:#ffffff; border:1px solid #dfe3e8; border-radius:12px; padding:16px; display:flex; flex-direction:column; gap:6px; min-width:0">
+<span style="font-family:'Geist Mono',ui-monospace,monospace; font-size:11px; letter-spacing:0.06em; text-transform:uppercase; color:#5f6773">Bed occupancy<span role="img" aria-label="Share of beds filled, at the worst hour. From the flow records." title="Share of beds filled, at the worst hour. From the flow records." style="display:inline-flex; align-items:center; justify-content:center; width:16px; height:16px; margin-left:6px; border-radius:50%; background:#e9ecf0; color:#4a5260; font:600 10px Geist,system-ui,sans-serif; text-transform:none; letter-spacing:0; vertical-align:middle; cursor:help">i</span></span>
+<span style="font-size:30px; font-weight:600; color:#15181c; line-height:1.1">96<span style="font-size:15px; font-weight:500; color:#4a5260"> % at peak</span></span>
+<span style="font-size:13px; color:#4a5260">Trigger is above 90%</span></div>
+<div style="background:#ffffff; border:1px solid #dfe3e8; border-radius:12px; padding:16px; display:flex; flex-direction:column; gap:6px; min-width:0">
+<span style="font-family:'Geist Mono',ui-monospace,monospace; font-size:11px; letter-spacing:0.06em; text-transform:uppercase; color:#5f6773">Occasions<span role="img" aria-label="Separate times both triggers were crossed. Counted by code; it does not change confidence." title="Separate times both triggers were crossed. Counted by code; it does not change confidence." style="display:inline-flex; align-items:center; justify-content:center; width:16px; height:16px; margin-left:6px; border-radius:50%; background:#e9ecf0; color:#4a5260; font:600 10px Geist,system-ui,sans-serif; text-transform:none; letter-spacing:0; vertical-align:middle; cursor:help">i</span></span>
+<span style="font-size:30px; font-weight:600; color:#15181c; line-height:1.1">2<span style="font-size:15px; font-weight:500; color:#4a5260"> afternoons</span></span>
+<span style="font-size:13px; color:#4a5260">Sep 20 and Sep 22</span></div>
+<div style="background:#ffffff; border:1px solid #dfe3e8; border-radius:12px; padding:16px; display:flex; flex-direction:column; gap:6px; min-width:0">
+<span style="font-family:'Geist Mono',ui-monospace,monospace; font-size:11px; letter-spacing:0.06em; text-transform:uppercase; color:#5f6773">Evidence<span role="img" aria-label="Records cited for this pattern, not counting policy." title="Records cited for this pattern, not counting policy." style="display:inline-flex; align-items:center; justify-content:center; width:16px; height:16px; margin-left:6px; border-radius:50%; background:#e9ecf0; color:#4a5260; font:600 10px Geist,system-ui,sans-serif; text-transform:none; letter-spacing:0; vertical-align:middle; cursor:help">i</span></span>
+<span style="font-size:30px; font-weight:600; color:#15181c; line-height:1.1">8<span style="font-size:15px; font-weight:500; color:#4a5260"> records</span></span>
+<span style="font-size:13px; color:#4a5260">Flow data, 1 incident, 1 complaint</span></div>
+</section>
+</sc-if>
+
+<sc-if value="{{ showChart }}" hint-placeholder-val="{{ true }}">
+<section style="display:flex; flex-wrap:wrap; gap:14px; align-items:stretch"><div style="background:#ffffff; border:1px solid #dfe3e8; border-radius:12px; padding:20px; display:flex; flex-direction:column; gap:14px; flex:3 1 460px; min-width:0">
+<div style="display:flex; flex-wrap:wrap; justify-content:space-between; gap:8px; align-items:baseline">
+<span style="font-size:15px; font-weight:600; color:#15181c">Minutes from rooming to physician, by hour<span role="img" aria-label="Each bar is one hour of flow data. Darker bars crossed both triggers." title="Each bar is one hour of flow data. Darker bars crossed both triggers." style="display:inline-flex; align-items:center; justify-content:center; width:16px; height:16px; margin-left:6px; border-radius:50%; background:#e9ecf0; color:#4a5260; font:600 10px Geist,system-ui,sans-serif; text-transform:none; letter-spacing:0; vertical-align:middle; cursor:help">i</span></span>
+<span style="font-size:12px; color:#2b5078">dashed line = trigger (45 min)</span></div>
+<div style="display:flex; flex-wrap:wrap; gap:40px">
+<div style="display:flex; flex-direction:column; gap:8px">
+<span style="font-size:13px; font-weight:600; color:#15181c">Sep 20</span>
+<div style="position:relative; display:flex; align-items:flex-end; gap:6px; height:190px">
+<div aria-hidden="true" style="position:absolute; left:0; right:0; bottom:92px; border-top:1.5px dashed #2b5078"></div><div style="display:flex; flex-direction:column; align-items:center; gap:4px; width:44px">
+<span style="font-size:12px; font-weight:600; color:#15181c">58</span>
+<div style="width:28px; height:75px; border-radius:4px 4px 0 0; background:#d9c3b0"></div>
+<span style="font-family:'Geist Mono',ui-monospace,monospace; font-size:11px; color:#5f6773">2pm</span>
+<span style="font-size:11px; color:#4a5260">88%</span></div><div style="display:flex; flex-direction:column; align-items:center; gap:4px; width:44px">
+<span style="font-size:12px; font-weight:600; color:#15181c">76</span>
+<div style="width:28px; height:98px; border-radius:4px 4px 0 0; background:#8a5530"></div>
+<span style="font-family:'Geist Mono',ui-monospace,monospace; font-size:11px; color:#5f6773">3pm</span>
+<span style="font-size:11px; color:#4a5260">93%</span></div><div style="display:flex; flex-direction:column; align-items:center; gap:4px; width:44px">
+<span style="font-size:12px; font-weight:600; color:#15181c">90</span>
+<div style="width:28px; height:117px; border-radius:4px 4px 0 0; background:#8a5530"></div>
+<span style="font-family:'Geist Mono',ui-monospace,monospace; font-size:11px; color:#5f6773">4pm</span>
+<span style="font-size:11px; color:#4a5260">96%</span></div><div style="display:flex; flex-direction:column; align-items:center; gap:4px; width:44px">
+<span style="font-size:12px; font-weight:600; color:#15181c">96</span>
+<div style="width:28px; height:124px; border-radius:4px 4px 0 0; background:#8a5530"></div>
+<span style="font-family:'Geist Mono',ui-monospace,monospace; font-size:11px; color:#5f6773">5pm</span>
+<span style="font-size:11px; color:#4a5260">95%</span></div><div style="display:flex; flex-direction:column; align-items:center; gap:4px; width:44px">
+<span style="font-size:12px; font-weight:600; color:#15181c">90</span>
+<div style="width:28px; height:117px; border-radius:4px 4px 0 0; background:#8a5530"></div>
+<span style="font-family:'Geist Mono',ui-monospace,monospace; font-size:11px; color:#5f6773">6pm</span>
+<span style="font-size:11px; color:#4a5260">92%</span></div></div></div>
+<div style="display:flex; flex-direction:column; gap:8px">
+<span style="font-size:13px; font-weight:600; color:#15181c">Sep 22</span>
+<div style="position:relative; display:flex; align-items:flex-end; gap:6px; height:190px">
+<div aria-hidden="true" style="position:absolute; left:0; right:0; bottom:92px; border-top:1.5px dashed #2b5078"></div><div style="display:flex; flex-direction:column; align-items:center; gap:4px; width:44px">
+<span style="font-size:12px; font-weight:600; color:#15181c">52</span>
+<div style="width:28px; height:67px; border-radius:4px 4px 0 0; background:#d9c3b0"></div>
+<span style="font-family:'Geist Mono',ui-monospace,monospace; font-size:11px; color:#5f6773">1pm</span>
+<span style="font-size:11px; color:#4a5260">86%</span></div><div style="display:flex; flex-direction:column; align-items:center; gap:4px; width:44px">
+<span style="font-size:12px; font-weight:600; color:#15181c">66</span>
+<div style="width:28px; height:85px; border-radius:4px 4px 0 0; background:#8a5530"></div>
+<span style="font-family:'Geist Mono',ui-monospace,monospace; font-size:11px; color:#5f6773">2pm</span>
+<span style="font-size:11px; color:#4a5260">91%</span></div><div style="display:flex; flex-direction:column; align-items:center; gap:4px; width:44px">
+<span style="font-size:12px; font-weight:600; color:#15181c">78</span>
+<div style="width:28px; height:101px; border-radius:4px 4px 0 0; background:#8a5530"></div>
+<span style="font-family:'Geist Mono',ui-monospace,monospace; font-size:11px; color:#5f6773">3pm</span>
+<span style="font-size:11px; color:#4a5260">94%</span></div><div style="display:flex; flex-direction:column; align-items:center; gap:4px; width:44px">
+<span style="font-size:12px; font-weight:600; color:#15181c">84</span>
+<div style="width:28px; height:109px; border-radius:4px 4px 0 0; background:#8a5530"></div>
+<span style="font-family:'Geist Mono',ui-monospace,monospace; font-size:11px; color:#5f6773">4pm</span>
+<span style="font-size:11px; color:#4a5260">93%</span></div><div style="display:flex; flex-direction:column; align-items:center; gap:4px; width:44px">
+<span style="font-size:12px; font-weight:600; color:#15181c">75</span>
+<div style="width:28px; height:97px; border-radius:4px 4px 0 0; background:#d9c3b0"></div>
+<span style="font-family:'Geist Mono',ui-monospace,monospace; font-size:11px; color:#5f6773">5pm</span>
+<span style="font-size:11px; color:#4a5260">90%</span></div></div></div>
+</div>
+<span style="font-size:12px; color:#4a5260">Darker bars are the hours that crossed both triggers. The small figure under each hour is bed occupancy.</span></div><div style="background:#fdf8f3; border:1px solid #f0e2d4; border-radius:12px; padding:20px; display:flex; flex-direction:column; gap:12px; flex:2 1 340px; min-width:0">
+<span style="font-size:15px; font-weight:600; color:#15181c">In the records' own words<span role="img" aria-label="Exact quotes. Code checked that each appears word for word in its record." title="Exact quotes. Code checked that each appears word for word in its record." style="display:inline-flex; align-items:center; justify-content:center; width:16px; height:16px; margin-left:6px; border-radius:50%; background:#e9ecf0; color:#4a5260; font:600 10px Geist,system-ui,sans-serif; text-transform:none; letter-spacing:0; vertical-align:middle; cursor:help">i</span></span>
+<div style="border:1px solid #dfe3e8; border-radius:10px; padding:14px; display:flex; flex-direction:column; gap:8px">
+<div style="display:flex; flex-wrap:wrap; align-items:center; gap:8px"><span style="font-size:13px; font-weight:600; color:#15181c">Incident report</span><span style="font-size:12px; color:#4a5260">Sep 20, 3:30 pm</span><span style="display:inline-flex; align-items:center; padding:2px 8px; border-radius:999px; font-size:12px; font-weight:500; color:#8a2c12; background:#fbe4dc; " title="Matches a safety condition in the domain rules, checked by code.">Safety-relevant</span></div>
+<span style="font-size:14px; color:#15181c; line-height:1.45">“Triage reported no available monitored bed when an EMS CTAS 2 chest pain patient arrived.”</span>
+<span style="font-family:'Geist Mono',ui-monospace,monospace; font-size:11px; color:#5f6773">HC-INC-99102 · quote verified</span></div>
+<div style="border:1px solid #dfe3e8; border-radius:10px; padding:14px; display:flex; flex-direction:column; gap:8px">
+<div style="display:flex; flex-wrap:wrap; align-items:center; gap:8px"><span style="font-size:13px; font-weight:600; color:#15181c">Complaint</span><span style="font-size:12px; color:#4a5260">Sep 20, 4:10 pm</span><span style="display:inline-flex; align-items:center; padding:2px 8px; border-radius:999px; font-size:12px; font-weight:500; color:#8a5530; background:#f4e6da; " title="From operational records: flow data, incidents, complaints.">Observed</span></div>
+<span style="font-size:14px; color:#15181c; line-height:1.45">“Patient expressed strong frustration after waiting 85 minutes after being placed in an exam room before seeing a physician.”</span>
+<span style="font-family:'Geist Mono',ui-monospace,monospace; font-size:11px; color:#5f6773">HC-CMP-4471 · quote verified</span></div>
+</div></section>
+</sc-if>
+
+<sc-if value="{{ showMap }}" hint-placeholder-val="{{ true }}">
+<section style="background:#ffffff; border:1px solid #dfe3e8; border-radius:12px; padding:20px; display:flex; flex-direction:column; gap:14px">
+<div style="display:flex; flex-wrap:wrap; justify-content:space-between; gap:10px; align-items:center"><span style="font-size:15px; font-weight:600">How it fits together<span role="img" aria-label="Which conditions lead to what, and the approaches that might help. Select a box to see its records." title="Which conditions lead to what, and the approaches that might help. Select a box to see its records." style="display:inline-flex; align-items:center; justify-content:center; width:16px; height:16px; margin-left:6px; border-radius:50%; background:#e9ecf0; color:#4a5260; font:600 10px Geist,system-ui,sans-serif; text-transform:none; letter-spacing:0; vertical-align:middle; cursor:help">i</span></span><div style="display:flex; flex-wrap:wrap; gap:18px; align-items:center; font-size:12px; color:#4a5260">
+<span style="display:inline-flex; align-items:center; gap:6px"><span aria-hidden="true" style="width:10px; height:14px; border-radius:3px; background:#8a5530"></span>From the records</span>
+<span style="display:inline-flex; align-items:center; gap:6px"><span aria-hidden="true" style="width:10px; height:14px; border-radius:3px; background:#1f6b5e"></span>From policy</span>
+<span style="display:inline-flex; align-items:center; gap:6px"><span aria-hidden="true" style="width:10px; height:14px; border-radius:3px; background:#5b3fb0"></span>Suggested, needs a decision (dashed)</span>
+</div></div>
+<div style="overflow-x:auto"><div style="position:relative; width:1070px; height:270px"><div style="position:absolute; left:20px; top:14px; width:240px; font-family:'Geist Mono',ui-monospace,monospace; font-size:11px; letter-spacing:0.06em; text-transform:uppercase; color:#5f6773">Contributing conditions</div><div style="position:absolute; left:415px; top:14px; width:240px; font-family:'Geist Mono',ui-monospace,monospace; font-size:11px; letter-spacing:0.06em; text-transform:uppercase; color:#5f6773">What happens</div><div style="position:absolute; left:810px; top:14px; width:240px; font-family:'Geist Mono',ui-monospace,monospace; font-size:11px; letter-spacing:0.06em; text-transform:uppercase; color:#5f6773">Possible approaches</div><svg aria-hidden="true" width="1070" height="270" viewBox="0 0 1070 270" style="position:absolute; left:0; top:0">
+<defs><marker id="ah" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="#8791a0"></path></marker>
+<marker id="ap" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="#5b3fb0"></path></marker></defs>
+<path d="M260,92 C340,92 335,142 411,142" fill="none" stroke="#8791a0" stroke-width="1.5" marker-end="url(#ah)"></path>
+<path d="M260,192 C340,192 335,142 411,142" fill="none" stroke="#8791a0" stroke-width="1.5" marker-end="url(#ah)"></path>
+<path d="M810,62 C735,62 735,142 659,142" fill="none" stroke="#5b3fb0" stroke-width="1.5" stroke-dasharray="5 4" marker-end="url(#ap)"></path>
+<path d="M810,142 L659,142" fill="none" stroke="#5b3fb0" stroke-width="1.5" stroke-dasharray="5 4" marker-end="url(#ap)"></path>
+<path d="M810,222 C735,222 735,142 659,142" fill="none" stroke="#5b3fb0" stroke-width="1.5" stroke-dasharray="5 4" marker-end="url(#ap)"></path>
+</svg><div style="position:absolute; left:20px; top:60px; width:240px; height:64px; box-sizing:border-box; display:flex; align-items:center; gap:10px; padding:0 12px; background:#ffffff; border:1px solid #dfe3e8; border-radius:10px; box-shadow:0 1px 2px rgba(20,30,50,0.06);">
+<span aria-hidden="true" style="flex:none; width:10px; height:36px; border-radius:3px; background:#8a5530"></span>
+<span style="display:flex; flex-direction:column; gap:2px; min-width:0"><span style="font-size:13px; font-weight:600; color:#15181c; line-height:1.25">High bed occupancy</span><span style="font-family:'Geist Mono',ui-monospace,monospace; font-size:11px; color:#5f6773">6 records · observed</span></span>
+</div><div style="position:absolute; left:20px; top:160px; width:240px; height:64px; box-sizing:border-box; display:flex; align-items:center; gap:10px; padding:0 12px; background:#ffffff; border:1px solid #dfe3e8; border-radius:10px; box-shadow:0 1px 2px rgba(20,30,50,0.06);">
+<span aria-hidden="true" style="flex:none; width:10px; height:36px; border-radius:3px; background:#8a5530"></span>
+<span style="display:flex; flex-direction:column; gap:2px; min-width:0"><span style="font-size:13px; font-weight:600; color:#15181c; line-height:1.25">Slow physician pace</span><span style="font-family:'Geist Mono',ui-monospace,monospace; font-size:11px; color:#5f6773">6 records · observed</span></span>
+</div><div style="position:absolute; left:415px; top:110px; width:240px; height:64px; box-sizing:border-box; display:flex; align-items:center; gap:10px; padding:0 12px; background:#ffffff; border:1px solid #dfe3e8; border-radius:10px; box-shadow:0 1px 2px rgba(20,30,50,0.06);">
+<span aria-hidden="true" style="flex:none; width:10px; height:36px; border-radius:3px; background:#8a5530"></span>
+<span style="display:flex; flex-direction:column; gap:2px; min-width:0"><span style="font-size:13px; font-weight:600; color:#15181c; line-height:1.25">Long waits after rooming</span><span style="font-family:'Geist Mono',ui-monospace,monospace; font-size:11px; color:#5f6773">complaint · flow data</span></span>
+</div><div style="position:absolute; left:810px; top:30px; width:240px; height:64px; box-sizing:border-box; display:flex; align-items:center; gap:10px; padding:0 12px; background:#ffffff; border:1.5px dashed #5b3fb0; border-radius:10px; box-shadow:0 1px 2px rgba(20,30,50,0.06);">
+<span aria-hidden="true" style="flex:none; width:10px; height:36px; border-radius:3px; background:#5b3fb0"></span>
+<span style="display:flex; flex-direction:column; gap:2px; min-width:0"><span style="font-size:13px; font-weight:600; color:#15181c; line-height:1.25">Escalation huddles</span><span style="font-family:'Geist Mono',ui-monospace,monospace; font-size:11px; color:#5f6773">recommended · suggested</span></span>
+</div><div style="position:absolute; left:810px; top:110px; width:240px; height:64px; box-sizing:border-box; display:flex; align-items:center; gap:10px; padding:0 12px; background:#ffffff; border:1.5px dashed #5b3fb0; border-radius:10px; box-shadow:0 1px 2px rgba(20,30,50,0.06);">
+<span aria-hidden="true" style="flex:none; width:10px; height:36px; border-radius:3px; background:#5b3fb0"></span>
+<span style="display:flex; flex-direction:column; gap:2px; min-width:0"><span style="font-size:13px; font-weight:600; color:#15181c; line-height:1.25">Assess bed allocation</span><span style="font-family:'Geist Mono',ui-monospace,monospace; font-size:11px; color:#5f6773">learn more · suggested</span></span>
+</div><div style="position:absolute; left:810px; top:190px; width:240px; height:64px; box-sizing:border-box; display:flex; align-items:center; gap:10px; padding:0 12px; background:#ffffff; border:1.5px dashed #5b3fb0; border-radius:10px; box-shadow:0 1px 2px rgba(20,30,50,0.06);">
+<span aria-hidden="true" style="flex:none; width:10px; height:36px; border-radius:3px; background:#5b3fb0"></span>
+<span style="display:flex; flex-direction:column; gap:2px; min-width:0"><span style="font-size:13px; font-weight:600; color:#15181c; line-height:1.25">Adjust rooming pace</span><span style="font-family:'Geist Mono',ui-monospace,monospace; font-size:11px; color:#5f6773">learn more · suggested</span></span>
+</div></div></div>
+<div style="display:flex; flex-wrap:wrap; align-items:center; gap:10px; padding-top:14px; border-top:1px solid #dfe3e8">
+<span style="font-family:'Geist Mono',ui-monospace,monospace; font-size:11px; letter-spacing:0.06em; text-transform:uppercase; color:#5f6773">Where pressure appears to move</span>
+<span style="padding:6px 12px; border:1px solid #dfe3e8; border-radius:8px; font-size:13px; font-weight:500; color:#15181c">Charge nurse</span>
+<svg aria-hidden="true" width="28" height="12" viewBox="0 0 28 12"><path d="M0,6 L22,6 M17,1 L23,6 L17,11" fill="none" stroke="#8791a0" stroke-width="1.5"></path></svg>
+<span style="padding:6px 12px; border:1px solid #dfe3e8; border-radius:8px; font-size:13px; font-weight:500; color:#15181c">Physician lead</span>
+<span style="font-size:13px; color:#4a5260">escalating to create capacity</span>
+</div>
+</section>
+</sc-if>
+
+<sc-if value="{{ showPolicy }}" hint-placeholder-val="{{ true }}">
+<section style="background:#ffffff; border:1px solid #dfe3e8; border-radius:12px; padding:20px; display:flex; flex-direction:column; gap:12px">
+<span style="font-size:15px; font-weight:600">Policy and practice<span role="img" aria-label="What the policy expects, beside what the records show happened." title="What the policy expects, beside what the records show happened." style="display:inline-flex; align-items:center; justify-content:center; width:16px; height:16px; margin-left:6px; border-radius:50%; background:#e9ecf0; color:#4a5260; font:600 10px Geist,system-ui,sans-serif; text-transform:none; letter-spacing:0; vertical-align:middle; cursor:help">i</span></span>
+<div style="display:flex; flex-wrap:wrap; gap:12px; align-items:stretch">
+<div style="flex:1 1 280px; min-width:0; background:#e0f0ec; border-radius:10px; padding:14px; display:flex; flex-direction:column; gap:6px"><span style="display:inline-flex; align-items:center; padding:2px 8px; border-radius:999px; font-size:12px; font-weight:500; color:#1f6b5e; background:#e0f0ec; " title="From approved policy or procedure.">Authoritative</span><span style="font-size:14px; line-height:1.45">CTAS 1 and 2 patients have “immediate access to a monitored bed” on arrival.</span><span style="font-family:'Geist Mono',ui-monospace,monospace; font-size:11px; color:#1f6b5e">HC-POL-CTAS-ESC · wording verified</span></div>
+<div style="flex:1 1 280px; min-width:0; background:#f4e6da; border-radius:10px; padding:14px; display:flex; flex-direction:column; gap:6px"><span style="display:inline-flex; align-items:center; padding:2px 8px; border-radius:999px; font-size:12px; font-weight:500; color:#8a5530; background:#f4e6da; " title="From operational records: flow data, incidents, complaints.">Observed</span><span style="font-size:14px; line-height:1.45">On Sep 20 at 3:30 pm, no monitored bed was available for a CTAS 2 arrival.</span><span style="font-family:'Geist Mono',ui-monospace,monospace; font-size:11px; color:#8a5530">HC-INC-99102</span></div>
+</div>
+</section>
+</sc-if>
+
+<sc-if value="{{ showOptions }}" hint-placeholder-val="{{ true }}">
+<section style="display:flex; flex-direction:column; gap:12px; background:#f8f5fe; border:1px solid #e4dcf7; border-radius:12px; padding:20px">
+<div style="display:flex; flex-wrap:wrap; justify-content:space-between; gap:8px; align-items:baseline"><span style="font-size:15px; font-weight:600">Possible approaches<span role="img" aria-label="Drafts for a person to decide on. Nothing is applied automatically." title="Drafts for a person to decide on. Nothing is applied automatically." style="display:inline-flex; align-items:center; justify-content:center; width:16px; height:16px; margin-left:6px; border-radius:50%; background:#e9ecf0; color:#4a5260; font:600 10px Geist,system-ui,sans-serif; text-transform:none; letter-spacing:0; vertical-align:middle; cursor:help">i</span></span><span style="font-size:13px; color:#4a5260">Evidence strength: low. The evidence library still holds placeholders.</span></div>
+<div style="display:flex; flex-wrap:wrap; gap:14px; align-items:stretch">
+<div style="background:#ffffff; border:2px solid #5b3fb0; border-radius:12px; padding:16px; display:flex; flex-direction:column; gap:10px; flex:1 1 260px; min-width:0">
+<div style="display:flex; flex-wrap:wrap; gap:8px; align-items:center"><span style="display:inline-flex; align-items:center; padding:2px 8px; border-radius:999px; font-size:12px; font-weight:500; color:#5b3fb0; background:#ede8fb; ">Threadline's suggestion</span></div>
+<span style="font-size:16px; font-weight:600; color:#15181c">Escalation huddles</span>
+<span style="font-size:13px; color:#4a5260; line-height:1.45">A short, structured huddle when occupancy and waits cross the triggers.</span>
+<div style="display:flex; flex-direction:column; gap:4px; font-size:13px; color:#15181c"><span><span style="font-weight:600">Trade-off:</span> leans on the charge nurse and physician lead to act in the moment.</span><span><span style="font-weight:600">Review:</span> after 21 days</span></div>
+<button type="button" style="align-self:flex-start; min-height:44px; padding:0 14px; border:1px solid #dfe3e8; border-radius:8px; background:#ffffff; font:500 13px 'Geist',system-ui,sans-serif; color:#2b5078">See full reasoning</button></div>
+<div style="background:#ffffff; border:1px solid #dfe3e8; border-radius:12px; padding:16px; display:flex; flex-direction:column; gap:10px; flex:1 1 260px; min-width:0">
+<div style="display:flex; flex-wrap:wrap; gap:8px; align-items:center"><span style="display:inline-flex; align-items:center; padding:2px 8px; border-radius:999px; font-size:12px; font-weight:500; color:#4a5260; background:#e9ecf0; ">Learn more first</span></div>
+<span style="font-size:16px; font-weight:600; color:#15181c">Assess bed allocation</span>
+<span style="font-size:13px; color:#4a5260; line-height:1.45">Look at how beds are assigned on busy afternoons before changing anything.</span>
+<div style="display:flex; flex-direction:column; gap:4px; font-size:13px; color:#15181c"><span><span style="font-weight:600">Trade-off:</span> takes nursing leadership and bed management time.</span><span><span style="font-weight:600">Review:</span> after 14 days</span></div>
+<button type="button" style="align-self:flex-start; min-height:44px; padding:0 14px; border:1px solid #dfe3e8; border-radius:8px; background:#ffffff; font:500 13px 'Geist',system-ui,sans-serif; color:#2b5078">See full reasoning</button></div>
+<div style="background:#ffffff; border:1px solid #dfe3e8; border-radius:12px; padding:16px; display:flex; flex-direction:column; gap:10px; flex:1 1 260px; min-width:0">
+<div style="display:flex; flex-wrap:wrap; gap:8px; align-items:center"><span style="display:inline-flex; align-items:center; padding:2px 8px; border-radius:999px; font-size:12px; font-weight:500; color:#4a5260; background:#e9ecf0; ">Learn more first</span></div>
+<span style="font-size:16px; font-weight:600; color:#15181c">Adjust rooming pace</span>
+<span style="font-size:13px; color:#4a5260; line-height:1.45">Explore matching the pace of rooming to physician capacity.</span>
+<div style="display:flex; flex-direction:column; gap:4px; font-size:13px; color:#15181c"><span><span style="font-weight:600">Trade-off:</span> may move waiting back to the waiting room.</span><span><span style="font-weight:600">Review:</span> date set when chosen</span></div>
+<button type="button" style="align-self:flex-start; min-height:44px; padding:0 14px; border:1px solid #dfe3e8; border-radius:8px; background:#ffffff; font:500 13px 'Geist',system-ui,sans-serif; color:#2b5078">See full reasoning</button></div>
+</div>
+<span style="font-size:13px; color:#4a5260">You can choose an approach once a front-line lead has confirmed the pattern.</span>
+</section>
+</sc-if>
+
+<sc-if value="{{ showOdd }}" hint-placeholder-val="{{ true }}">
+<section style="background:#ffffff; border:1px solid #dfe3e8; border-radius:12px; padding:20px; display:flex; flex-direction:column; gap:12px">
+<span style="font-size:15px; font-weight:600">Records that don't fit, or may not matter<span role="img" aria-label="Records Threadline saw but did not count as support, with the reason." title="Records Threadline saw but did not count as support, with the reason." style="display:inline-flex; align-items:center; justify-content:center; width:16px; height:16px; margin-left:6px; border-radius:50%; background:#e9ecf0; color:#4a5260; font:600 10px Geist,system-ui,sans-serif; text-transform:none; letter-spacing:0; vertical-align:middle; cursor:help">i</span></span>
+<div style="display:flex; flex-wrap:wrap; gap:12px">
+<div style="flex:1 1 260px; min-width:0; border:1px solid #dfe3e8; border-radius:10px; padding:12px; display:flex; flex-direction:column; gap:6px">
+<div style="display:flex; flex-wrap:wrap; gap:8px; align-items:center"><span style="display:inline-flex; align-items:center; padding:2px 8px; border-radius:999px; font-size:12px; font-weight:500; color:#1f6b5e; background:#e0f0ec; ">Points the other way</span><span style="font-family:'Geist Mono',ui-monospace,monospace; font-size:11px; color:#5f6773">HC-CMP-4475</span></div>
+<span style="font-size:13px; font-weight:600; color:#15181c">A compliment: seen within 15 minutes</span><span style="font-size:13px; color:#4a5260">Sep 20, 3:45 pm. Not every patient waited.</span></div>
+<div style="flex:1 1 260px; min-width:0; border:1px solid #dfe3e8; border-radius:10px; padding:12px; display:flex; flex-direction:column; gap:6px">
+<div style="display:flex; flex-wrap:wrap; gap:8px; align-items:center"><span style="display:inline-flex; align-items:center; padding:2px 8px; border-radius:999px; font-size:12px; font-weight:500; color:#4a5260; background:#e9ecf0; ">Possibly related</span><span style="font-family:'Geist Mono',ui-monospace,monospace; font-size:11px; color:#5f6773">HC-CMP-4480</span></div>
+<span style="font-size:13px; font-weight:600; color:#15181c">Parking pay machine out of order</span><span style="font-size:13px; color:#4a5260">Sep 20, 5:20 pm. Significance unclear.</span></div>
+<div style="flex:1 1 260px; min-width:0; border:1px solid #dfe3e8; border-radius:10px; padding:12px; display:flex; flex-direction:column; gap:6px">
+<div style="display:flex; flex-wrap:wrap; gap:8px; align-items:center"><span style="display:inline-flex; align-items:center; padding:2px 8px; border-radius:999px; font-size:12px; font-weight:500; color:#4a5260; background:#e9ecf0; ">Unrelated</span><span style="font-family:'Geist Mono',ui-monospace,monospace; font-size:11px; color:#5f6773">HC-INC-99110</span></div>
+<span style="font-size:13px; font-weight:600; color:#15181c">Expired test strips replaced</span><span style="font-size:13px; color:#4a5260">Sep 20, 4:45 pm. Routine supply check.</span></div>
+</div>
+</section>
+</sc-if>
+
+<sc-if value="{{ showDetail }}" hint-placeholder-val="{{ true }}">
+<section style="background:#ffffff; border:1px solid #dfe3e8; border-radius:12px; overflow:hidden; display:flex; flex-direction:column">
+<span style="padding:14px 16px; font-family:'Geist Mono',ui-monospace,monospace; font-size:11px; letter-spacing:0.06em; text-transform:uppercase; color:#5f6773">The full detail, when you want it</span>
+<button type="button" data-flat="true" style="display:flex; justify-content:space-between; align-items:center; gap:12px; width:100%; min-height:48px; padding:0 16px; background:#ffffff; border:0; border-top:1px solid #dfe3e8; font:500 14px 'Geist',system-ui,sans-serif; color:#15181c; text-align:left"><span>All findings <span style="font-weight:400; color:#4a5260">14 verified, each with its record</span></span>
+<svg aria-hidden="true" width="14" height="14" viewBox="0 0 14 14"><path d="M5,2 L10,7 L5,12" fill="none" stroke="#5f6773" stroke-width="1.5"></path></svg></button>
+<button type="button" data-flat="true" style="display:flex; justify-content:space-between; align-items:center; gap:12px; width:100%; min-height:48px; padding:0 16px; background:#ffffff; border:0; border-top:1px solid #dfe3e8; font:500 14px 'Geist',system-ui,sans-serif; color:#15181c; text-align:left"><span>System analysis <span style="font-weight:400; color:#4a5260">contributing factors, other explanations, reviewer questions</span></span>
+<svg aria-hidden="true" width="14" height="14" viewBox="0 0 14 14"><path d="M5,2 L10,7 L5,12" fill="none" stroke="#5f6773" stroke-width="1.5"></path></svg></button>
+<button type="button" data-flat="true" style="display:flex; justify-content:space-between; align-items:center; gap:12px; width:100%; min-height:48px; padding:0 16px; background:#ffffff; border:0; border-top:1px solid #dfe3e8; font:500 14px 'Geist',system-ui,sans-serif; color:#15181c; text-align:left"><span>What was checked <span style="font-weight:400; color:#4a5260">33 of 34 verified · 1 map label removed</span></span>
+<svg aria-hidden="true" width="14" height="14" viewBox="0 0 14 14"><path d="M5,2 L10,7 L5,12" fill="none" stroke="#5f6773" stroke-width="1.5"></path></svg></button>
+<button type="button" data-flat="true" style="display:flex; justify-content:space-between; align-items:center; gap:12px; width:100%; min-height:48px; padding:0 16px; background:#ffffff; border:0; border-top:1px solid #dfe3e8; font:500 14px 'Geist',system-ui,sans-serif; color:#15181c; text-align:left"><span>History <span style="font-weight:400; color:#4a5260">flagged Nov 10 · updated once</span></span>
+<svg aria-hidden="true" width="14" height="14" viewBox="0 0 14 14"><path d="M5,2 L10,7 L5,12" fill="none" stroke="#5f6773" stroke-width="1.5"></path></svg></button>
+</section>
+</sc-if>
+
+</main>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1900}}'>
+class Component extends DCLogic {
+renderVals() {
+const tab = this.state.tab || 'summary';
+const base = "min-height:44px; padding:0 14px; border:0; border-bottom:2px solid transparent; border-radius:6px 6px 0 0; background:transparent; font:500 14px Geist,system-ui,sans-serif; color:#4a5260";
+const on = "min-height:44px; padding:0 14px; border:0; border-bottom:2px solid #3d6a96; border-radius:6px 6px 0 0; background:transparent; font:600 14px Geist,system-ui,sans-serif; color:#2b5078";
+const keys = ['summary','evidence','map','options','detail'];
+const tabs = {};
+keys.forEach((k) => { tabs[k] = { style: k === tab ? on : base, pick: () => this.setState({ tab: k }) }; });
+return {
+tabs,
+showNoticed: tab === 'summary',
+showTiles: tab === 'summary',
+showChart: tab === 'summary' || tab === 'evidence',
+showPolicy: tab === 'evidence',
+showOdd: tab === 'evidence',
+showMap: tab === 'map',
+showOptions: tab === 'summary' || tab === 'options',
+showDetail: tab === 'detail'
+};
+}
+}
+</script>
+</body>
+</html>

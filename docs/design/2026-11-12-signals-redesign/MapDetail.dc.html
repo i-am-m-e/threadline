@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Thread map, node selected</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#2b5078}a:hover{color:#15181c}
+</style>
+</helmet>
+<div style="width:1100px; height:560px; box-sizing:border-box; padding:24px; background:#ffffff; font-family:'Geist',system-ui,sans-serif; color:#15181c; display:flex; flex-direction:column; gap:16px">
+<div style="display:flex; justify-content:space-between; align-items:center; gap:10px"><span style="font-size:15px; font-weight:600">How it fits together</span><div style="display:flex; flex-wrap:wrap; gap:18px; align-items:center; font-size:12px; color:#4a5260">
+<span style="display:inline-flex; align-items:center; gap:6px"><span aria-hidden="true" style="width:10px; height:14px; border-radius:3px; background:#8a5530"></span>From the records</span>
+<span style="display:inline-flex; align-items:center; gap:6px"><span aria-hidden="true" style="width:10px; height:14px; border-radius:3px; background:#1f6b5e"></span>From policy</span>
+<span style="display:inline-flex; align-items:center; gap:6px"><span aria-hidden="true" style="width:10px; height:14px; border-radius:3px; background:#5b3fb0"></span>Suggested, needs a decision (dashed)</span>
+</div></div>
+<div style="display:flex; gap:20px; flex:1; min-height:0">
+<div style="flex:1; min-width:0; overflow:hidden; display:flex; flex-direction:column; gap:14px">
+<div style="transform:scale(0.68); transform-origin:top left; width:1070px; height:270px"><div style="position:relative; width:1070px; height:270px"><div style="position:absolute; left:20px; top:14px; width:240px; font-family:'Geist Mono',ui-monospace,monospace; font-size:11px; letter-spacing:0.06em; text-transform:uppercase; color:#5f6773">Contributing conditions</div><div style="position:absolute; left:415px; top:14px; width:240px; font-family:'Geist Mono',ui-monospace,monospace; font-size:11px; letter-spacing:0.06em; text-transform:uppercase; color:#5f6773">What happens</div><div style="position:absolute; left:810px; top:14px; width:240px; font-family:'Geist Mono',ui-monospace,monospace; font-size:11px; letter-spacing:0.06em; text-transform:uppercase; color:#5f6773">Possible approaches</div><svg aria-hidden="true" width="1070" height="270" viewBox="0 0 1070 270" style="position:absolute; left:0; top:0">
+<defs><marker id="ah" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="#8791a0"></path></marker>
+<marker id="ap" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="#5b3fb0"></path></marker></defs>
+<path d="M260,92 C340,92 335,142 411,142" fill="none" stroke="#8791a0" stroke-width="1.5" marker-end="url(#ah)"></path>
+<path d="M260,192 C340,192 335,142 411,142" fill="none" stroke="#8791a0" stroke-width="1.5" marker-end="url(#ah)"></path>
+<path d="M810,62 C735,62 735,142 659,142" fill="none" stroke="#5b3fb0" stroke-width="1.5" stroke-dasharray="5 4" marker-end="url(#ap)"></path>
+<path d="M810,142 L659,142" fill="none" stroke="#5b3fb0" stroke-width="1.5" stroke-dasharray="5 4" marker-end="url(#ap)"></path>
+<path d="M810,222 C735,222 735,142 659,142" fill="none" stroke="#5b3fb0" stroke-width="1.5" stroke-dasharray="5 4" marker-end="url(#ap)"></path>
+</svg><div style="position:absolute; left:20px; top:60px; width:240px; height:64px; box-sizing:border-box; display:flex; align-items:center; gap:10px; padding:0 12px; background:#ffffff; border:1px solid #dfe3e8; border-radius:10px; box-shadow:0 1px 2px rgba(20,30,50,0.06);">
+<span aria-hidden="true" style="flex:none; width:10px; height:36px; border-radius:3px; background:#8a5530"></span>
+<span style="display:flex; flex-direction:column; gap:2px; min-width:0"><span style="font-size:13px; font-weight:600; color:#15181c; line-height:1.25">High bed occupancy</span><span style="font-family:'Geist Mono',ui-monospace,monospace; font-size:11px; color:#5f6773">6 records · observed</span></span>
+</div><div style="position:absolute; left:20px; top:160px; width:240px; height:64px; box-sizing:border-box; display:flex; align-items:center; gap:10px; padding:0 12px; background:#ffffff; border:1px solid #dfe3e8; border-radius:10px; box-shadow:0 1px 2px rgba(20,30,50,0.06);">
+<span aria-hidden="true" style="flex:none; width:10px; height:36px; border-radius:3px; background:#8a5530"></span>
+<span style="display:flex; flex-direction:column; gap:2px; min-width:0"><span style="font-size:13px; font-weight:600; color:#15181c; line-height:1.25">Slow physician pace</span><span style="font-family:'Geist Mono',ui-monospace,monospace; font-size:11px; color:#5f6773">6 records · observed</span></span>
+</div><div style="position:absolute; left:415px; top:110px; width:240px; height:64px; box-sizing:border-box; display:flex; align-items:center; gap:10px; padding:0 12px; background:#ffffff; border:2px solid #3d6a96; border-radius:10px; box-shadow:0 0 0 4px #e3ecf5;">
+<span aria-hidden="true" style="flex:none; width:10px; height:36px; border-radius:3px; background:#8a5530"></span>
+<span style="display:flex; flex-direction:column; gap:2px; min-width:0"><span style="font-size:13px; font-weight:600; color:#15181c; line-height:1.25">Long waits after rooming</span><span style="font-family:'Geist Mono',ui-monospace,monospace; font-size:11px; color:#5f6773">complaint · flow data</span></span>
+</div><div style="position:absolute; left:810px; top:30px; width:240px; height:64px; box-sizing:border-box; display:flex; align-items:center; gap:10px; padding:0 12px; background:#ffffff; border:1.5px dashed #5b3fb0; border-radius:10px; box-shadow:0 1px 2px rgba(20,30,50,0.06);">
+<span aria-hidden="true" style="flex:none; width:10px; height:36px; border-radius:3px; background:#5b3fb0"></span>
+<span style="display:flex; flex-direction:column; gap:2px; min-width:0"><span style="font-size:13px; font-weight:600; color:#15181c; line-height:1.25">Escalation huddles</span><span style="font-family:'Geist Mono',ui-monospace,monospace; font-size:11px; color:#5f6773">recommended · suggested</span></span>
+</div><div style="position:absolute; left:810px; top:110px; width:240px; height:64px; box-sizing:border-box; display:flex; align-items:center; gap:10px; padding:0 12px; background:#ffffff; border:1.5px dashed #5b3fb0; border-radius:10px; box-shadow:0 1px 2px rgba(20,30,50,0.06);">
+<span aria-hidden="true" style="flex:none; width:10px; height:36px; border-radius:3px; background:#5b3fb0"></span>
+<span style="display:flex; flex-direction:column; gap:2px; min-width:0"><span style="font-size:13px; font-weight:600; color:#15181c; line-height:1.25">Assess bed allocation</span><span style="font-family:'Geist Mono',ui-monospace,monospace; font-size:11px; color:#5f6773">learn more · suggested</span></span>
+</div><div style="position:absolute; left:810px; top:190px; width:240px; height:64px; box-sizing:border-box; display:flex; align-items:center; gap:10px; padding:0 12px; background:#ffffff; border:1.5px dashed #5b3fb0; border-radius:10px; box-shadow:0 1px 2px rgba(20,30,50,0.06);">
+<span aria-hidden="true" style="flex:none; width:10px; height:36px; border-radius:3px; background:#5b3fb0"></span>
+<span style="display:flex; flex-direction:column; gap:2px; min-width:0"><span style="font-size:13px; font-weight:600; color:#15181c; line-height:1.25">Adjust rooming pace</span><span style="font-family:'Geist Mono',ui-monospace,monospace; font-size:11px; color:#5f6773">learn more · suggested</span></span>
+</div></div></div>
+<div style="margin-top:-70px"><div style="display:flex; flex-wrap:wrap; align-items:center; gap:10px; padding-top:14px; border-top:1px solid #dfe3e8">
+<span style="font-family:'Geist Mono',ui-monospace,monospace; font-size:11px; letter-spacing:0.06em; text-transform:uppercase; color:#5f6773">Where pressure appears to move</span>
+<span style="padding:6px 12px; border:1px solid #dfe3e8; border-radius:8px; font-size:13px; font-weight:500; color:#15181c">Charge nurse</span>
+<svg aria-hidden="true" width="28" height="12" viewBox="0 0 28 12"><path d="M0,6 L22,6 M17,1 L23,6 L17,11" fill="none" stroke="#8791a0" stroke-width="1.5"></path></svg>
+<span style="padding:6px 12px; border:1px solid #dfe3e8; border-radius:8px; font-size:13px; font-weight:500; color:#15181c">Physician lead</span>
+<span style="font-size:13px; color:#4a5260">escalating to create capacity</span>
+</div></div>
+<span style="font-size:13px; color:#4a5260">Select any box to see the records behind it. Solid boxes come from records or policy; dashed boxes are suggestions that need a decision.</span>
+</div>
+<aside style="flex:none; width:300px; box-sizing:border-box; border-left:1px solid #dfe3e8; padding:4px 0 4px 20px; display:flex; flex-direction:column; gap:12px">
+<span style="font-family:'Geist Mono',ui-monospace,monospace; font-size:11px; letter-spacing:0.06em; text-transform:uppercase; color:#5f6773">Selected</span>
+<span style="font-size:17px; font-weight:600; color:#15181c">Long waits after rooming</span>
+<div style="display:flex; flex-wrap:wrap; gap:8px"><span style="display:inline-flex; align-items:center; padding:2px 8px; border-radius:999px; font-size:12px; font-weight:500; color:#8a5530; background:#f4e6da; ">Observed</span><span style="font-size:12px; color:#4a5260">5 records</span></div>
+<div style="border:1px solid #dfe3e8; border-radius:10px; padding:12px; display:flex; flex-direction:column; gap:6px"><span style="font-size:13px; line-height:1.45; color:#15181c">“…waiting 85 minutes after being placed in an exam room before seeing a physician.”</span><span style="font-family:'Geist Mono',ui-monospace,monospace; font-size:11px; color:#5f6773">HC-CMP-4471 · complaint · Sep 20</span></div>
+<div style="border:1px solid #dfe3e8; border-radius:10px; padding:12px; display:flex; flex-direction:column; gap:6px"><span style="font-size:13px; color:#15181c">Rooming to physician: <span style="font-weight:600">76, 90, 96, 90 min</span></span><span style="font-family:'Geist Mono',ui-monospace,monospace; font-size:11px; color:#5f6773">4 flow records · Sep 20, 3 to 6 pm</span></div>
+<button type="button" style="min-height:44px; padding:0 14px; border:1px solid #dfe3e8; border-radius:8px; background:#ffffff; color:#15181c; font:500 14px 'Geist',system-ui,sans-serif; align-self:flex-start">Open the records</button>
+</aside>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1100,"height":560}}'>
+class Component extends DCLogic {
+renderVals() {
+return {};
+}
+}
+</script>
+</body>
+</html>
