@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Signals preview (saved Threads, no model)</title>
+  <base href="/src/" />
+  <link rel="stylesheet" href="styles.css" />
+  <!-- The real screen code runs here; only its file access is swapped for saved data. -->
+  <script type="importmap">{ "imports": { "/src/storage.js": "/scripts/preview/mock-storage.js" } }</script>
+</head>
+<body data-mode="signals">
+  <script type="module">
+    // ?theme=dark or ?theme=light, ?role=Manager or ?role=Front-line lead
+    const params = new URLSearchParams(location.search);
+    if (params.get("theme")) document.documentElement.dataset.theme = params.get("theme");
+    if (params.get("role")) localStorage.setItem("signalsRole", params.get("role"));
+
+    // Take the Signals part of the app's own page, so the preview can't drift from it.
+    const page = new DOMParser().parseFromString(await (await fetch("/src/index.html")).text(), "text/html");
+    document.body.append(page.getElementById("signals"));
+
+    const { initSignals, renderSignals } = await import("/src/signals-ui.js");
+    const domainRules = await (await fetch("/data/domain_rules.json")).json();
+    await initSignals({ domainRules, showToast: (m) => console.log("toast:", m), discuss: null });
+    renderSignals();
+  </script>
+</body>
+</html>

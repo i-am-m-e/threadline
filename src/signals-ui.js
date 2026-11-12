@@ -19,10 +19,12 @@ import {
 } from "./threads.js";
 import { SIGNALS_CONFIG } from "./config.js";
 import { routeAlerts, alertVolume, buildDigest, sendLocalNotification } from "./notify.js";
-import { confidenceText, byPriority, windowsText } from "./recurrence.js";
+import { confidenceText, byPriority } from "./recurrence.js";
+import { whenText } from "./signalsFormat.js";
 import { evidenceLines, verificationSummary, removedLines, policyWording, gapLabels } from "./evidenceView.js";
 import { renderThreadMap, withApproaches, TRUST_COLORS, SHAPES } from "./threadMap.js";
 import { SOURCE_TYPE_NAMES } from "./records.js";
+import { contextLine, titleLine, whenTag, updatedNote, statusPill, confidenceMeter, occasionMarks, trustTag, reference } from "./signals-parts.js";
 
 const $ = (id) => document.getElementById(id);
 let threads = [];          // all Signals Threads, newest first
@@ -170,14 +172,10 @@ function renderList() {
     const row = document.createElement("button");
     row.type = "button";
     row.className = "signals-row" + (t.id === selectedId ? " is-selected" : "");
-    row.append(
-      text("span", "signals-row-title", t.pattern_type),
-      text("span", "signals-row-meta", `${t.location} · ${t.domain}`),
-    );
     const facts = document.createElement("span");
     facts.className = "signals-row-facts";
-    facts.append(statusPill(t.status), text("span", "signals-conf", confidenceText(t, SIGNALS_CONFIG.recurrenceEvery)), text("span", "signals-when", `updated ${shortWhen(t.updated_at)}`));
-    row.append(facts);
+    facts.append(statusPill(t.status), confidenceMeter(current(t).steps.pattern.confidence), occasionMarks(t.windows.length));
+    row.append(contextLine(t.domain, t.location), titleLine(t.pattern_type, "span"), facts, updatedNote(t.updated_at));
     row.onclick = () => {
       selectedId = t.id;
       form = null;
@@ -216,19 +214,15 @@ function renderDetail() {
   const run = current(thread);
   const head = document.createElement("header");
   head.className = "signals-detail-head";
-  head.append(
-    text("span", "signals-id", `${thread.id} · ${thread.domain} · ${thread.location}`),
-    text("h2", "", thread.pattern_type),
-  );
+  head.append(contextLine(thread.domain, thread.location), titleLine(thread.pattern_type), whenTags(thread.windows));
   const facts = document.createElement("div");
   facts.className = "signals-facts";
-  facts.append(
-    statusPill(thread.status),
-    text("span", "", `Pattern confidence: ${confidenceText(thread, SIGNALS_CONFIG.recurrenceEvery)}`),
-    windowsSpan(thread.windows),
-  );
-  if (thread.outcome_review_due && ["Decision recorded", "Outcome review due"].includes(thread.status)) facts.append(text("span", "signals-due", `Outcome review due ${thread.outcome_review_due}`));
-  head.append(facts);
+  facts.append(statusPill(thread.status), confidenceMeter(run.steps.pattern.confidence), occasionMarks(thread.windows.length));
+  if (thread.outcome_review_due && ["Decision recorded", "Outcome review due"].includes(thread.status)) facts.append(text("span", "signals-due", `Outcome review due ${whenText(thread.outcome_review_due)}`));
+  const foot = document.createElement("div");
+  foot.className = "signals-facts";
+  foot.append(updatedNote(thread.updated_at), reference(thread.id));
+  head.append(facts, foot);
   const map = renderMapSection(thread);
   detail.append(head, renderCard(thread), map.section, renderBrief(thread));
   detail.append(renderHistory(thread));
@@ -778,12 +772,18 @@ export function updateBadge() {
 }
 
 // ---------- Small helpers ----------
-// The Thread's time windows: a short line, with the full list on hover.
-function windowsSpan(windows) {
-  const { short, full } = windowsText(windows);
-  const span = text("span", "", short);
-  span.title = full;
-  return span;
+// When it happened: one tag per time window (the first three; the rest as a count, listed on hover).
+const WHEN_TAGS = 3;
+function whenTags(windows) {
+  const row = document.createElement("div");
+  row.className = "signals-facts";
+  for (const w of windows.slice(0, WHEN_TAGS)) row.append(whenTag(w));
+  if (windows.length > WHEN_TAGS) {
+    const more = text("span", "meta-updated", `and ${windows.length - WHEN_TAGS} more`);
+    more.title = windows.slice(WHEN_TAGS).map((w) => whenText(w)).join("; ");
+    row.append(more);
+  }
+  return row;
 }
 
 function text(tag, className, content) {
@@ -803,20 +803,14 @@ function button(label, kind, disabled, onClick) {
   return b;
 }
 
-function statusPill(status) {
-  return text("span", `status-pill status-${status.toLowerCase().replace(/[^a-z]+/g, "-")}`, status);
-}
-
 function list(items) {
   const ul = document.createElement("ul");
   for (const item of items) ul.append(text("li", "", item));
   return ul;
 }
 
-// A small coloured label for a trust label (dashed for Inferred and Suggested).
-function trustChip(label) {
-  return text("span", `trust-chip trust-${String(label).toLowerCase()}`, label);
-}
+// Source of a claim: the shared tag (signals-parts.js).
+const trustChip = trustTag;
 
 function sourceIds(ids) {
   return text("span", "brief-sources", ids.length ? ` ${ids.join(", ")}` : " no source (unconfirmed)");

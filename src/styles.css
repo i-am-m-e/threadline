@@ -1616,29 +1616,31 @@ body[data-mode="signals"] .signals {
 }
 .signals-row:hover { border-color: color-mix(in srgb, var(--thread) 45%, var(--line)); }
 .signals-row.is-selected { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
-.signals-row-title { font: 500 13.5px/1.3 var(--sans); }
-.signals-row-meta { font-size: 12px; color: var(--ink3); }
-.signals-row-facts { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 3px; font-size: 11.5px; color: var(--ink3); }
+.signals-row { gap: 6px; }
+.signals-row .meta-title { font: 600 14px/1.3 var(--sans); }
+.signals-row-facts { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
 .signals-tools { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; margin-top: auto; padding-top: 10px; border-top: 1px solid var(--line); }
 .signals-tuning { font-size: 12px; color: var(--ink3); }
 .signals-tuning-title { font-weight: 600; color: var(--ink2); margin-bottom: 4px; }
 
 .status-pill {
-  padding: 1px 8px;
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
   border-radius: 999px;
-  font: 500 11.5px/1.6 var(--sans);
+  font: 500 12px/1.35 var(--sans);
+  white-space: nowrap;
   background: var(--chip);
   color: var(--ink2);
 }
-.status-flagged { background: color-mix(in srgb, var(--trust-inferred) 16%, transparent); color: var(--trust-inferred); }
+.status-flagged { background: var(--tone-flag-bg); color: var(--tone-flag-ink); }
 .status-under-review { background: var(--accent-soft); color: var(--accent-ink); }
-.status-validated-pattern { background: color-mix(in srgb, var(--trust-authoritative) 16%, transparent); color: var(--trust-authoritative); }
-.status-outcome-review-due { background: color-mix(in srgb, var(--trust-suggested) 14%, transparent); color: var(--trust-suggested); }
+.status-validated-pattern { background: var(--tone-teal-bg); color: var(--tone-teal-ink); }
+.status-outcome-review-due { background: var(--tone-purple-bg); color: var(--tone-purple-ink); }
 
 .signals-detail { flex: 1; min-width: 0; overflow-y: auto; padding: 20px 28px 40px; display: flex; flex-direction: column; gap: 18px; }
-.signals-detail-head h2 { margin: 2px 0 6px; font: 600 19px/1.25 var(--sans); letter-spacing: -0.01em; }
-.signals-id { font: 400 11.5px var(--mono); color: var(--ink3); }
-.signals-facts { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; font-size: 12.5px; color: var(--ink2); }
+.signals-detail-head { display: flex; flex-direction: column; gap: 10px; }
+.signals-facts { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; font-size: 12.5px; color: var(--ink2); }
 .signals-due { color: var(--trust-suggested); font-weight: 500; }
 
 /* The front-line review card */
@@ -1673,16 +1675,20 @@ body[data-mode="signals"] .signals {
 }
 
 .signals-button {
-  padding: 6px 12px;
+  min-height: 40px;
+  padding: 0 14px;
   border: 1px solid var(--line);
-  border-radius: 9px;
-  background: var(--bg);
+  border-radius: 8px;
+  background: var(--raised);
   color: var(--ink);
   font: 500 13px var(--sans);
+  box-shadow: var(--shadow-action);
+  transition: box-shadow 0.15s ease, transform 0.15s ease;
 }
-.signals-button:hover:not(:disabled) { border-color: var(--accent); }
-.signals-button.is-primary { border-color: var(--accent); background: var(--accent); color: var(--on-accent); }
-.signals-button:disabled { opacity: 0.45; cursor: default; }
+.signals-button:hover:not(:disabled) { box-shadow: var(--shadow-action-hover); transform: translateY(-1px); }
+.signals-button:active:not(:disabled) { box-shadow: var(--shadow-action); transform: none; }
+.signals-button.is-primary { border-color: var(--accent); background: var(--accent); color: var(--on-accent); font-weight: 600; }
+.signals-button:disabled { opacity: 0.5; cursor: default; box-shadow: none; }
 
 .inline-form { display: flex; flex-direction: column; gap: 6px; margin-top: 10px; font-size: 12.5px; color: var(--ink2); }
 .inline-form textarea { min-height: 64px; resize: vertical; }
@@ -1738,21 +1744,26 @@ body[data-mode="signals"] .signals {
 .inline-choice { display: flex; align-items: center; gap: 6px; font-size: 13.5px; color: var(--ink); }
 
 /* Trust-label chips (colours from the spec; dashed = unconfirmed / needs a decision) */
-.trust-chip {
-  display: inline-block;
+.tag {
+  display: inline-flex;
+  align-items: center;
   margin-left: 4px;
-  padding: 0 7px;
-  border: 1px solid currentColor;
+  padding: 2px 9px;
+  border: 1px solid transparent;
   border-radius: 999px;
-  font: 500 10.5px/1.6 var(--sans);
+  font: 500 11.5px/1.35 var(--sans);
+  white-space: nowrap;
   vertical-align: 1px;
+  background: var(--chip);
+  color: var(--ink2);
 }
-.trust-authoritative { color: var(--trust-authoritative); }
-.trust-observed { color: var(--trust-observed); }
-.trust-historical { color: var(--trust-historical); }
-.trust-experiential { color: var(--trust-experiential); }
-.trust-inferred { color: var(--trust-inferred); border-style: dashed; }
-.trust-suggested { color: var(--trust-suggested); border-style: dashed; }
+.tag.is-dashed { border: 1px dashed currentColor; }
+.tag-observed { background: var(--thread-soft); color: var(--thread-ink); }
+.tag-authoritative { background: var(--tone-teal-bg); color: var(--tone-teal-ink); }
+.tag-suggested { background: var(--tone-purple-bg); color: var(--tone-purple-ink); }
+.tag-experiential { background: var(--tone-amber-bg); color: var(--tone-amber-ink); }
+.tag-inferred { background: var(--tone-flag-bg); color: var(--tone-flag-ink); }
+.tag-historical { background: var(--chip); color: var(--ink2); }
 
 /* ---------- Digest ---------- */
 .digest { max-width: 760px; padding: 16px 20px; border: 1px solid var(--line); border-radius: 12px; background: var(--raised); }
@@ -1777,3 +1788,99 @@ body[data-mode="signals"] .signals {
 .legend-swatch { width: 11px; height: 11px; border-radius: 3px; }
 .legend-swatch.is-dashed { outline: 1.5px dashed var(--ink); outline-offset: 1px; opacity: 0.7; }
 .legend-shapes { flex-basis: 100%; color: var(--ink3); }
+
+/* ==========================================================================
+   Signals: information styles (docs/specs/2026-11-12-signals-redesign.md, section 1)
+   One look per kind of information, on every Signals screen. Drawn by signals-parts.js.
+   Things you can press are raised (.signals-button); things you only read are flat.
+   ========================================================================== */
+:root {
+  --ink-meta: #5f6773;            /* small grey text that still reads at 4.5:1 */
+  --bar-empty: #cfd6de;
+  --tone-flag-ink: #8a2c12;   --tone-flag-bg: #fbe4dc;     /* flagged; proposed and unconfirmed */
+  --tone-teal-ink: #1f6b5e;   --tone-teal-bg: #e0f0ec;     /* policy; validated */
+  --tone-purple-ink: #5b3fb0; --tone-purple-bg: #ede8fb;   /* suggested: needs a decision */
+  --tone-amber-ink: #76560a;  --tone-amber-bg: #f8ecc9;    /* staff input */
+  --shadow-action: 0 1px 2px rgba(20, 30, 50, 0.10), 0 3px 8px -2px rgba(20, 30, 50, 0.16);
+  --shadow-action-hover: 0 2px 4px rgba(20, 30, 50, 0.12), 0 10px 20px -8px rgba(20, 30, 50, 0.28);
+}
+/* Dark: the same list twice, as with the other tokens (Auto on a dark Mac, and Dark). */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --ink-meta: #a3abb6;
+    --bar-empty: #3a424c;
+    --tone-flag-ink: #f4ab97;   --tone-flag-bg: #3a1f17;
+    --tone-teal-ink: #8fd6c7;   --tone-teal-bg: #15302b;
+    --tone-purple-ink: #c7b6f7; --tone-purple-bg: #2a2246;
+    --tone-amber-ink: #e8cb7c;  --tone-amber-bg: #33290f;
+    --shadow-action: 0 1px 2px rgba(0, 0, 0, 0.45), 0 3px 8px -2px rgba(0, 0, 0, 0.5);
+    --shadow-action-hover: 0 2px 4px rgba(0, 0, 0, 0.5), 0 10px 20px -8px rgba(0, 0, 0, 0.7);
+  }
+}
+:root[data-theme="dark"] {
+  --ink-meta: #a3abb6;
+  --bar-empty: #3a424c;
+  --tone-flag-ink: #f4ab97;   --tone-flag-bg: #3a1f17;
+  --tone-teal-ink: #8fd6c7;   --tone-teal-bg: #15302b;
+  --tone-purple-ink: #c7b6f7; --tone-purple-bg: #2a2246;
+  --tone-amber-ink: #e8cb7c;  --tone-amber-bg: #33290f;
+  --shadow-action: 0 1px 2px rgba(0, 0, 0, 0.45), 0 3px 8px -2px rgba(0, 0, 0, 0.5);
+  --shadow-action-hover: 0 2px 4px rgba(0, 0, 0, 0.5), 0 10px 20px -8px rgba(0, 0, 0, 0.7);
+}
+
+.meta-icon { display: inline-flex; flex: none; }
+
+/* 1. Context: small capitals, the site with a pin, above the title */
+.meta-context {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  font: 400 11px/1.4 var(--mono);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-meta);
+}
+.meta-sep { width: 3px; height: 3px; border-radius: 50%; background: currentColor; }
+.meta-site { display: inline-flex; align-items: center; gap: 4px; }
+
+/* 2. Title: the only large text in a card */
+.meta-title { margin: 0; font: 600 20px/1.25 var(--sans); letter-spacing: -0.01em; color: var(--ink); }
+
+/* 3. When it happened: blue tag with a calendar, plain words */
+.meta-when {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 9px;
+  border-radius: 6px;
+  background: var(--accent-soft);
+  color: var(--accent-ink);
+  font: 500 12px/1.35 var(--sans);
+  white-space: nowrap;
+}
+.meta-when:empty { display: none; }
+
+/* 4. When it changed: small grey text with a clock */
+.meta-updated { display: inline-flex; align-items: center; gap: 5px; font: 400 12px/1.35 var(--sans); color: var(--ink-meta); }
+
+/* 6. Confidence: three bars plus the word */
+.meta-confidence, .meta-occasions { display: inline-flex; align-items: center; gap: 6px; font: 400 12px/1.35 var(--sans); color: var(--ink); white-space: nowrap; }
+.meta-bars { display: inline-flex; gap: 2px; }
+.meta-bar { width: 14px; height: 6px; border-radius: 2px; background: var(--bar-empty); }
+.meta-bar.is-filled { background: var(--accent); }
+
+/* 7. Recurrence: one copper dot per occasion */
+.meta-dots { display: inline-flex; align-items: center; gap: 3px; }
+.meta-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--thread); }
+.meta-dots-more { font: 500 11px var(--sans); color: var(--ink-meta); }
+
+/* 9. Measure: big number, grey unit, what it is compared with underneath */
+.meta-measure { display: flex; flex-direction: column; gap: 2px; }
+.meta-measure-top { display: flex; align-items: baseline; gap: 6px; }
+.meta-measure-value { font: 600 26px/1.1 var(--sans); letter-spacing: -0.01em; color: var(--ink); }
+.meta-measure-unit { font: 400 14px/1.2 var(--sans); color: var(--ink2); }
+.meta-measure-under { font: 400 12px/1.35 var(--sans); color: var(--ink-meta); }
+
+/* 10. Reference: grey monospace, always last */
+.meta-ref { font: 400 11px/1.4 var(--mono); color: var(--ink-meta); }

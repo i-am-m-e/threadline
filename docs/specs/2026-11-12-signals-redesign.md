@@ -117,3 +117,50 @@ A new **Overview** view in Signals mode, beside **Threads**:
 
 Each stage: tests first for any code that computes numbers or data for the screens, then the
 UI, then `npm test`, then a browser check against the mockup, then commit.
+
+## Progress
+
+Handoff note, updated after each stage. Branch: `signals-redesign` (from `main`), not merged.
+
+### Stage 1: information styles — done (2026-11-12)
+
+What was built:
+
+- `src/signalsFormat.js` (tested in `tests/signalsFormat.test.js`, 18 tests): works out the words
+  and small figures from the Thread: "Sep 20, 3 to 6 pm", "Updated 2 hours ago", confidence bars,
+  occasion dots, the status wording, and the look for each trust label.
+- `src/signals-parts.js`: draws the eleven styles (context, title, when it happened, when it
+  changed, status, confidence, recurrence, source of a claim, measure, reference, raised button).
+- `src/styles.css`, section "Signals: information styles": the shared classes and colour tokens,
+  for light and dark mode. `.signals-button` is now raised (soft shadow, lifts on hover).
+- `src/icons.js`: pin, calendar and info icons.
+- The Thread list and the Thread header already use the new pieces. The rest of the Thread page
+  is unchanged until stage 2.
+- `scripts/preview/`: a browser preview of the real Signals screen, using Threads saved by
+  earlier scorecard runs and no model. Start it with `node scripts/preview/server.js`, then open
+  `http://localhost:4173/scripts/preview/` (add `?theme=dark` or `?role=Manager`). Nothing is
+  saved. No new packages.
+
+Decisions made where the spec was silent:
+
+1. The "Flagged" status reads "Flagged for review" on the pill, as in the mockup. The other
+   statuses keep their names, and the status rules are untouched.
+2. Dates leave out the year unless it isn't the current year ("Dec 30, 2025, 3 to 6 pm").
+3. A time window ends at its last record's hour, as the engine stores it ("3 to 6 pm" for flow
+   rows at 15:00 to 18:00), matching the mockup.
+4. Occasion dots stop at 10; after that a "+N" follows and the words carry the count.
+5. A Thread with more than three time windows shows three tags, then "and N more" (the rest
+   are listed on hover).
+6. The engine also uses the trust labels Inferred and Historical, which the spec's list of four
+   doesn't mention. Inferred is a dashed red-brown tag (unconfirmed); Historical is grey.
+7. The mockups are light mode only. The dark-mode colours are mine, chosen to keep 4.5:1.
+8. Small grey text uses `#5f6773` (the mockup's grey), because the app's older grey fell just
+   short of 4.5:1 on white.
+
+Left over:
+
+- "Blue fill only for the one main action": the style exists, but the old brief can still show
+  two blue buttons side by side. Stage 2 moves the actions into the header and fixes this.
+- The measure style (big number, unit, trigger underneath) is built but not used until the
+  stage 2 number tiles.
+- Older parts of the page (review card, brief) still use their old layout until stage 2.
