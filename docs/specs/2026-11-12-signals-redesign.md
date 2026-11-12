@@ -207,3 +207,12 @@ Left over:
   hover help by keyboard focus (it uses the same style rule as hover).
 - Stages 3 (map), 4 (overview) and 5 (corrections: storage design first, wait for the founder's
   OK) are not started.
+
+### Founder decisions on stage 2 (2026-11-12)
+
+- **Records that don't fit:** flagging them is enough for now ("Not counted as support", with the
+  record's own title, words and time). People's input on how a record relates is already planned
+  as stage 5, "mark a record's relevance" (supports / points the other way / possibly related /
+  unrelated, with a reason). When stage 5 is built, a person's mark should replace the neutral
+  tag on these cards, shown as staff input.
+- **"Add context"** for front-line leads only: agreed.
