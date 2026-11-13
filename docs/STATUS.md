@@ -1,9 +1,11 @@
-# Threadline status (2026-11-10)
+# Threadline status (2026-11-13)
 
 A one-page summary for picking the work back up. Pull request #1 (`verify-card-map`) was merged
 into `main` on 2026-11-09, and branch `safety-record-not-fit` on 2026-11-10 (merge commit
-`693b354`). Current branch: `numbers-check-false-alarms`, pushed, **not merged** (the founder
-decides after seeing its scorecards). All data is synthetic.
+`693b354`). This branch: `numbers-check-false-alarms`, pushed, scored on 2026-11-12, **not merged** (the
+founder decides). A separate branch, `signals-redesign`, holds the Signals screen redesign
+(stages 1 and 2 of 5; see `docs/specs/2026-11-12-signals-redesign.md` on that branch). All data
+is synthetic.
 
 ## What's built
 
@@ -56,6 +58,26 @@ From branch `safety-record-not-fit`, now merged (healthcare; energy re-scored on
 | Retries per run (pack / update) | 2.7 / 2.7 | 2.7 / 2.7 |
 | Time per run | about 14–16 minutes | about 13–16 minutes |
 
+On branch `numbers-check-false-alarms` (issue 7), scored 2026-11-12 (`2026-11-12` healthcare,
+`2026-11-12-2` energy), against the last scorecards before it:
+
+| | Before (`2026-11-10`, `2026-11-09-2`) | With the issue 7 change |
+| --- | --- | --- |
+| Hard pass: healthcare pack / update / energy | 3 / 3 / 3 of 3 | 3 / 3 / 3 of 3 |
+| Numbers complaints on a first answer (healthcare / energy) | 5 / 0 | **0** / 0 |
+| Map labels removed (healthcare / energy) | 5 / 0 | **0** / 0 |
+| Findings removed (healthcare / energy) | 0 / 0 | 0 / 1 (not by the numbers check: see issue 11) |
+| Other wording replaced or removed | 0 / 0 | 0 / 0 |
+| Retries per run: pack / update / energy | 2.7 / 2.7 / 2.7 | **1.3** / 3.0 / 2.0 |
+| Minutes per run: pack / update / energy | 14 / 13 / 16 | **11** / 13 / 15 |
+| HC-INC-99102 cited (pack and update) | 6 of 6 | 5 of 6 (left out of one update run: issue 12) |
+| Good catch cited as support / named as not fitting | 0 of 3 / 3 of 3 | 0 of 3 / 2 of 3 |
+
+Wording the old check would have refused and the new one kept: 13 pieces in 9 runs. All are
+the kinds approved in the design, and none is a wrong figure: 4 map labels ("Flow Record
+1500"), 5 full timestamps ("between 2026-09-20T15:00 and 2026-09-20T18:00"), 2 years after a
+date ("September 20, 2026") and 2 uses of "CTAS 1 or 2 arrivals" about HC-INC-99102.
+
 ## Open issues
 
 1. ~~**HC-INC-99102 not cited**~~ **Fixed** (branch `safety-record-not-fit`, merged; cited in 6 of 6
@@ -82,7 +104,10 @@ From branch `safety-record-not-fit`, now merged (healthcare; energy re-scored on
 6. **Speed:** about 12–22 minutes per run, slower than the original 7–8 minutes, because of the
    extra checks and retries.
 7. **The numbers check was too strict** on times, dates and labels. **Changed on branch
-   `numbers-check-false-alarms`; not yet scored with the model.** In the 44 saved runs every
+   `numbers-check-false-alarms` and scored on 2026-11-12:** no numbers complaint, and nothing
+   removed or replaced by the numbers check, in 9 runs (table above). Side effect to judge: full
+   timestamps in the model's wording ("between 2026-09-20T15:00 and…") are now kept as written,
+   where before they cost a retry or were replaced by a plain line. In the 44 saved runs every
    numbers complaint about wording was a false alarm of one of six kinds, and none was a wrong
    figure. Five are now allowed (design approved by the founder, 2026-11-10):
    (i) a record's own year straight after its own date ("September 20, 2026");
@@ -117,9 +142,22 @@ From branch `safety-record-not-fit`, now merged (healthcare; energy re-scored on
     so a negative finding ("work was not started before…") counts as a claim too. The
     prompt-wording change wasn't needed.
 
+12. **A safety record can be left out without any check noticing.** In `2026-11-12`, update
+    run 2, HC-INC-99102 was neither cited nor listed as not fitting; the run still passed, because
+    update runs have no "must cite" check and the not-fit rule only looks at records that are
+    listed. Since the fixes of 2026-11-09 and 10 this is 1 of 12 healthcare runs. Not caused by
+    the issue 7 change (the numbers check raised nothing in that run). No fix designed yet.
+13. **What retries are spent on now** (`2026-11-12`, `2026-11-12-2`): a policy quote shorter than
+    four words ("immediate access") in 8 of 9 runs; the second time window not cited on the first
+    answer in 3 of 3 update runs (still uncited after the retry in one); a three-sentence
+    rationale in 4 of 9. In energy, the good-catch report was cited for "Work started before
+    zero-energy verification" on the first answer in 3 of 3 runs; the check from issue 11 caught
+    each one (two fixed on the retry, one finding removed).
+
 ## Next steps
 
-1. Score both packs on branch `numbers-check-false-alarms` (scheduled for the night of
-   2026-11-10 to 11) and compare with `2026-11-10` and `2026-11-09-2`.
-2. The founder decides whether to merge `numbers-check-false-alarms` into `main`.
-3. Still not done: the app walkthrough (issue 10).
+1. The founder decides whether to merge `numbers-check-false-alarms` into `main`, and confirms
+   the one reading noted under issue 7 (whole-Thread wording may use the category phrase).
+2. When the founder asks: a design for issue 12 (a safety record left out).
+3. Signals redesign: stage 3 (the map) on branch `signals-redesign`.
+4. Still not done: the app walkthrough (issue 10).
