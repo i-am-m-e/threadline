@@ -216,3 +216,49 @@ Left over:
   unrelated, with a reason). When stage 5 is built, a person's mark should replace the neutral
   tag on these cards, shown as staff input.
 - **"Add context"** for front-line leads only: agreed.
+
+### Stage 2 addition: timestamps in plain words — done (2026-11-13)
+
+- `plainTimes` in `src/signalsFormat.js` (7 tests): the pattern statement and the vignette are shown
+  with ISO timestamps in plain words ("2026-09-20T15:00" reads "Sep 20, 3 pm"; two times on the
+  same day read as one window). Display only: stored text is unchanged. Dates on their own are
+  also reworded ("Sep 20"); record IDs and file names that contain a date are left alone.
+- `main` (with the issue 7 change) was merged in first; all tests passed.
+
+### Stage 3: Map — built, browser check not finished (2026-11-13)
+
+What was built:
+
+- `src/signalsMap.js` (tested in `tests/signalsMap.test.js`, 20 tests): the timeline (lanes, flow
+  card per hour, pattern window, events at their time, one-line summary per occasion), the
+  drivers view (outcome, primary, secondary, possible changes) and the records behind a
+  selected box.
+- `src/signals-ui.js`: the Map tab has a Timeline | Drivers switch (Timeline by default, choice
+  remembered). Selecting a box shows its records beside the map. The first occasion is open;
+  the others are strips that open.
+- `src/styles.css`, section "Signals: the Map tab".
+
+Decisions made where the spec was silent or didn't fit the data:
+
+1. Timeline cards show the record's own title and words, not a short summary as in the mockup
+   (a summary would be the model's wording).
+2. Records near the window that the draft never mentioned are shown dashed, "Not cited in the
+   draft". Records the draft listed as not fitting say "Not counted as support" (no direction,
+   as decided for stage 2).
+3. The axis runs from two hours before the window to two hours after (the same reach the engine
+   uses for nearby records); the mockup shows one hour after.
+4. Near-miss reports share the incidents lane ("Incidents and near misses").
+5. Drivers: primary = contributing conditions; secondary = pressure map, then compounding
+   factors (dashed, no record cited). No connecting lines: code can't tell which driver leads
+   to which.
+6. The old Cytoscape map is no longer shown. `src/threadMap.js` and the package are still there.
+7. The mockup's "Open the records" button in the side panel is not built.
+
+Left over (do these before calling stage 3 done):
+
+- Browser check: the timeline was checked in light mode and the drivers view in dark mode
+  (1440 wide). Not yet checked after the last layout change: drivers in light mode, timeline in
+  dark mode, the second occasion opened, the Energy Thread, a narrow window, keyboard use.
+- Staff input lane on the timeline comes with stage 5.
+- Stages 4 (overview) and 5 (corrections: storage design first, wait for the founder's OK) are
+  not started.

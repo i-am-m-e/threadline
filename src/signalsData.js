@@ -18,10 +18,10 @@ const plural = (n, word) => `${n} ${word}${n === 1 ? "" : "s"}`;
 const capital = (s) => s.replace(/^./, (c) => c.toUpperCase());
 const timeOf = (r) => new Date(r.timestamp).getTime();
 const compare = (a, op, b) => (op === ">" ? a > b : op === ">=" ? a >= b : op === "<" ? a < b : op === "<=" ? a <= b : a === b);
-const holds = (record, c) => typeof record[c.metric] === "number" && compare(record[c.metric], c.op, c.value);
+export const holds = (record, c) => typeof record[c.metric] === "number" && compare(record[c.metric], c.op, c.value);
 
 /** The trigger this Thread came from: its conditions, e.g. bed occupancy > 0.9 and room-to-physician > 45. */
-function triggerConditions(thread, rules) {
+export function triggerConditions(thread, rules) {
   return rules?.[thread.domain]?.triggers?.find((t) => t.pattern_type === thread.pattern_type)?.all ?? [];
 }
 
@@ -41,7 +41,7 @@ function describe(condition) {
 }
 
 // The minutes metric leads (it is the one charted); the others keep the trigger's order.
-function metricsOf(thread, rules) {
+export function metricsOf(thread, rules) {
   const all = triggerConditions(thread, rules).map(describe);
   const lead = all.find((m) => m.minutes) ?? all[0];
   return lead ? [lead, ...all.filter((m) => m !== lead)] : [];
