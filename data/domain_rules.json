@@ -23,6 +23,7 @@
       {
         "id": "no_monitored_bed_acute",
         "label": "No monitored bed for a CTAS 1 or 2 arrival",
+        "category_phrases": ["CTAS 1 or 2"],
         "text_groups": [["monitored bed"], ["no available", "no monitored", "unavailable", "none available"], ["CTAS 1", "CTAS 2"]]
       },
       {
