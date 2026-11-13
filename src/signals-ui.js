@@ -22,7 +22,7 @@ import {
 import { SIGNALS_CONFIG } from "./config.js";
 import { routeAlerts, alertVolume, buildDigest, sendLocalNotification } from "./notify.js";
 import { confidenceText, byPriority } from "./recurrence.js";
-import { whenText } from "./signalsFormat.js";
+import { whenText, plainTimes } from "./signalsFormat.js";
 import { evidenceLines, verificationSummary, removedLines, policyWording, gapLabels } from "./evidenceView.js";
 import { renderThreadMap, withApproaches, TRUST_COLORS, SHAPES } from "./threadMap.js";
 import { SOURCE_TYPE_NAMES } from "./records.js";
@@ -385,7 +385,7 @@ function section(className, heading, help, ...children) {
 function noticedSection(thread) {
   const run = current(thread);
   return section("tp-noticed", "What Threadline noticed", "A draft summary for you to judge. It only uses facts from the cited records.",
-    text("p", "tp-statement", run.steps.pattern.pattern_statement),
+    text("p", "tp-statement", plainTimes(run.steps.pattern.pattern_statement)),
     text("p", "brief-small", `A draft for you to judge. ${verificationSummary(run.meta?.verification)}`));
 }
 
@@ -609,7 +609,7 @@ function detailSection(thread) {
     ["Situation", pattern.possible_vignette.situation],
     ["What appears to happen", pattern.possible_vignette.what_appears_to_happen],
     ["Observed effects", pattern.possible_vignette.observed_effects],
-  ]) vignette.append(text("dt", "", label), text("dd", "", value));
+  ]) vignette.append(text("dt", "", label), text("dd", "", plainTimes(value)));
   const factors = document.createElement("ul");
   for (const c of analysis.contributing_conditions) {
     const li = text("li", "", `${c.condition} `);

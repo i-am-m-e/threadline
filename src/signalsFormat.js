@@ -39,6 +39,42 @@ export function whenText(when, now = new Date()) {
   return `${dayText(start, now)}, ${from} to ${clock(end)} ${half(end)}`;
 }
 
+// A date or timestamp inside a sentence: "2026-09-20" or "2026-09-20T15:00" (seconds and a
+// trailing Z allowed). Not one that is part of a record ID or file name ("VIG-2026-09-20-1",
+// "EHR_Flow_2026-09-20.csv").
+const STAMP = String.raw`(?<![\w-])(\d{4}-\d{2}-\d{2})(?:T(\d{2}:\d{2})(?::\d{2}(?:\.\d+)?)?Z?)?(?!\w|-\d|\.\w)`;
+const ONE_STAMP = new RegExp(STAMP, "g");
+const TWO_STAMPS = new RegExp(`${STAMP}(\\s+(?:and|to|until|through)\\s+|\\s*[–—]\\s*)${STAMP}`, "g");
+
+// The parts of a stamp found in text, or null if it isn't a real date and time (month 13, 25:99).
+function realParts(date, time) {
+  const p = parts(time ? `${date}T${time}` : date);
+  const real = p && p.month >= 1 && p.month <= 12 && p.day >= 1 && p.day <= 31 && (p.hour ?? 0) <= 23 && p.minute <= 59;
+  return real ? p : null;
+}
+
+/**
+ * Model-written text (the pattern statement, the vignette) as the screen shows it: ISO
+ * timestamps become plain words ("2026-09-20T15:00" reads "Sep 20, 3 pm"), and two times on
+ * the same day read as one window ("between Sep 20, 7 and 11 am"). Only the display changes:
+ * the stored text, and the text the checks ran on, stay as written. Nothing else is touched.
+ */
+export function plainTimes(text, now = new Date()) {
+  if (typeof text !== "string") return "";
+  const windows = text.replace(TWO_STAMPS, (all, date1, time1, joiner, date2, time2) => {
+    const start = realParts(date1, time1);
+    const end = realParts(date2, time2);
+    if (!start || !end || !time1 || !time2 || date1 !== date2 || time1 === time2) return all;
+    const from = half(start) === half(end) ? clock(start) : `${clock(start)} ${half(start)}`;
+    return `${dayText(start, now)}, ${from} ${joiner.trim() === "and" ? "and" : "to"} ${clock(end)} ${half(end)}`;
+  });
+  return windows.replace(ONE_STAMP, (all, date, time) => {
+    const p = realParts(date, time);
+    if (!p) return all;
+    return p.hour === null ? dayText(p, now) : `${dayText(p, now)}, ${clock(p)} ${half(p)}`;
+  });
+}
+
 /**
  * When the Thread last changed in the app: "Updated 2 hours ago". Minutes and hours for
  * today's changes, days for the last week, then the date.

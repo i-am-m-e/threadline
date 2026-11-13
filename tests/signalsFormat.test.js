@@ -3,7 +3,7 @@
 // from the Thread and its records, never taken from the model's wording.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { whenText, updatedText, confidenceBars, occasionDots, statusLabel, TRUST_KINDS, trustKind } from "../src/signalsFormat.js";
+import { whenText, plainTimes, updatedText, confidenceBars, occasionDots, statusLabel, TRUST_KINDS, trustKind } from "../src/signalsFormat.js";
 
 const NOW = new Date("2026-11-12T13:00:00");
 
@@ -111,4 +111,47 @@ test("source of a claim: every trust label has one look, and the unconfirmed one
 
 test("source of a claim: an unknown label is shown as Inferred (unconfirmed), never as a record", () => {
   assert.deepEqual(trustKind("Made up"), { ...trustKind("Inferred"), label: "Made up" });
+});
+
+// ---------- Model-written text: ISO timestamps shown in plain words, at display time ----------
+
+test("plain times: a timestamp in a sentence reads 'Sep 20, 3 pm'", () => {
+  assert.equal(plainTimes("Waits rose from 2026-09-20T15:00 onwards.", NOW), "Waits rose from Sep 20, 3 pm onwards.");
+  assert.equal(plainTimes("At 2026-09-20T15:30 a patient left.", NOW), "At Sep 20, 3:30 pm a patient left.");
+});
+
+test("plain times: two timestamps on the same day read as one window", () => {
+  assert.equal(
+    plainTimes("Records suggest that between 2026-09-20T07:00 and 2026-09-20T11:00, there was a backlog.", NOW),
+    "Records suggest that between Sep 20, 7 and 11 am, there was a backlog."
+  );
+  assert.equal(plainTimes("From 2026-09-20T11:00 to 2026-09-20T14:00 waits rose.", NOW), "From Sep 20, 11 am to 2 pm waits rose.");
+  assert.equal(plainTimes("Slow from 2026-09-20T15:00–2026-09-20T18:00.", NOW), "Slow from Sep 20, 3 to 6 pm.");
+});
+
+test("plain times: timestamps on different days each keep their date", () => {
+  assert.equal(plainTimes("Between 2026-09-20T22:00 and 2026-09-21T02:00.", NOW), "Between Sep 20, 10 pm and Sep 21, 2 am.");
+});
+
+test("plain times: seconds and a trailing Z are dropped; the time is read as written", () => {
+  assert.equal(plainTimes("Logged 2026-09-20T15:00:00.000Z.", NOW), "Logged Sep 20, 3 pm.");
+  assert.equal(plainTimes("Logged 2026-09-20T15:05:09.", NOW), "Logged Sep 20, 3:05 pm.");
+});
+
+test("plain times: a date on its own reads 'Sep 20'; another year keeps its year", () => {
+  assert.equal(plainTimes("On 2026-09-20, occupancy was high.", NOW), "On Sep 20, occupancy was high.");
+  assert.equal(plainTimes("Since 2025-12-30T15:00.", NOW), "Since Dec 30, 2025, 3 pm.");
+});
+
+test("plain times: record IDs and file names that contain a date are left alone", () => {
+  for (const s of ["See VIG-2026-09-20-1.", "From EHR_Flow_2026-09-20.csv and HC-INC-99102.", "Run 2026-09-20-2 of the day."]) {
+    assert.equal(plainTimes(s, NOW), s);
+  }
+});
+
+test("plain times: things that aren't real dates or times, and text without any, are unchanged", () => {
+  for (const s of ["Between 3:00 and 6:00 p.m., bed occupancy remained high.", "Code 2026-13-45T25:99 is odd.", ""]) {
+    assert.equal(plainTimes(s, NOW), s);
+  }
+  assert.equal(plainTimes(undefined, NOW), "");
 });
