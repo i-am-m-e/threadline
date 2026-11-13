@@ -2,7 +2,7 @@
 // Records here are the real benchmark records (all synthetic).
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { quoteProblem, numberProblems, thresholdsOf, recordValueProblems, evidenceProblems, policyQuoteProblem, claimNumberProblems, fittingTrustLabel } from "../src/verify.js";
+import { quoteProblem, numberProblems, thresholdsOf, recordValueProblems, evidenceProblems, policyQuoteProblem, claimNumberProblems, fittingTrustLabel, categoryPhrasesFor } from "../src/verify.js";
 
 const complaint = {
   source_id: "HC-CMP-4471", source_type: "complaint",
@@ -390,4 +390,97 @@ test("claims: a quoted label passes in other wording too (statement, vignette, m
   assert.deepEqual(claimNumberProblems(text, [noBed], [], { labels: LABELS }), []);
   assert.match(claimNumberProblems(text, [noBed], [])[0], /mentions 1/);
   assert.match(claimNumberProblems(`${text} 7 patients left.`, [noBed], [], { labels: LABELS })[0], /mentions 7, which/);
+});
+
+// ---------- Issue 7: false alarms on years, timestamps, time ranges, map labels and category phrases ----------
+// Seen in the saved runs (docs/eval, 2026-11-04 to 2026-11-10): none of these was a wrong figure.
+
+const hourly = [15, 16, 17, 18].map((h) => ({ source_id: `HC-FLOW-20260920-${h}00`, source_type: "emr_flow", timestamp: `2026-09-20T${h}:00`, bed_occupancy: 0.93 }));
+const at1500 = hourly[0];
+const refused = (problems, pattern) => { assert.equal(problems.length, 1); assert.match(problems[0], pattern); };
+
+test("year: a record's own year straight after its own date passes (September 20, 2026; 20 September 2026)", () => {
+  for (const t of ["On September 20, 2026, occupancy was 93%.", "On Sept 20 2026 occupancy was 93%.", "On 20 September 2026 occupancy was 93%.", "On September 20th, 2026 occupancy was 93%."]) {
+    assert.deepEqual(claimNumberProblems(t, hourly, none), [], t);
+    assert.deepEqual(numberProblems(t, at1500, none), [], t);
+  }
+});
+
+test("year: a year on its own, or another year after the date, is still refused", () => {
+  refused(claimNumberProblems("2026 patients waited.", hourly, none), /mentions 2026, which/);
+  refused(claimNumberProblems("On September 20, 2025, occupancy was 93%.", hourly, none), /mentions 2025, which/);
+  refused(claimNumberProblems("In 2026 occupancy was 93%.", hourly, none), /mentions 2026, which/);
+});
+
+test("timestamp: a record's own timestamp written in full passes (2026-09-20T15:00); another one is refused", () => {
+  assert.deepEqual(claimNumberProblems("Between 2026-09-20T15:00 and 2026-09-20T18:00 occupancy was 93%.", hourly, none), []);
+  assert.deepEqual(numberProblems("At 2026-09-20T15:00 occupancy was 93%.", at1500, none), []);
+  refused(claimNumberProblems("Between 2026-09-20T15:00 and 2026-09-20T19:00 occupancy was 93%.", hourly, none), /mentions 19, 0, which/);
+});
+
+test("time range: 'between 3 and 6 pm' is read as 3 pm and 6 pm, the records' own hours", () => {
+  for (const t of ["Between 3 and 6 pm occupancy was 93%.", "From 3 to 6 p.m. occupancy was 93%.", "From 3-6 PM occupancy was 93%.", "From 3 – 6pm occupancy was 93%."]) {
+    assert.deepEqual(claimNumberProblems(t, hourly, none), [], t);
+  }
+});
+
+test("time range: an hour that isn't a cited record's is still refused, and so is a range of anything else", () => {
+  refused(claimNumberProblems("Between 3 and 9 pm occupancy was 93%.", hourly, none), /mentions 9, which/);
+  refused(claimNumberProblems("Between 1 and 6 pm occupancy was 93%.", hourly, none), /mentions 1, which/);
+  refused(claimNumberProblems("Between 3 and 6 patients waited.", hourly, none), /mentions 3, 6, which/);
+});
+
+test("map labels: a label may end with its cited record's own ID numbers, date or time", () => {
+  const own = { ownIdNumbersAtEnd: true };
+  for (const t of ["Flow Record 1500", "Flow data at 1500", "Flow data 2026-09-20 1500", "Flow Record 20260920-1500", "Flow record (1500)"]) {
+    assert.deepEqual(claimNumberProblems(t, [at1500], none, own), [], t);
+  }
+  assert.deepEqual(claimNumberProblems("Complaint 4471", [complaint], none, own), []);
+  assert.deepEqual(claimNumberProblems("Incident report 99102", [noBed], none, own), []);
+});
+
+test("map labels: the same numbers anywhere else in the label, or another record's, are still refused", () => {
+  const own = { ownIdNumbersAtEnd: true };
+  refused(claimNumberProblems("1500 patients waiting", [at1500], none, own), /mentions 1500, which/);
+  refused(claimNumberProblems("4471 patients", [complaint], none, own), /mentions 4471, which/);
+  refused(claimNumberProblems("Flow Record 1600", [at1500], none, own), /mentions 1600, which/);
+  refused(claimNumberProblems("Permit Data 3", [{ source_id: "EN-PERMIT-20260920-0900", source_type: "permit_log", timestamp: "2026-09-20T09:00", active_permits: 14 }], none, own), /mentions 3, which/);
+  refused(claimNumberProblems("Near-Miss Report 1", [nearMiss], none, own), /mentions 1, which/);
+});
+
+test("map labels: without the setting (findings, statements, claims, the card), ID numbers are refused as before", () => {
+  refused(claimNumberProblems("Flow Record 1500", [at1500], none), /mentions 1500, which/);
+  refused(numberProblems("Complaint 4471", complaint, none), /mentions 4471, which/);
+});
+
+test("map labels: with numbers by reference on, nothing changes (times and dates are written as references there)", () => {
+  assert.equal(claimNumberProblems("Flow data 2026-09-20 1500", [at1500], none, { ownIdNumbersAtEnd: true, byReference: true }).length, 1);
+});
+
+const HEALTHCARE = {
+  safety_relevant_conditions: [
+    { id: "no_monitored_bed_acute", label: "No monitored bed for a CTAS 1 or 2 arrival", category_phrases: ["CTAS 1 or 2"], text_groups: [["monitored bed"], ["no available"], ["CTAS 1", "CTAS 2"]] },
+    { id: "long_wait_after_rooming", label: "Waits after rooming over 60 minutes", metric: "room_to_physician_minutes", op: ">", value: 60 },
+  ],
+};
+const HITS = [{ id: "no_monitored_bed_acute", label: "No monitored bed for a CTAS 1 or 2 arrival", source_ids: ["HC-INC-99102"] }];
+
+test("category phrases: offered only for a record matched to that same safety condition", () => {
+  assert.deepEqual(categoryPhrasesFor([noBed], HITS, HEALTHCARE), ["CTAS 1 or 2"]);
+  assert.deepEqual(categoryPhrasesFor([complaint, noBed], HITS, HEALTHCARE), ["CTAS 1 or 2"]);
+  assert.deepEqual(categoryPhrasesFor([complaint], HITS, HEALTHCARE), [], "another record");
+  assert.deepEqual(categoryPhrasesFor([noBed], [], HEALTHCARE), [], "no record was matched to the condition");
+  assert.deepEqual(categoryPhrasesFor([noBed], HITS, { safety_relevant_conditions: [{ id: "no_monitored_bed_acute" }] }), [], "no phrases listed");
+});
+
+test("category phrases: 'CTAS 1 or 2 patients' passes on the matched record; 'CTAS 1 patient' is still checked", () => {
+  const labels = [...LABELS, ...categoryPhrasesFor([noBed], HITS, HEALTHCARE)];
+  assert.deepEqual(numberProblems("No monitored beds for CTAS 1 or 2 patients", noBed, none, { labels }), []);
+  assert.deepEqual(claimNumberProblems("CTAS 1 or 2 patient", [noBed], none, { labels }), []);
+  refused(numberProblems("No monitored bed for a CTAS 1 patient", noBed, none, { labels }), /mentions 1, which/);
+});
+
+test("category phrases: on a record that wasn't matched, 'CTAS 1 or 2' is checked like any other numbers", () => {
+  const labels = [...LABELS, ...categoryPhrasesFor([complaint], HITS, HEALTHCARE)];
+  refused(numberProblems("CTAS 1 or 2 patients waited 85 minutes", complaint, none, { labels }), /mentions 1, 2, which/);
 });

@@ -1,0 +1,793 @@
+{
+  "pack": "energy",
+  "run": 2,
+  "stages": [
+    {
+      "packKey": "energy",
+      "hard": [
+        {
+          "id": "no_step_errors",
+          "pass": true,
+          "detail": "The run completed."
+        },
+        {
+          "id": "pattern_must_cite_all",
+          "pass": true,
+          "detail": "All required records cited."
+        },
+        {
+          "id": "pattern_must_cite_at_least_one_of",
+          "pass": true,
+          "detail": "Cited 5 flow record(s)."
+        },
+        {
+          "id": "must_not_cite_anywhere",
+          "pass": true,
+          "detail": "No unrelated decoy cited."
+        },
+        {
+          "id": "must_not_cite_as_support",
+          "pass": true,
+          "detail": "No counter-evidence or confounder cited as support."
+        },
+        {
+          "id": "analysis_policy_source_id",
+          "pass": true,
+          "detail": "Policy cited: EN-POL-LOTO-VER"
+        },
+        {
+          "id": "acceptable_pattern_confidence",
+          "pass": true,
+          "detail": "Pattern confidence Medium; acceptable: Medium"
+        },
+        {
+          "id": "expected_safety_conditions",
+          "pass": true,
+          "detail": "Found: work_before_zero_energy, inspector_over_six_permits"
+        },
+        {
+          "id": "status_never_past_flagged",
+          "pass": true,
+          "detail": "Status: Flagged"
+        },
+        {
+          "id": "no_person_names_or_blame_labels",
+          "pass": true,
+          "detail": "None found."
+        }
+      ],
+      "soft": [
+        {
+          "id": "should_acknowledge_as_not_fitting",
+          "pass": true,
+          "detail": "EN-INC-20260920-06 acknowledged (\"EN-INC-20260920-06\")"
+        }
+      ],
+      "citedIds": [
+        "EN-NM-20260920-01",
+        "EN-PERMIT-20260920-0700",
+        "EN-PERMIT-20260920-0800",
+        "EN-PERMIT-20260920-0900",
+        "EN-PERMIT-20260920-1000",
+        "EN-PERMIT-20260920-1100"
+      ],
+      "retries": 2,
+      "adjustments": 3,
+      "seconds": 893.877,
+      "verification": {
+        "findings_checked": 8,
+        "findings_verified": 8,
+        "findings_removed": [],
+        "fixed_on_retry": 1,
+        "findings_labels_corrected": 0,
+        "policy_quote": "verified",
+        "analysis": {
+          "claims_checked": 4,
+          "claims_verified": 4,
+          "claims_removed": [],
+          "labels_corrected": 0
+        },
+        "map": {
+          "nodes_checked": 9,
+          "nodes_verified": 9,
+          "nodes_removed": [],
+          "labels_corrected": 2
+        },
+        "card": "verified",
+        "wording": {
+          "checked": 11,
+          "replaced": [],
+          "removed": []
+        },
+        "windows": {
+          "total": 1,
+          "cited": 1,
+          "uncited": []
+        },
+        "rationale": "ok",
+        "learn_more": "not checked",
+        "safety_not_fit": {
+          "asked": 0,
+          "left": []
+        }
+      },
+      "passed": true,
+      "confidence": "Medium",
+      "leadingOptionType": "Process adjustment"
+    }
+  ],
+  "threads": [
+    {
+      "id": "THR-20261113-1",
+      "domain": "Energy",
+      "pattern_type": "Permit issuance during inspector backlog",
+      "location": "Synthetic Site B",
+      "status": "Flagged",
+      "created_at": "2026-11-13T03:36:19.712Z",
+      "updated_at": "2026-11-13T03:36:19.712Z",
+      "windows": [
+        {
+          "start": "2026-09-20T07:00",
+          "end": "2026-09-20T11:00",
+          "source_ids": [
+            "EN-PERMIT-20260920-0700",
+            "EN-PERMIT-20260920-0800",
+            "EN-PERMIT-20260920-0900",
+            "EN-PERMIT-20260920-1000",
+            "EN-PERMIT-20260920-1100"
+          ]
+        }
+      ],
+      "files": [
+        "Plant_Permits_2026-09-20.csv",
+        "EHS_NearMiss_2026-09-20.json",
+        "EN_Eval_Extra_2026-09-20.json"
+      ],
+      "runs": [
+        {
+          "time": "2026-11-13T03:36:19.712Z",
+          "steps": {
+            "pattern": {
+              "vignette_id": "VIG-2023-001",
+              "domain": "Energy",
+              "pattern_type": "Permit issuance during inspector backlog",
+              "location": "Synthetic Site B",
+              "time_window": "2026-09-20 07:00 to 11:00",
+              "pattern_statement": "Records suggest that between 07:00 and 11:00 on 2026-09-20, the number of active permits per inspector exceeded 6, and the mean inspection wait time exceeded 60 minutes, leading to potential safety concerns.",
+              "supporting_evidence": [
+                {
+                  "source_id": "EN-PERMIT-20260920-0700",
+                  "trust_label": "Observed",
+                  "finding": "Active permits per inspector above 6 (permits_per_inspector > 6)",
+                  "quote": "",
+                  "record_values": [
+                    {
+                      "field": "permits_per_inspector",
+                      "value": 9
+                    }
+                  ]
+                },
+                {
+                  "source_id": "EN-PERMIT-20260920-0700",
+                  "trust_label": "Observed",
+                  "finding": "Mean inspection wait above 60 minutes (mean_inspection_wait_minutes > 60)",
+                  "quote": "",
+                  "record_values": [
+                    {
+                      "field": "mean_inspection_wait_minutes",
+                      "value": 80
+                    }
+                  ]
+                },
+                {
+                  "source_id": "EN-PERMIT-20260920-0800",
+                  "trust_label": "Observed",
+                  "finding": "Mean inspection wait above 60 minutes (mean_inspection_wait_minutes > 60)",
+                  "quote": "",
+                  "record_values": [
+                    {
+                      "field": "mean_inspection_wait_minutes",
+                      "value": 100
+                    }
+                  ]
+                },
+                {
+                  "source_id": "EN-PERMIT-20260920-0900",
+                  "trust_label": "Observed",
+                  "finding": "Mean inspection wait above 60 minutes (mean_inspection_wait_minutes > 60)",
+                  "quote": "",
+                  "record_values": [
+                    {
+                      "field": "mean_inspection_wait_minutes",
+                      "value": 115
+                    }
+                  ]
+                },
+                {
+                  "source_id": "EN-PERMIT-20260920-1000",
+                  "trust_label": "Observed",
+                  "finding": "Mean inspection wait above 60 minutes (mean_inspection_wait_minutes > 60)",
+                  "quote": "",
+                  "record_values": [
+                    {
+                      "field": "mean_inspection_wait_minutes",
+                      "value": 130
+                    }
+                  ]
+                },
+                {
+                  "source_id": "EN-PERMIT-20260920-1100",
+                  "trust_label": "Observed",
+                  "finding": "Mean inspection wait above 60 minutes (mean_inspection_wait_minutes > 60)",
+                  "quote": "",
+                  "record_values": [
+                    {
+                      "field": "mean_inspection_wait_minutes",
+                      "value": 125
+                    }
+                  ]
+                },
+                {
+                  "source_id": "EN-NM-20260920-01",
+                  "trust_label": "Observed",
+                  "finding": "Work started before zero-energy verification",
+                  "quote": "Contractor crew began flange prep on Line B before zero-energy sign-off, after a 2-hour wait for inspector verification.",
+                  "record_values": []
+                },
+                {
+                  "source_id": "EN-NM-20260920-01",
+                  "trust_label": "Observed",
+                  "finding": "Inspector covering more than 6 permits",
+                  "quote": "The inspector was covering 8 active permits at the time.",
+                  "record_values": []
+                }
+              ],
+              "possible_vignette": {
+                "situation": "The records indicate a potential backlog of permits at Synthetic Site B, with a high number of active permits per inspector and an extended wait time for inspections.",
+                "what_appears_to_happen": "Between 07:00 and 11:00 on 2026-09-20, the number of active permits per inspector exceeded 6, leading to a mean inspection wait time of over 60 minutes. This delay in inspections may have prompted some crews to begin work without the required zero-energy verification, as evidenced by the near-miss report.",
+                "observed_effects": "The potential safety concerns arising from this situation include the possibility of work starting before zero-energy verification, which could lead to hazardous conditions. Additionally, inspectors may be stretched thin, covering more than the recommended number of permits, which could impact the quality and timeliness of their inspections."
+              },
+              "evidence_that_does_not_fit": [
+                "EN-NM-20260920-02",
+                "EN-INC-20260920-05",
+                "EN-INC-20260920-06"
+              ],
+              "confidence": "Medium",
+              "confidence_reason": "The pattern is supported by multiple flow records and a near-miss report, indicating a potential correlation between the backlog of permits and the safety-relevant conditions."
+            },
+            "analysis": {
+              "vignette_id": "VIG-2023-001",
+              "policy_practice_gap": {
+                "policy_source_id": "EN-POL-LOTO-VER",
+                "policy_quote": "No work may begin",
+                "what_policy_expects": "No work may begin on isolated equipment before physical zero-energy verification is completed and signed off by a qualified inspector.",
+                "what_records_suggest": "Work may begin on isolated equipment before physical zero-energy verification is completed and signed off by a qualified inspector.",
+                "confidence": "Medium"
+              },
+              "contributing_conditions": [
+                {
+                  "condition": "Backlog of permits",
+                  "source_ids": [
+                    "EN-PERMIT-20260920-0700",
+                    "EN-PERMIT-20260920-0800",
+                    "EN-PERMIT-20260920-0900",
+                    "EN-PERMIT-20260920-1000",
+                    "EN-PERMIT-20260920-1100"
+                  ],
+                  "trust_label": "Observed"
+                },
+                {
+                  "condition": "Extended wait time for inspections",
+                  "source_ids": [
+                    "EN-PERMIT-20260920-0700",
+                    "EN-PERMIT-20260920-0800",
+                    "EN-PERMIT-20260920-0900",
+                    "EN-PERMIT-20260920-1000",
+                    "EN-PERMIT-20260920-1100"
+                  ],
+                  "trust_label": "Observed"
+                }
+              ],
+              "compounding_factors": [
+                "Potential for hazardous conditions due to work starting before zero-energy verification",
+                "Impact on inspection quality and timeliness due to inspectors covering more permits than recommended"
+              ],
+              "pressure_map": [
+                {
+                  "role": "Contractor crew",
+                  "pressure_carried": "Pressure to complete work despite delays",
+                  "shifting_to": "Inspector",
+                  "source_ids": [
+                    "EN-NM-20260920-01"
+                  ],
+                  "trust_label": "Observed"
+                },
+                {
+                  "role": "Inspector",
+                  "pressure_carried": "Stretched thin, covering more permits than recommended",
+                  "shifting_to": "Contractor crew",
+                  "source_ids": [
+                    "EN-NM-20260920-01"
+                  ],
+                  "trust_label": "Observed"
+                }
+              ],
+              "alternative_explanations": [
+                "The backlog of permits could be due to unexpected equipment failures or maintenance issues, leading to a surge in permit requests.",
+                "The extended wait time for inspections may be influenced by the complexity of the equipment or the need for specialized inspections, rather than a simple backlog."
+              ],
+              "open_questions": [
+                "What specific factors contributed to the backlog of permits on 2026-09-20?",
+                "Are there any systemic issues or process inefficiencies that need to be addressed to prevent such backlogs in the future?",
+                "How can the inspection process be optimized to ensure timely and thorough inspections, especially during periods of high permit volume?"
+              ],
+              "graph": {
+                "nodes": [
+                  {
+                    "id": "EN-POL-LOTO-VER",
+                    "label": "Policy: LOTO Zero-Energy Verification",
+                    "node_type": "policy",
+                    "trust_label": "Authoritative",
+                    "source_ids": [
+                      "EN-POL-LOTO-VER"
+                    ]
+                  },
+                  {
+                    "id": "EN-PERMIT-20260920-0700",
+                    "label": "Permit Data 07:00",
+                    "node_type": "evidence",
+                    "trust_label": "Observed",
+                    "source_ids": [
+                      "EN-PERMIT-20260920-0700"
+                    ]
+                  },
+                  {
+                    "id": "EN-PERMIT-20260920-0800",
+                    "label": "Permit Data 08:00",
+                    "node_type": "evidence",
+                    "trust_label": "Observed",
+                    "source_ids": [
+                      "EN-PERMIT-20260920-0800"
+                    ]
+                  },
+                  {
+                    "id": "EN-PERMIT-20260920-0900",
+                    "label": "Permit Data 09:00",
+                    "node_type": "evidence",
+                    "trust_label": "Observed",
+                    "source_ids": [
+                      "EN-PERMIT-20260920-0900"
+                    ]
+                  },
+                  {
+                    "id": "EN-PERMIT-20260920-1000",
+                    "label": "Permit Data 10:00",
+                    "node_type": "evidence",
+                    "trust_label": "Observed",
+                    "source_ids": [
+                      "EN-PERMIT-20260920-1000"
+                    ]
+                  },
+                  {
+                    "id": "EN-PERMIT-20260920-1100",
+                    "label": "Permit Data 11:00",
+                    "node_type": "evidence",
+                    "trust_label": "Observed",
+                    "source_ids": [
+                      "EN-PERMIT-20260920-1100"
+                    ]
+                  },
+                  {
+                    "id": "EN-NM-20260920-01",
+                    "label": "Near-Miss Report",
+                    "node_type": "evidence",
+                    "trust_label": "Observed",
+                    "source_ids": [
+                      "EN-NM-20260920-01"
+                    ]
+                  },
+                  {
+                    "id": "ContractorCrew",
+                    "label": "Contractor Crew",
+                    "node_type": "role",
+                    "trust_label": "Observed",
+                    "source_ids": [
+                      "EN-NM-20260920-01"
+                    ]
+                  },
+                  {
+                    "id": "Inspector",
+                    "label": "Inspector",
+                    "node_type": "role",
+                    "trust_label": "Observed",
+                    "source_ids": [
+                      "EN-NM-20260920-01"
+                    ]
+                  }
+                ],
+                "edges": [
+                  {
+                    "source": "EN-PERMIT-20260920-0700",
+                    "target": "EN-PERMIT-20260920-0800",
+                    "relationship": "contributes to",
+                    "weight": 1,
+                    "inferred": false
+                  },
+                  {
+                    "source": "EN-PERMIT-20260920-0800",
+                    "target": "EN-PERMIT-20260920-0900",
+                    "relationship": "contributes to",
+                    "weight": 1,
+                    "inferred": false
+                  },
+                  {
+                    "source": "EN-PERMIT-20260920-0900",
+                    "target": "EN-PERMIT-20260920-1000",
+                    "relationship": "contributes to",
+                    "weight": 1,
+                    "inferred": false
+                  },
+                  {
+                    "source": "EN-PERMIT-20260920-1000",
+                    "target": "EN-PERMIT-20260920-1100",
+                    "relationship": "contributes to",
+                    "weight": 1,
+                    "inferred": false
+                  },
+                  {
+                    "source": "EN-PERMIT-20260920-0700",
+                    "target": "EN-PERMIT-20260920-1100",
+                    "relationship": "contributes to",
+                    "weight": 5,
+                    "inferred": false
+                  },
+                  {
+                    "source": "EN-PERMIT-20260920-0700",
+                    "target": "EN-NM-20260920-01",
+                    "relationship": "contributes to",
+                    "weight": 1,
+                    "inferred": false
+                  },
+                  {
+                    "source": "EN-PERMIT-20260920-0800",
+                    "target": "EN-NM-20260920-01",
+                    "relationship": "contributes to",
+                    "weight": 1,
+                    "inferred": false
+                  },
+                  {
+                    "source": "EN-PERMIT-20260920-0900",
+                    "target": "EN-NM-20260920-01",
+                    "relationship": "contributes to",
+                    "weight": 1,
+                    "inferred": false
+                  },
+                  {
+                    "source": "EN-PERMIT-20260920-1000",
+                    "target": "EN-NM-20260920-01",
+                    "relationship": "contributes to",
+                    "weight": 1,
+                    "inferred": false
+                  },
+                  {
+                    "source": "EN-PERMIT-20260920-1100",
+                    "target": "EN-NM-20260920-01",
+                    "relationship": "contributes to",
+                    "weight": 1,
+                    "inferred": false
+                  },
+                  {
+                    "source": "EN-NM-20260920-01",
+                    "target": "ContractorCrew",
+                    "relationship": "shifts pressure to",
+                    "weight": 1,
+                    "inferred": false
+                  },
+                  {
+                    "source": "EN-NM-20260920-01",
+                    "target": "Inspector",
+                    "relationship": "shifts pressure to",
+                    "weight": 1,
+                    "inferred": false
+                  },
+                  {
+                    "source": "EN-PERMIT-20260920-0700",
+                    "target": "EN-POL-LOTO-VER",
+                    "relationship": "conflicts with",
+                    "weight": 1,
+                    "inferred": false
+                  },
+                  {
+                    "source": "EN-PERMIT-20260920-0800",
+                    "target": "EN-POL-LOTO-VER",
+                    "relationship": "conflicts with",
+                    "weight": 1,
+                    "inferred": false
+                  },
+                  {
+                    "source": "EN-PERMIT-20260920-0900",
+                    "target": "EN-POL-LOTO-VER",
+                    "relationship": "conflicts with",
+                    "weight": 1,
+                    "inferred": false
+                  },
+                  {
+                    "source": "EN-PERMIT-20260920-1000",
+                    "target": "EN-POL-LOTO-VER",
+                    "relationship": "conflicts with",
+                    "weight": 1,
+                    "inferred": false
+                  },
+                  {
+                    "source": "EN-PERMIT-20260920-1100",
+                    "target": "EN-POL-LOTO-VER",
+                    "relationship": "conflicts with",
+                    "weight": 1,
+                    "inferred": false
+                  }
+                ]
+              }
+            },
+            "evidence": [
+              {
+                "evidence_id": "EV-EN-002",
+                "domain": "Energy",
+                "title": "PLACEHOLDER: Zero-energy verification before work starts",
+                "source_type": "Guideline",
+                "strength": "Low",
+                "summary": "PLACEHOLDER. Replace with a two-to-four sentence curated summary of evidence about: zero-energy verification before work starts. This placeholder states no findings.",
+                "applies_when": [
+                  "work started before zero-energy verification",
+                  "LOTO verification delay"
+                ],
+                "citation": "PLACEHOLDER: to be replaced by founder",
+                "added_by": "founder",
+                "synthetic_placeholder": true
+              },
+              {
+                "evidence_id": "EV-EN-001",
+                "domain": "Energy",
+                "title": "PLACEHOLDER: Inspector coverage during high permit volume",
+                "source_type": "Expert consensus",
+                "strength": "Low",
+                "summary": "PLACEHOLDER. Replace with a two-to-four sentence curated summary of evidence about: inspector coverage during high permit volume. This placeholder states no findings.",
+                "applies_when": [
+                  "inspector covering many permits",
+                  "permit backlog",
+                  "long inspection wait"
+                ],
+                "citation": "PLACEHOLDER: to be replaced by founder",
+                "added_by": "founder",
+                "synthetic_placeholder": true
+              },
+              {
+                "evidence_id": "EV-EN-003",
+                "domain": "Energy",
+                "title": "PLACEHOLDER: Pacing permit issuance to inspection capacity",
+                "source_type": "Primary study",
+                "strength": "Low",
+                "summary": "PLACEHOLDER. Replace with a two-to-four sentence curated summary of evidence about: pacing permit issuance to inspection capacity. This placeholder states no findings.",
+                "applies_when": [
+                  "permits issued faster than inspections",
+                  "hot-work permit volume",
+                  "permit issuance"
+                ],
+                "citation": "PLACEHOLDER: to be replaced by founder",
+                "added_by": "founder",
+                "synthetic_placeholder": true
+              }
+            ],
+            "options": {
+              "vignette_id": "VIG-2023-001",
+              "options": [
+                {
+                  "option_id": "O1",
+                  "title": "Adjust permit issuance to match inspection capacity",
+                  "type": "Process adjustment",
+                  "description": "The backlog of permits and extended wait times for inspections suggest a misalignment between permit issuance and inspection capacity. Adjusting the permit issuance process to match the capacity of inspectors could help alleviate this pressure point.",
+                  "evidence_ids": [
+                    "EV-EN-001",
+                    "EV-EN-003"
+                  ],
+                  "evidence_strength": "Low",
+                  "local_fit": "This option would require coordination between the permit issuance team and the inspection team to ensure a more balanced workflow. However, it may not address the specific challenges faced by inspectors when covering multiple permits.",
+                  "possible_pressure_transfer": "If successful, this option could reduce the pressure on inspectors by ensuring a more manageable workload. However, it may shift pressure back to the contractor crew if permits are issued at a slower pace, potentially impacting their productivity.",
+                  "roles_to_involve": [
+                    "Permit Issuance Team",
+                    "Inspection Team"
+                  ],
+                  "how_we_would_know": "Monitor the number of permits issued per day and the average wait time for inspections. A reduction in permit volume and wait times would indicate success.",
+                  "revisit_or_stop_if": "If the adjusted permit issuance process does not lead to a significant reduction in the backlog or wait times, it may be necessary to explore other options.",
+                  "revisit_after_days": 21,
+                  "trust_label": "Suggested"
+                },
+                {
+                  "option_id": "O2",
+                  "title": "Learn more about permit backlog causes",
+                  "type": "Learn more",
+                  "description": "The backlog of permits could be influenced by various factors, such as unexpected equipment failures or maintenance issues. Understanding the root causes of the backlog would help inform more targeted solutions.",
+                  "evidence_ids": [],
+                  "evidence_strength": "None",
+                  "local_fit": "No library evidence. This option would require additional investigation and analysis to identify the specific factors contributing to the permit backlog.",
+                  "possible_pressure_transfer": "Learning more about the permit backlog causes may not directly alleviate the pressure on inspectors or the contractor crew. However, it could provide valuable insights for future process improvements.",
+                  "roles_to_involve": [
+                    "Maintenance Team",
+                    "Equipment Specialists"
+                  ],
+                  "how_we_would_know": "Conduct interviews or surveys with maintenance teams and equipment specialists to gather insights on the reasons for the permit backlog. Analyze historical data to identify patterns or trends.",
+                  "revisit_or_stop_if": "If the investigation reveals systemic issues or process inefficiencies, further action may be required to address these underlying problems.",
+                  "revisit_after_days": 14,
+                  "trust_label": "Suggested"
+                }
+              ],
+              "recommendation": {
+                "leading_option_id": "O1",
+                "rationale": "Adjusting the permit issuance process to match inspection capacity has the potential to directly address the observed pressure points. While the evidence strength is low, this option fits well with the local context and could provide immediate relief to inspectors.",
+                "would_change_if": "If further investigation reveals that the permit backlog is primarily due to unexpected equipment failures or maintenance issues, option O2 may become the leading recommendation.",
+                "confidence": "Medium",
+                "trust_label": "Suggested"
+              },
+              "suggested_reviewers": [
+                {
+                  "role": "Permit Issuance Manager",
+                  "why": "To provide insights on the permit issuance process and its potential impact on the inspection workload."
+                },
+                {
+                  "role": "Inspection Supervisor",
+                  "why": "To offer expertise on inspector coverage and the challenges faced during periods of high permit volume."
+                }
+              ]
+            },
+            "card": {
+              "card_title": "Possible pattern: Permit backlog at Synthetic Site B",
+              "noticed": "Threadline noticed a potential backlog of permits at Synthetic Site B, with inspectors stretched thin.",
+              "why_it_may_matter": "This may lead to safety concerns, like work starting before zero-energy verification.",
+              "possible_options": [
+                "Adjust permit issuance",
+                "Learn more about permit backlog causes"
+              ],
+              "evidence_badge": "Based on 6 records: permit log, near-miss report",
+              "confidence": "Medium",
+              "question": "Does this match what you see on shift?"
+            }
+          },
+          "log": [
+            {
+              "step": "pattern",
+              "type": "problems",
+              "detail": "EN-INC-20260920-06: the finding says \"Work started before zero-energy verification\", a safety-relevant condition (\"Work started before zero-energy verification\"), but EN-INC-20260920-06 doesn't describe it. Cite a record that does. If this record contradicts the pattern, list it under evidence_that_does_not_fit instead.",
+              "attempt": 1,
+              "time": "2026-11-13T03:23:15.954Z"
+            },
+            {
+              "step": "analysis",
+              "type": "problems",
+              "detail": "policy_practice_gap: EN-POL-LOTO-VER: the quote \"may begin\" is too short; quote at least 4 words copied exactly from the record.",
+              "attempt": 1,
+              "time": "2026-11-13T03:29:17.196Z"
+            },
+            {
+              "step": "analysis",
+              "type": "adjusted",
+              "detail": "graph.nodes: \"Contractor Crew\": trust_label \"Experiential\" → \"Observed\" (from the records it cites)",
+              "time": "2026-11-13T03:33:34.313Z"
+            },
+            {
+              "step": "analysis",
+              "type": "adjusted",
+              "detail": "graph.nodes: \"Inspector\": trust_label \"Experiential\" → \"Observed\" (from the records it cites)",
+              "time": "2026-11-13T03:33:34.313Z"
+            },
+            {
+              "step": "reviewCard",
+              "type": "adjusted",
+              "detail": "evidence_badge \"Based on 8 records: Observed\" → \"Based on 6 records: permit log, near-miss report\"",
+              "time": "2026-11-13T03:36:19.712Z"
+            }
+          ],
+          "meta": {
+            "domain": "Energy",
+            "pattern_type": "Permit issuance during inspector backlog",
+            "location": "Synthetic Site B",
+            "windows": [
+              {
+                "start": "2026-09-20T07:00",
+                "end": "2026-09-20T11:00"
+              }
+            ],
+            "source_ids": [
+              "EN-PERMIT-20260920-0700",
+              "EN-PERMIT-20260920-0800",
+              "EN-PERMIT-20260920-0900",
+              "EN-PERMIT-20260920-1000",
+              "EN-PERMIT-20260920-1100",
+              "EN-NM-20260920-01",
+              "EN-NM-20260920-02",
+              "EN-INC-20260920-05",
+              "EN-INC-20260920-06",
+              "EN-POL-LOTO-VER"
+            ],
+            "verification": {
+              "findings_checked": 8,
+              "findings_verified": 8,
+              "findings_removed": [],
+              "fixed_on_retry": 1,
+              "findings_labels_corrected": 0,
+              "policy_quote": "verified",
+              "analysis": {
+                "claims_checked": 4,
+                "claims_verified": 4,
+                "claims_removed": [],
+                "labels_corrected": 0
+              },
+              "map": {
+                "nodes_checked": 9,
+                "nodes_verified": 9,
+                "nodes_removed": [],
+                "labels_corrected": 2
+              },
+              "card": "verified",
+              "wording": {
+                "checked": 11,
+                "replaced": [],
+                "removed": []
+              },
+              "windows": {
+                "total": 1,
+                "cited": 1,
+                "uncited": []
+              },
+              "rationale": "ok",
+              "learn_more": "not checked",
+              "safety_not_fit": {
+                "asked": 0,
+                "left": []
+              }
+            },
+            "safety_conditions": [
+              {
+                "id": "work_before_zero_energy",
+                "label": "Work started before zero-energy verification",
+                "source_ids": [
+                  "EN-NM-20260920-01"
+                ]
+              },
+              {
+                "id": "inspector_over_six_permits",
+                "label": "Inspector covering more than 6 permits",
+                "source_ids": [
+                  "EN-PERMIT-20260920-0700",
+                  "EN-PERMIT-20260920-0800",
+                  "EN-PERMIT-20260920-0900",
+                  "EN-PERMIT-20260920-1000",
+                  "EN-PERMIT-20260920-1100"
+                ]
+              }
+            ],
+            "placeholder_evidence": true
+          }
+        }
+      ],
+      "context_notes": [],
+      "rejections": [],
+      "information_requests": [],
+      "decision": null,
+      "outcome": null,
+      "notification": null,
+      "history": [
+        {
+          "time": "2026-11-13T03:36:19.712Z",
+          "status": "Inferred",
+          "by": "Threadline",
+          "note": "Noticed from Plant_Permits_2026-09-20.csv, EHS_NearMiss_2026-09-20.json, EN_Eval_Extra_2026-09-20.json"
+        },
+        {
+          "time": "2026-11-13T03:36:19.712Z",
+          "status": "Flagged",
+          "by": "Threadline",
+          "note": "Medium or higher confidence with a safety-relevant condition"
+        }
+      ]
+    }
+  ]
+}

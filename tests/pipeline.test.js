@@ -732,3 +732,73 @@ test("the pattern statement may quote the label too, and isn't replaced", async 
   assert.equal(replay.calls.length, 4, "no retry");
   assert.equal(result.steps.pattern.pattern_statement, statement);
 });
+
+// ---------- Issue 7: the numbers check's false alarms (years, time ranges, map labels, category phrases) ----------
+
+test("issue 7: a statement with a time range and the year after the date is kept, with no retry", async () => {
+  const statement = "Records suggest that between 3 and 6 pm on September 20, 2026, bed occupancy was high and physician pace was slow.";
+  const { result, replay } = await run({ answers: (s) => [{ ...s.pattern, pattern_statement: statement }, s.analysis, s.options, s.card] });
+  assert.equal(replay.calls.length, 4, "no retry");
+  assert.equal(result.steps.pattern.pattern_statement, statement);
+  assert.deepEqual(result.meta.verification.wording.replaced, []);
+});
+
+test("issue 7: a map label naming its record by the record's own time is kept, with no retry (\"Flow Record 1500\")", async () => {
+  const named = (s) => withNode(withNode(s.analysis, 1, { label: "Flow Record 1500" }), 2, { label: "Flow data 2026-09-20 1600" });
+  const { result, replay } = await run({ answers: (s) => [s.pattern, named(s), s.options, s.card] });
+  assert.equal(replay.calls.length, 4, "no retry");
+  assert.deepEqual(result.meta.verification.map.nodes_removed, []);
+  assert.ok(result.steps.analysis.graph.nodes.some((n) => n.label === "Flow Record 1500"));
+});
+
+test("issue 7: a map label ending with another record's number, or a made-up serial number, still gets the retry", async () => {
+  const other = (s) => withNode(withNode(s.analysis, 1, { label: "Flow Record 1600" }), 2, { label: "Flow Record 2" });
+  const { replay } = await run({ answers: (s) => [s.pattern, other(s), s.analysis, s.options, s.card] });
+  assert.match(lastMessage(replay, 2), /graph\.nodes: "Flow Record 1600" mentions 1600/);
+  assert.match(lastMessage(replay, 2), /graph\.nodes: "Flow Record 2" mentions 2/);
+});
+
+test("issue 7: a map node that cites no record can't borrow another record's number", async () => {
+  const uncited = (s) => withNode(s.analysis, 7, { label: "Charge Nurse 1500" });
+  const { replay } = await run({ answers: (s) => [s.pattern, uncited(s), s.analysis, s.options, s.card] });
+  assert.match(lastMessage(replay, 2), /graph\.nodes: "Charge Nurse 1500" mentions 1500/);
+});
+
+test("issue 7: ID numbers are allowed in map labels only; in a finding they still get the retry", async () => {
+  const wrong = (s) => withEvidence(s.pattern, "HC-CMP-4471", { finding: "Complaint 4471: a long wait after rooming." });
+  const { replay } = await run({ answers: (s) => [wrong(s), s.pattern, s.analysis, s.options, s.card] });
+  assert.match(lastMessage(replay, 1), /HC-CMP-4471: the finding mentions 4471/);
+});
+
+test("category phrase: \"CTAS 1 or 2 patients\" is kept in a finding that cites the record matched to that condition (HC-INC-99102)", async () => {
+  const reworded = (s) => withEvidence(s.pattern, "HC-INC-99102", { finding: "No monitored beds for CTAS 1 or 2 patients." });
+  const { result, replay } = await run({ answers: (s) => [reworded(s), s.analysis, s.options, s.card] });
+  assert.equal(replay.calls.length, 4, "no retry");
+  assert.ok(cites(result, "HC-INC-99102"));
+  assert.deepEqual(result.meta.verification.findings_removed, []);
+});
+
+test("category phrase: in a finding that cites another record, \"CTAS 1 or 2\" is still checked and named in the retry", async () => {
+  const elsewhere = (s) => withEvidence(s.pattern, "HC-CMP-4471", { finding: "CTAS 1 or 2 patients waited 85 minutes after rooming." });
+  const { result, replay } = await run({ answers: (s) => [elsewhere(s), elsewhere(s), s.analysis, s.options, s.card] });
+  assert.match(lastMessage(replay, 1), /HC-CMP-4471: the finding mentions 1, 2, which aren't in that record/);
+  assert.deepEqual(result.meta.verification.findings_removed.map((f) => f.source_id), ["HC-CMP-4471"]);
+});
+
+test("category phrase: the same on the map: kept on the matched record's node, refused on another record's node", async () => {
+  const matched = (s) => withNode(s.analysis, 5, { label: "CTAS 1 or 2 patient" });
+  const kept = await run({ answers: (s) => [s.pattern, matched(s), s.options, s.card] });
+  assert.equal(kept.replay.calls.length, 4, "no retry");
+  assert.deepEqual(kept.result.meta.verification.map.nodes_removed, []);
+
+  const another = (s) => withNode(s.analysis, 6, { label: "CTAS 1 or 2 patient" });
+  const { replay } = await run({ answers: (s) => [s.pattern, another(s), s.analysis, s.options, s.card] });
+  assert.match(lastMessage(replay, 2), /graph\.nodes: "CTAS 1 or 2 patient" mentions 1, 2/);
+});
+
+test("category phrase: wording about the whole Thread may use it when one of the Thread's records was matched to the condition", async () => {
+  const statement = "Records suggest long waits after rooming and a lack of monitored beds for CTAS 1 or 2 patients.";
+  const { result, replay } = await run({ answers: (s) => [{ ...s.pattern, pattern_statement: statement }, s.analysis, s.options, s.card] });
+  assert.equal(replay.calls.length, 4, "no retry");
+  assert.equal(result.steps.pattern.pattern_statement, statement);
+});

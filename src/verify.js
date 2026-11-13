@@ -76,8 +76,17 @@ const escapeRe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
  * mistaken for quantities. Times may be written on a 24- or 12-hour clock ("15:30", "3:30 PM",
  * "3 PM"); dates as "2026-09-20", "Sept 20", "September 20th" or "20 September".
  */
-function withoutOwnReferences(text, records, { timesAndDates = true } = {}) {
+function withoutOwnReferences(text, records, { timesAndDates = true, ownIdNumbersAtEnd = false } = {}) {
   let out = String(text ?? "");
+  if (timesAndDates) {
+    // "between 3 and 6 pm": the first hour is read with the second's am/pm, so both are checked as times.
+    out = out.replace(TIME_RANGE, (whole, first, joiner, second, ap) => `${first} ${ap}m${joiner}${second}`);
+    // A record's own timestamp written in full, as the record has it ("2026-09-20T15:00").
+    for (const r of records) {
+      if (typeof r.timestamp === "string" && r.timestamp.includes("T")) out = out.split(r.timestamp).join(" ");
+    }
+  }
+  if (ownIdNumbersAtEnd && timesAndDates) out = withoutOwnIdNumbersAtEnd(out, records);
   for (const r of records) {
     if (r.source_id) out = out.replace(new RegExp(escapeRe(r.source_id), "g"), " ");
     const m = timesAndDates && typeof r.timestamp === "string" && r.timestamp.match(/^(\d{4})-(\d{2})-(\d{2})(?:T(\d{2}):(\d{2}))?/);
@@ -87,8 +96,9 @@ function withoutOwnReferences(text, records, { timesAndDates = true } = {}) {
     const monthName = MONTHS[Number(month) - 1];
     out = out
       .replace(new RegExp(`${year}-${month}-${day}`, "g"), " ")
-      .replace(new RegExp(`\\b${monthName}\\.?\\s+0?${d}(?:st|nd|rd|th)?\\b`, "gi"), " ")
-      .replace(new RegExp(`\\b0?${d}(?:st|nd|rd|th)?\\s+(?:of\\s+)?${monthName}\\b`, "gi"), " ");
+      // The record's own year may follow its date ("September 20, 2026"); a year on its own is still checked.
+      .replace(new RegExp(`\\b${monthName}\\.?\\s+0?${d}(?:st|nd|rd|th)?(?:,?\\s+${year})?\\b`, "gi"), " ")
+      .replace(new RegExp(`\\b0?${d}(?:st|nd|rd|th)?\\s+(?:of\\s+)?${monthName}(?:,?\\s+${year})?\\b`, "gi"), " ");
     if (hh === undefined) continue;
     const h24 = Number(hh);
     const h12 = h24 % 12 || 12;
@@ -96,6 +106,32 @@ function withoutOwnReferences(text, records, { timesAndDates = true } = {}) {
       .replace(new RegExp(`\\b0?(?:${h24}|${h12}):${mm}(?:\\s*[ap]\\.?m\\.?)?`, "gi"), " ")
       .replace(new RegExp(`\\b${h12}\\s*[ap]\\.?m\\b\\.?`, "gi"), " ");
   }
+  return out;
+}
+
+// "3 and 6 pm", "3 to 6 p.m.", "3-6 PM": a bare hour, a joining word, then a time with am or pm.
+const TIME_RANGE = /\b(\d{1,2}(?::\d{2})?)(\s*(?:and|to|until|through|-|–|—)\s*)(\d{1,2}(?::\d{2})?\s*([ap])\.?m\b\.?)/gi;
+
+/**
+ * For a map label only: the label with its cited records' own ID numbers, date or time taken off
+ * the END, written as the ID has them ("Flow Record 1500" and "Flow Record 20260920-1500" for
+ * HC-FLOW-20260920-1500, "Complaint 4471" for HC-CMP-4471). There the number names the record.
+ * Anywhere else in the label it is still checked, so "4471 patients" doesn't pass, and neither
+ * does a made-up serial number ("Permit Data 3") or another record's number.
+ */
+function withoutOwnIdNumbersAtEnd(text, records) {
+  const pieces = new Set();
+  for (const r of records) {
+    for (const piece of String(r.source_id ?? "").split("-")) if (/^\d+$/.test(piece)) pieces.add(piece);
+    const m = typeof r.timestamp === "string" && r.timestamp.match(/^(\d{4})-(\d{2})-(\d{2})(?:T(\d{2}):(\d{2}))?/);
+    if (!m) continue;
+    pieces.add(`${m[1]}-${m[2]}-${m[3]}`).add(`${m[1]}${m[2]}${m[3]}`);
+    if (m[4]) pieces.add(`${m[4]}${m[5]}`);
+  }
+  if (pieces.size === 0) return text;
+  const atEnd = new RegExp(`(?:^|[\\s\\-–:,(#]+)(?:${[...pieces].map(escapeRe).join("|")})[\\s).]*$`);
+  let out = text;
+  while (atEnd.test(out)) out = out.replace(atEnd, "");
   return out;
 }
 
@@ -161,6 +197,22 @@ function withoutLabels(text, labels) {
 
 /** The labels of a domain's safety-relevant conditions (see withoutLabels). */
 export const safetyLabelsOf = (pack) => (pack.safety_relevant_conditions ?? []).map((c) => c.label).filter(Boolean);
+
+/**
+ * The category phrases that may be skipped, like a label, in text about these records: those of
+ * each safety-relevant condition (its "category_phrases" in domain_rules.json, e.g. "CTAS 1 or 2")
+ * that safetyConditionsIn() matched to at least one of these records. For any other records the
+ * phrase is checked like any other numbers, so a CTAS 2 record can't be called "CTAS 1 or 2" in
+ * a finding about something else.
+ * @param {Array} records  The records the text cites (or is checked against).
+ * @param {Array<{id, source_ids}>} hits  What safetyConditionsIn() found in the Thread's records.
+ */
+export function categoryPhrasesFor(records, hits, pack) {
+  const ids = new Set(records.map((r) => r.source_id));
+  return (pack.safety_relevant_conditions ?? [])
+    .filter((c) => hits.some((h) => h.id === c.id && h.source_ids.some((id) => ids.has(id))))
+    .flatMap((c) => c.category_phrases ?? []);
+}
 
 /** The numbers in a domain's trigger and safety thresholds, e.g. 0.9, 45, 60. */
 export function thresholdsOf(pack) {
@@ -233,15 +285,16 @@ export function policyQuoteProblem(gap, policy) {
  * of the domain's thresholds). The same number rules as numberProblems.
  * @param {string} text
  * @param {Array} records  The records the claim cites (or, if it cites none, all the step's inputs).
- * @param {{where?: string}} [options]  How to name those records in the message.
+ * @param {{where?: string, ownIdNumbersAtEnd?: boolean}} [options]  How to name those records in
+ *   the message; and, for a map label, whether it may end with its records' own ID numbers.
  * @returns {string[]}
  */
-export function claimNumberProblems(text, records, thresholds, { where = "the records it cites", byReference = false, labels = [] } = {}) {
+export function claimNumberProblems(text, records, thresholds, { where = "the records it cites", byReference = false, labels = [], ownIdNumbersAtEnd = false } = {}) {
   const { stripped, problems } = byReference ? checkReferences(text, records) : { stripped: text, problems: [] };
   const refProblems = problems.map((p) => `"${text}": ${p}`);
   const allowed = [...thresholds, ...records.flatMap((r) => allowedNumbers(r, [], { byReference }))];
   const withPercents = [...allowed, ...thresholds.flatMap(asPercent)];
-  const missing = [...new Set(numbersIn(withoutOwnReferences(withoutLabels(stripped, labels), records, { timesAndDates: !byReference })))]
+  const missing = [...new Set(numbersIn(withoutOwnReferences(withoutLabels(stripped, labels), records, { timesAndDates: !byReference, ownIdNumbersAtEnd })))]
     .filter((n) => !withPercents.some((a) => same(a, n)));
   if (missing.length === 0) return refProblems;
   const all = records.map((r) => r.source_id);
